@@ -15,14 +15,18 @@ Reserved Notation "A == B" (at level 70).
 
 Reserved Notation "A <~> B" (at level 80).
 (* Reserved Notation "A ⊗ B" (at level 30). *)
-Reserved Notation "A => B" (at level 80).
+Reserved Notation "A ~~> B" (at level 80).
 
 (* FIXME get propositional truncation from elsewhere *)
-Polymorphic Variant truncate A: Prop := truncate_intro (_:A).
+Polymorphic Definition id (A: Type) := A.
+Polymorphic Variant truncate A: Prop := truncate_intro (_:id A).
 
 Module TruncateNotations.
   Notation "| A |" := (truncate A).
+
+  Coercion truncate_intro: id >-> truncate.
 End TruncateNotations.
+
 Import TruncateNotations.
 
 Module Export Category.
@@ -38,7 +42,7 @@ Module Export Category.
     equal {A B} (f g: A ~> B): Prop
     where "f == g" := (equal f g) ;
 
-    is_eqv A B: Equivalence (@equal A B) ;
+    Category_Equivalence A B:> Equivalence (@equal A B) ;
 
     compose_assoc {A B C D} (f: C ~> D) (g: B ~> C) (h: A ~> B): f ∘ (g ∘ h) == (f ∘ g) ∘ h ;
     compose_id_left {A B} (f: A ~> B): (id ∘ f) == f ;
@@ -55,8 +59,6 @@ Module Export Category.
     Notation "f == g" := (equal f g).
   End CategoryNotations.
 
-  Polymorphic Instance eq_cat C (A B: ∈ C) : @Equivalence (hom A B) equal := is_eqv _ _.
-
   Polymorphic Add Parametric Morphism K (A B C: ∈ K) : (@compose _ A B C)
       with signature equal ==> equal ==> equal as compose_mor.
   Proof.
@@ -67,13 +69,54 @@ Module Export Category.
   Qed.
 End Category.
 
+Module Opposite.
+  Section opposite.
+    Polymorphic Context `(Category).
+
+    Polymorphic Definition hom (A B: object) := B ~> A.
+
+    Polymorphic Definition id {A} : hom A A := id.
+    Polymorphic Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
+
+    Polymorphic Definition eq {A B} (f g: hom A B) := f == g.
+
+    Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; intros; cbn.
+    - reflexivity.
+    - rewrite H0.
+      reflexivity.
+    - rewrite H0, H1.
+      reflexivity.
+    Qed.
+
+    Polymorphic Definition op: Category.
+    exists object hom @id @compose @eq.
+    1: apply eq_Equivalence.
+    all: unfold hom, eq, compose, id; intros; cbn.
+    - rewrite compose_assoc.
+      reflexivity.
+    - rewrite compose_id_right.
+      reflexivity.
+    - rewrite compose_id_left.
+      reflexivity.
+    - rewrite H0, H1.
+      reflexivity.
+    Defined.
+  End opposite.
+End Opposite.
+
+Polymorphic Definition op: Category -> Category := Opposite.op.
+
 Module Isomorphism.
-  Polymorphic Cumulative Class hom `{Category} (A B: object) := {
+  Polymorphic Cumulative Class hom `{Cat:Category} (A B: object) := {
     to: A ~> B ;
     from: B ~> A ;
     to_from: to ∘ from == id ;
     from_to: from ∘ to == id ;
   }.
+
+  Coercion to: hom >-> Category.hom.
 
   Section iso.
     Polymorphic Context `(Category).
@@ -172,16 +215,12 @@ Module Functor.
     map_compat {A B} (f f': A ~> B): f == f' -> map f == map f' ;
   }.
 
-  Module FunctorNotations.
-    Notation "F ⊗ A" := (@fobj _ _ F A).
-  End FunctorNotations.
-
-  Import FunctorNotations.
+  Coercion fobj: functor >-> Funclass.
 
   Section functor.
     Polymorphic Variables K L : Category.
 
-    Polymorphic Definition hom (A B: functor K L) := forall x, A ⊗ x ~> B ⊗ x.
+    Polymorphic Definition hom (A B: functor K L) := forall x, A x ~> B x.
 
     Polymorphic Definition id {A}: hom A A := fun _ => id.
     Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => (f _) ∘ (g _).
@@ -231,7 +270,6 @@ Qed.
 
 Module cat.
   Import Functor.
-  Import FunctorNotations.
   Import Isomorphism.
   Import IsomorphismNotations.
 
@@ -248,7 +286,7 @@ Module cat.
   Defined.
 
   Polymorphic Definition compose {A B C} (F: hom B C) (G: hom A B): hom A C.
-  exists (fun x => F ⊗ (G ⊗ x)) (fun _ _ x => map (map x)).
+  exists (fun x => F (G x)) (fun _ _ x => map (map x)).
   - intros.
     rewrite map_composes, map_composes.
     reflexivity.
@@ -289,8 +327,8 @@ Module cat.
   destruct p as [p], q as [q].
   exists.
   exists
-    (fun x => map (@to _ _ _ q x) ∘ @to _ _ _ p (g ⊗ x))
-    (fun x => @from _ _ _ p (g ⊗ x) ∘ map (@from _ _ _ q x)).
+    (fun x => map (@to _ _ _ q x) ∘ @to _ _ _ p (g x))
+    (fun x => @from _ _ _ p (g x) ∘ map (@from _ _ _ q x)).
   - cbn.
     intro x.
     unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
@@ -381,16 +419,16 @@ Module Enriched.
   Polymorphic Cumulative Record Category `(Monoidal) := {
     object: Type ;
     hom: object -> object -> Category.object
-    where "A => B" := (hom A B) ;
+    where "A ~~> B" := (hom A B) ;
 
-    id {A}: I ~> (A => A) ;
-    compose {A B C}: (B => C) ⊗ (A => B) ~> (A => C) ;
+    id {A}: I ~> (A ~~> A) ;
+    compose {A B C}: (B ~~> C) ⊗ (A ~~> B) ~> (A ~~> C) ;
 
     (* Not going to do this laws yet *)
   }.
 
   Module EnrichedNotations.
-    Infix "=>" := hom.
+    Infix "~~>" := hom.
   End EnrichedNotations.
 End Enriched.
 
@@ -427,15 +465,13 @@ Module Bishop.
   Polymorphic Cumulative Record bishop_set := {
     type: Type ;
     eqv: type -> type -> Prop ;
-    is_eqv: @Equivalence type eqv
+    set_Equivalence:> @Equivalence type eqv
   }.
-
-  Polymorphic Instance eq_bishop (A: bishop_set) : @Equivalence (type A) (eqv _) := is_eqv A.
 
   Polymorphic Definition Bishop_Eqv (A: bishop_set): Category.
   apply (@Relation.relation (type A) (eqv A)).
-  - apply is_eqv.
-  - apply is_eqv.
+  - apply set_Equivalence.
+  - apply set_Equivalence.
   Defined.
 
   Polymorphic Definition hom A B := (Bishop_Eqv A: @object cat) ~> (Bishop_Eqv B).
@@ -473,44 +509,6 @@ End Bishop.
 Polymorphic Definition Bishop_Eqv := Bishop.Bishop_Eqv.
 Polymorphic Definition Bishop_Set := Bishop.Bishop_Set.
 
-Module Opposite.
-  Section opposite.
-    Polymorphic Context `(Category).
-
-    Polymorphic Definition hom (A B: object) := B ~> A.
-
-    Polymorphic Definition id {A} : hom A A := id.
-    Polymorphic Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
-
-    Polymorphic Definition eq {A B} (f g: hom A B) := f == g.
-
-    Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; intros; cbn.
-    - reflexivity.
-    - rewrite H0.
-      reflexivity.
-    - rewrite H0, H1.
-      reflexivity.
-    Qed.
-
-    Polymorphic Definition op: Category.
-    exists object hom @id @compose @eq.
-    1: apply eq_Equivalence.
-    all: unfold hom, eq, compose, id; intros; cbn.
-    - rewrite compose_assoc.
-      reflexivity.
-    - rewrite compose_id_right.
-      reflexivity.
-    - rewrite compose_id_left.
-      reflexivity.
-    - rewrite H0, H1.
-      reflexivity.
-    Defined.
-  End opposite.
-End Opposite.
-
-Polymorphic Definition op: Category -> Category := Opposite.op.
 
 Module Over.
   Section over.
