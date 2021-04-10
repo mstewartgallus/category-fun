@@ -22,7 +22,7 @@ Polymorphic Definition id (A: Type) := A.
 Polymorphic Variant truncate A: Prop := truncate_intro (_:id A).
 
 Module TruncateNotations.
-  Notation "|| A ||" := (truncate A).
+  Notation "| A |" := (truncate A).
 
   Coercion truncate_intro: id >-> truncate.
 End TruncateNotations.
