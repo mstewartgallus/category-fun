@@ -44,22 +44,24 @@ Module Export Category.
 
     Category_Equivalence A B:> Equivalence (@equal A B) ;
 
-    compose_assoc {A B C D} (f: C ~> D) (g: B ~> C) (h: A ~> B): f ∘ (g ∘ h) == (f ∘ g) ∘ h ;
-    compose_id_left {A B} (f: A ~> B): (id ∘ f) == f ;
-    compose_id_right {A B} (f: A ~> B): (f ∘ id) == f ;
+    compose_assoc {A B C D} (f: hom C D) (g: hom B C) (h: hom A B): f ∘ (g ∘ h) == (f ∘ g) ∘ h ;
+    compose_id_left {A B} (f: hom A B): (id ∘ f) == f ;
+    compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
 
-    compose_compat {A B C} (f f': B ~> C) (g g': A ~> B):
+    compose_compat {A B C} (f f': hom B C) (g g': hom A B):
       f == f' -> g == g' -> (f ∘ g) == (f' ∘ g') ;
   }.
 
+  Coercion object: Category >-> Sortclass.
+  Coercion hom: Category >-> Funclass.
+
   Module Export CategoryNotations.
-    Notation "∈ C" := (@object C).
-    Notation "A ~> B" := (hom A B).
     Notation "f ∘ g" := (compose f g).
     Notation "f == g" := (equal f g).
+    Notation "A ~> B" := ((_:Category) A B).
   End CategoryNotations.
 
-  Polymorphic Add Parametric Morphism K (A B C: ∈ K) : (@compose _ A B C)
+  Polymorphic Add Parametric Morphism (K: Category) (A B C: K) : (@compose _ A B C)
       with signature equal ==> equal ==> equal as compose_mor.
   Proof.
     intros ? ? p ? ? q.
@@ -71,9 +73,9 @@ End Category.
 
 Module Opposite.
   Section opposite.
-    Polymorphic Context `(Category).
+    Polymorphic Context `(K:Category).
 
-    Polymorphic Definition hom (A B: object) := B ~> A.
+    Polymorphic Definition hom (A B: K) := hom B A.
 
     Polymorphic Definition id {A} : hom A A := id.
     Polymorphic Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
@@ -84,9 +86,9 @@ Module Opposite.
     exists.
     all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; intros; cbn.
     - reflexivity.
-    - rewrite H0.
+    - rewrite H.
       reflexivity.
-    - rewrite H0, H1.
+    - rewrite H, H0.
       reflexivity.
     Qed.
 
@@ -100,7 +102,7 @@ Module Opposite.
       reflexivity.
     - rewrite compose_id_left.
       reflexivity.
-    - rewrite H0, H1.
+    - rewrite H, H0.
       reflexivity.
     Defined.
   End opposite.
@@ -109,9 +111,9 @@ End Opposite.
 Polymorphic Definition op: Category -> Category := Opposite.op.
 
 Module Isomorphism.
-  Polymorphic Cumulative Class hom `{Cat:Category} (A B: object) := {
-    to: A ~> B ;
-    from: B ~> A ;
+  Polymorphic Cumulative Class hom `{C:Category} (A B: object) := {
+    to: C A B ;
+    from: C B A ;
     to_from: to ∘ from == id ;
     from_to: from ∘ to == id ;
   }.
@@ -119,15 +121,15 @@ Module Isomorphism.
   Coercion to: hom >-> Category.hom.
 
   Section iso.
-    Polymorphic Context `(Category).
+    Polymorphic Context `(K:Category).
 
-    Polymorphic Definition id {A: object}: hom A A.
+    Polymorphic Definition id {A: K}: hom A A.
     exists id id.
     - apply compose_id_left.
     - apply compose_id_right.
     Defined.
 
-    Polymorphic Definition compose {A B C: object} (f: hom B C) (g: hom A B): hom A C.
+    Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C.
     exists (to ∘ to) (from ∘ from).
     - rewrite <- compose_assoc.
       rewrite -> (compose_assoc (@to _ _ _ g)).
@@ -143,7 +145,7 @@ Module Isomorphism.
       reflexivity.
     Defined.
 
-    Polymorphic Definition eq {A B: object} (f g: hom A B) : Prop := @to _ _ _ f == @to _ _ _ g /\ @from _ _ _ f == @from _ _ _ g.
+    Polymorphic Definition eq {A B} (f g: hom A B) : Prop := @to _ _ _ f == @to _ _ _ g /\ @from _ _ _ f == @from _ _ _ g.
 
     Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
     exists.
@@ -181,21 +183,21 @@ Module Isomorphism.
       destruct p, q.
       split.
       + apply compose_compat.
-        * apply H0.
-        * apply H2.
-      + apply compose_compat.
-        * apply H3.
+        * apply H.
         * apply H1.
+      + apply compose_compat.
+        * apply H2.
+        * apply H0.
     Defined.
   End iso.
 
   Module IsomorphismNotations.
-    Notation "A <~> B" := ((A: ∈ (Isomorphism _)) ~> (B: ∈ (Isomorphism _))).
+    Notation "A <~> B" := (Isomorphism _ A B).
   End IsomorphismNotations.
 
   Import IsomorphismNotations.
 
-  Polymorphic Definition transpose {C} {A B: ∈ C} (f: A <~> B): B <~> A.
+  Polymorphic Definition transpose {C:Category} {A B: C} (f: A <~> B): B <~> A.
   exists (@from _ _ _ f) (@to _ _ _ f).
   - apply from_to.
   - apply to_from.
@@ -205,14 +207,14 @@ End Isomorphism.
 Definition Isomorphism: Category -> Category := Isomorphism.Isomorphism.
 
 Module Functor.
-  Polymorphic Cumulative Class functor (K L: Category) := {
-    fobj: ∈ K -> ∈ L ;
-    map {A B}: A ~> B -> fobj A ~> fobj B ;
+  Polymorphic Cumulative Class functor (C D: Category) := {
+    fobj: C -> D ;
+    map {A B}: C A B -> D (fobj A) (fobj B) ;
 
-    map_composes {A B C} (f: B ~> C) (g: A ~> B): map f ∘ map g == map (f ∘ g) ;
+    map_composes {X Y Z} (f: C Y Z) (g: C X Y): map f ∘ map g == map (f ∘ g) ;
 
     map_id {A}: map (@id _ A) == id ;
-    map_compat {A B} (f f': A ~> B): f == f' -> map f == map f' ;
+    map_compat {A B} (f f': C A B): f == f' -> map f == map f' ;
   }.
 
   Coercion fobj: functor >-> Funclass.
@@ -220,7 +222,7 @@ Module Functor.
   Section functor.
     Polymorphic Variables K L : Category.
 
-    Polymorphic Definition hom (A B: functor K L) := forall x, A x ~> B x.
+    Polymorphic Definition hom (A B: functor K L) := forall x, L (A x) (B x).
 
     Polymorphic Definition id {A}: hom A A := fun _ => id.
     Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => (f _) ∘ (g _).
@@ -260,7 +262,7 @@ End Functor.
 
 Definition Functor: Category -> Category -> Category := Functor.Functor.
 
-Polymorphic Add Parametric Morphism C D A B (F: ∈ (Functor C D)) : (@Functor.map _ _ F _ _)
+Polymorphic Add Parametric Morphism C D A B (F: Functor C D) : (@Functor.map _ _ F _ _)
     with signature (@equal _ A B) ==> equal as map_mor.
 Proof.
   intros.
@@ -273,7 +275,7 @@ Module cat.
   Import Isomorphism.
   Import IsomorphismNotations.
 
-  Polymorphic Definition hom (A B: Category) := ∈ (Functor A B).
+  Polymorphic Definition hom (A B: Category): Type := Functor A B.
 
   Polymorphic Definition id {A}: hom A A.
   exists (fun x => x) (fun _ _ f => f).
@@ -334,7 +336,7 @@ Module cat.
     unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
     rewrite <- (compose_assoc _ (@to _ _ _ p _)).
     rewrite (compose_assoc _ (@from _ _ _ p _)).
-    set (p' := @to_from _ _ _ p (@fobj _ _ g x)).
+    set (p' := @to_from _ _ _ p (g x)).
     set (q' := @to_from _ _ _ q x).
     cbn in p', q'.
     unfold Functor.eq, Functor.id, Functor.compose, Functor.hom in p', q'; cbn in p', q'.
@@ -349,16 +351,16 @@ Module cat.
     unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
     rewrite compose_assoc.
     setoid_replace
-      ((@from _ _ _ p (fobj x) ∘ map (@from _ _ _ q x))
+      ((@from _ _ _ p (g x) ∘ map (@from _ _ _ q x))
          ∘ map (@to _ _ _ q x))
       with
-        (@from _ _ _ p (fobj x) ∘ map (@from _ _ _ q x ∘ @to _ _ _ q x)).
+        (@from _ _ _ p (g x) ∘ map (@from _ _ _ q x ∘ @to _ _ _ q x)).
     2: {
       rewrite <- compose_assoc.
       rewrite map_composes.
       reflexivity.
     }
-    set (p' := @from_to _ _ _ p (@fobj _ _ g x)).
+    set (p' := @from_to _ _ _ p (g x)).
     set (q' := @from_to _ _ _ q x).
     rewrite q'.
     rewrite map_id.
@@ -627,14 +629,14 @@ Notation "[ N ]" := (finite N).
 
 Definition one := [0].
 
-Definition source C: ∈ [C].
+Definition source C: [C].
   exists 0.
   cbn.
   induction C.
   - auto.
   - auto.
 Defined.
-Definition target C: ∈ [C] := {| Over.proj := id |}.
+Definition target C: [C] := {| Over.proj := id |}.
 
 Definition I := [1].
 Definition walk {C}: source C ~> target C.
@@ -652,7 +654,7 @@ Defined.
 
 (* Define the simplex category *)
 Module Simplex.
-  Definition hom (A B: nat) := ([A]: ∈ cat) ~> [B].
+  Definition hom (A B: nat) := ([A]: cat) ~> [B].
 
   Definition id {A}: hom A A := id.
   Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
@@ -715,7 +717,7 @@ Module Diagrams.
   Section diagrams.
     Polymorphic Context {C:Category}.
 
-    Polymorphic Definition Empty: (op Empty: ∈ cat) ~> C.
+    Polymorphic Definition Empty: (op Empty: cat) ~> C.
     eexists _ _.
     Unshelve.
     3: {
@@ -734,7 +736,7 @@ Module Diagrams.
       destruct A.
     Defined.
 
-    Polymorphic Definition Constant (c: ∈ C): (op one: ∈ cat) ~> C.
+    Polymorphic Definition Constant (c: C): (op one: cat) ~> C.
     eexists _ _.
     Unshelve.
     4: {
@@ -762,7 +764,7 @@ Module Presheaf.
     Polymorphic Context {C D: Category}.
     Polymorphic Context `(@functor (op D) C).
 
-    Polymorphic Definition limit' (c: ∈ C): ∈ Bishop_Set.
+    Polymorphic Definition limit' (c: C): Bishop_Set.
     exists (forall t, c ~> fobj t) (fun x y => forall t, x t == y t).
     exists.
     - intros ? ?.
@@ -775,7 +777,7 @@ Module Presheaf.
       apply (q t).
     Defined.
 
-    Polymorphic Definition limit_map {X Y: ∈ (op C)} (f: X ~> Y): limit' X ~> limit' Y.
+    Polymorphic Definition limit_map {X Y: op C} (f: X ~> Y): limit' X ~> limit' Y.
     cbn in f, X, Y.
     unfold Opposite.hom in f.
     eexists _ _.
@@ -805,8 +807,8 @@ Module Presheaf.
     auto.
     Defined.
 
-    Polymorphic Definition limit: ∈ (presheaf C).
-    set (limit'' := limit' : ∈ (op C) -> ∈ Bishop_Set).
+    Polymorphic Definition limit: presheaf C.
+    set (limit'' := limit' : op C -> Bishop_Set).
     exists limit'' @limit_map.
     - intros.
       cbn.
@@ -921,9 +923,9 @@ Module Presheaf.
     Defined.
   End limits.
 
-  Polymorphic Definition unit {C}: @object (presheaf C) := limit Diagrams.Empty.
+  Polymorphic Definition unit {C}: presheaf C := limit Diagrams.Empty.
 
-  Polymorphic Definition bang {C} (A: @object (presheaf C)): A ~> unit.
+  Polymorphic Definition bang {C} (A: presheaf C): A ~> unit.
   intro t.
   cbn.
   eexists.
@@ -965,9 +967,9 @@ Module Presheaf.
     Section yoneda.
       Polymorphic Variables C:Category.
 
-      Polymorphic Definition yo (c: ∈ C) := limit (Diagrams.Constant c).
+      Polymorphic Definition yo (c: C) := limit (Diagrams.Constant c).
 
-      Polymorphic Definition yo_map {A B: ∈ C} (f: A ~> B): yo A ~> yo B.
+      Polymorphic Definition yo_map {A B: C} (f: A ~> B): yo A ~> yo B.
       intros X.
       eexists.
       Unshelve.
@@ -988,7 +990,7 @@ Module Presheaf.
 
       (* Because of universe weirdness we need a more awkward type
       signature than we should *)
-      Polymorphic Definition Yo: ∈ (Functor C (presheaf C)).
+      Polymorphic Definition Yo: Functor C (presheaf C).
       exists yo @yo_map.
       - intros X Y Z f g ? ? ?; cbn.
         rewrite compose_assoc.
