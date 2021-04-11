@@ -7,7 +7,6 @@ Unset Printing Primitive Projection Parameters.
 Reserved Notation "| A |" (at level 40).
 
 Reserved Notation "A == B" (at level 70).
-Reserved Notation "A · B" (at level 30).
 
 Reserved Notation "A ~> B" (at level 80).
 Reserved Notation "A ∘ B" (at level 30).
@@ -29,10 +28,9 @@ End TruncateNotations.
 
 Import TruncateNotations.
 
-(* We need Bishop sets (AKA setoids) not Coq's Type to make the Yoneda
-embedding on presheafs work properly *)
-(* FIXME might be nicer to define a set as a trivial category *)
-Module Export Bishop.
+Module Export Foundations.
+  (* We need Bishop sets (AKA setoids) not Coq's Type to make the Yoneda
+     embedding on presheafs work properly *)
   Polymorphic Cumulative Class setoid := {
     type: Type ;
     equal: type -> type -> Prop ;
@@ -43,9 +41,10 @@ Module Export Bishop.
   Module Export SetNotations.
     Notation "f == g" := (equal f g).
   End SetNotations.
-End Bishop.
+End Foundations.
 
 Module Export Functions.
+  (* A function is a functor over sets what's the problem? *)
   Polymorphic Cumulative Class function (C D: setoid) := {
     app: C -> D ;
     map {A B}: A == B -> app A == app B ;
@@ -81,6 +80,30 @@ Module Export Functions.
     apply H.
   Qed.
 End Functions.
+
+Module Product.
+  Close Scope nat.
+
+  Section prod.
+    Polymorphic Variable C D: setoid.
+
+    Polymorphic Definition eq (x y: C * D): Prop := fst x == fst y /\ snd x == snd y. 
+    Polymorphic Definition eq_Equivalence: Equivalence eq.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive, eq; cbn; intros; split.
+    1,2: reflexivity.
+    1,2: symmetry; apply H.
+    - destruct H, H0.
+      rewrite H, H0.
+      reflexivity.
+    - destruct H, H0.
+      rewrite H1, H2.
+      reflexivity.
+    Qed.
+
+    Polymorphic Definition prod := {| type := C * D; equal := eq; set_Equivalence := eq_Equivalence |}.
+  End prod.
+End Product.
 
 Module Export Category.
   Polymorphic Cumulative Class Category := {
@@ -513,7 +536,6 @@ Module Enriched.
   End EnrichedNotations.
 End Enriched.
 
-(* FIXME not really all total orders, need a better name. *)
 Module Relation.
   Section relation.
     Polymorphic Variable S: Type.
@@ -772,10 +794,10 @@ Module Presheaf.
 
   Section limits.
     Polymorphic Context {C D: Category}.
-    Polymorphic Context `(@functor (op D) C).
+    Polymorphic Variable F: Functor (op D) C.
 
     Polymorphic Definition limit' (c: C): set.
-    exists (forall t, c ~> fobj t) (fun x y => forall t, x t == y t).
+    exists (forall t, c ~> F t) (fun x y => forall t, x t == y t).
     exists.
     - intros ? ?.
       reflexivity.
@@ -799,7 +821,7 @@ Module Presheaf.
     1: {
       cbn.
       intros.
-      rewrite (H0 t).
+      rewrite (H t).
       reflexivity.
     }
     Defined.
