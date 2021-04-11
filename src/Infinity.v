@@ -6,6 +6,9 @@ Unset Printing Primitive Projection Parameters.
 
 Reserved Notation "| A |" (at level 40).
 
+Reserved Notation "A /~ B" (at level 30).
+Reserved Notation "∈ B" (at level 30).
+Reserved Notation "A ~ B" (at level 70).
 Reserved Notation "A == B" (at level 70).
 
 Reserved Notation "A ~> B" (at level 80).
@@ -29,86 +32,133 @@ End TruncateNotations.
 Import TruncateNotations.
 
 Module Export Foundations.
-  (* We need Bishop sets (AKA setoids) not Coq's Type to make the Yoneda
-     embedding on presheafs work properly *)
-  Polymorphic Cumulative Class setoid := {
-    type: Type ;
-    equal: type -> type -> Prop ;
-    set_Equivalence:> @Equivalence type equal
-  }.
-
-  Coercion type: setoid >-> Sortclass.
-  Module Export SetNotations.
-    Notation "f == g" := (equal f g).
-  End SetNotations.
-End Foundations.
-
-Module Export Functions.
-  (* A function is a functor over sets what's the problem? *)
-  Polymorphic Cumulative Class function (C D: setoid) := {
-    app: C -> D ;
-    map {A B}: A == B -> app A == app B ;
-  }.
-
-  Coercion app: function >-> Funclass.
-
-  Section function.
-    Polymorphic Variables K L : setoid.
-
-    Polymorphic Definition eq (A B: function K L): Prop := forall x, A x == B x.
-
-    Polymorphic Definition fn: setoid.
-    exists (function _ _) eq.
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
-    - intros.
-      reflexivity.
-    - intros.
-      symmetry.
-      apply (H _).
-    - intros.
-      rewrite (H _), (H0 _).
-      reflexivity.
-    Defined.
-  End function.
-
-  Polymorphic Add Parametric Morphism (C D: setoid) (F: fn C D) : (@app _ _ F)
-      with signature equal ==> equal as app_mor.
-  Proof.
-    intros.
-    apply map.
-    apply H.
-  Qed.
-End Functions.
-
-Module Product.
   Close Scope nat.
 
-  Section prod.
-    Polymorphic Variable C D: setoid.
+  (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
+     embedding on presheafs work properly *)
+  (* The technical jargon is that a Setoid is a 0-trivial groupoid,
+     equality is the hom *)
 
-    Polymorphic Definition eq (x y: C * D): Prop := fst x == fst y /\ snd x == snd y. 
-    Polymorphic Definition eq_Equivalence: Equivalence eq.
+  Polymorphic Cumulative Record span A B := {
+    dom: Type ;
+    proj1: dom -> A ;
+    proj2: dom -> B ;
+  }.
+
+  Polymorphic Definition corr A := span A A.
+
+  Polymorphic Definition equiv {A} (c:corr A) x y := {p|proj1 _ _ c p = x /\ proj2 _ _ c p = y}.
+
+  Polymorphic Cumulative Class Reflexive {A} (c: corr A) := {
+    reflexive x: equiv c x x
+  }.
+  Coercion reflexive: Reflexive >-> Funclass.
+
+  Polymorphic Cumulative Class Symmetric {A} (c: corr A) := {
+    symmetry x y: equiv c x y -> equiv c y x
+  }.
+  Coercion symmetry: Symmetric >-> Funclass.
+
+  Polymorphic Cumulative Class Transitive {A} (c: corr A) := {
+    transitive x y z:
+      equiv c x y -> equiv c y z ->
+      equiv c x z
+  }.
+  Coercion transitive: Transitive >-> Funclass.
+
+  Polymorphic Cumulative Class Groupoid := {
+    type: Type ;
+    relate: corr type ;
+    set_Reflexive :> Reflexive relate ;
+    set_Transitive :> Transitive relate ;
+    set_Symmetric :> Symmetric relate ;
+  }.
+
+  Coercion type: Groupoid >-> Sortclass.
+
+  Polymorphic Definition equal {A:Groupoid} (x y:A) := |equiv (relate (Groupoid:=A)) x y|.
+
+  Module Export SetNotations.
+    Notation "∈ A" := (relate (Groupoid := A)).
+    Notation "A /~ Q" := {| type := A ; relate := Q |}.
+    Notation "A ~ B" := (equiv relate A B).
+    Notation "x == y" := (equal x y).
+  End SetNotations.
+
+  Polymorphic Definition IsSet (A:Groupoid): Prop := forall (x y: A), (x ~ y) -> x = y.
+  Polymorphic Class Setoid := {
+    Setoid_Groupoid:> Groupoid ;
+    Setoid_IsSet: IsSet Setoid_Groupoid
+  }.
+
+  Coercion Setoid_Groupoid: Setoid >-> Groupoid.
+
+  Instance equal_Equivalence (A:Groupoid): Equivalence (@equal A).
+  exists.
+  - intros x.
+    destruct (reflexive x).
     exists.
-    all: unfold Reflexive, Symmetric, Transitive, eq; cbn; intros; split.
-    1,2: reflexivity.
-    1,2: symmetry; apply H.
-    - destruct H, H0.
-      rewrite H, H0.
-      reflexivity.
-    - destruct H, H0.
-      rewrite H1, H2.
-      reflexivity.
-    Qed.
+    exists x0.
+    apply a.
+  - intros x y p.
+    destruct p as [p].
+    exists.
+    apply (symmetry x y).
+    apply p.
+  - intros x y z p q.
+    destruct p as [p], q as [q].
+    exists.
+    apply (transitive x y z).
+    + apply p.
+    + apply q.
+  Qed.
 
-    Polymorphic Definition prod := {| type := C * D; equal := eq; set_Equivalence := eq_Equivalence |}.
-  End prod.
-End Product.
+  Polymorphic Definition ident (A: Type): Setoid.
+  eexists.
+  Unshelve.
+  2: {
+    exists A {| proj1 x := x ; proj2 x := x |}.
+    - exists.
+      intros.
+      exists x.
+      split.
+      all: auto.
+    - exists.
+      intros ? ? ? p q.
+      destruct p as [p pe], q as [q qe].
+      exists p.
+      cbn.
+      cbn in p, q, pe, qe.
+      destruct pe as [pe pe'], qe as [qe qe'].
+      split.
+      all: auto.
+      rewrite pe'.
+      rewrite <- qe.
+      rewrite qe'.
+      reflexivity.
+    - exists.
+      intros ? ? p.
+      destruct p as [p pe].
+      exists p.
+      cbn.
+      cbn in p, pe.
+      destruct pe as [pe pe'].
+      split.
+      all: auto.
+  }
+  intros ? ? p.
+  destruct p as [p pe].
+  cbn in p, pe.
+  destruct pe as [pe pe'].
+  rewrite <- pe, pe'.
+  reflexivity.
+  Defined.
+End Foundations.
 
 Module Export Category.
   Polymorphic Cumulative Class Category := {
     object: Type ;
-    hom: object -> object -> setoid
+    hom: object -> object -> Groupoid
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
@@ -121,7 +171,7 @@ Module Export Category.
     compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
 
     compose_compat {A B C} (f f': hom B C) (g g': hom A B):
-      f == f' -> g == g' -> (f ∘ g) == (f' ∘ g') ;
+      f ~ f' -> g ~ g' -> (f ∘ g) ~ (f' ∘ g') ;
   }.
 
   Coercion object: Category >-> Sortclass.
@@ -136,32 +186,82 @@ Module Export Category.
       with signature equal ==> equal ==> equal as compose_mor.
   Proof.
     intros ? ? p ? ? q.
-    apply compose_compat.
-    + apply p.
-    + apply q.
+    destruct p as [p], q as [q].
+    exists.
+    apply (compose_compat _ _ _ _ p q).
   Qed.
 End Category.
+
+Module Export Functions.
+  (* A function is a homeomorphism over equivalence *)
+  Polymorphic Class function (C D: Setoid) := {
+    app: C -> D ;
+    map {A B}: A ~ B -> app A ~ app B ;
+  }.
+
+  Coercion app: function >-> Funclass.
+
+  Polymorphic Definition fn C D := ident (function C D).
+
+  Polymorphic Add Parametric Morphism (C D: Setoid) (F: fn C D) : (@app _ _ F)
+      with signature equal ==> equal as app_mor.
+  Proof.
+    intros ? ? p.
+    destruct p as [p].
+    exists.
+    apply map.
+    apply p.
+  Qed.
+End Functions.
 
 Module Sets.
   Polymorphic Definition id {A}: fn A A.
   exists (fun x => x).
-  intros.
-  apply H.
+  intros ? ? p.
+  apply p.
   Defined.
 
   Polymorphic Definition compose {A B C} (f: fn B C) (g: fn A B): fn A C.
   exists (fun x => f (g x)).
-  intros.
-  rewrite H.
-  reflexivity.
+  intros ? ? p.
+  apply map.
+  apply map.
+  apply p.
   Defined.
 
   Polymorphic Definition set: Category.
-  exists setoid fn @id @compose.
-  all: cbn; unfold compose, eq; cbn; intros.
-  all: try reflexivity.
-  rewrite (H _), (H0 _).
-  reflexivity.
+  exists Setoid fn @id @compose.
+  - intros ? ? ? ? f g h.
+    exists.
+    exists (compose f (compose g h)).
+    cbn.
+    split.
+    2: reflexivity.
+    unfold compose.
+    cbn.
+    reflexivity.
+  - intros ? ? f.
+    exists.
+    exists (compose id f).
+    split.
+    2: reflexivity.
+    unfold compose.
+    cbn.
+    reflexivity.
+  - intros ? ? f.
+    exists.
+    exists f.
+    split.
+    all: reflexivity.
+  - intros ? ? ? ? ? ? ? p q.
+    destruct p as [p pe], q as [q qe].
+    cbn in pe, qe.
+    destruct pe, qe.
+    rewrite <- H.
+    rewrite <- H0.
+    rewrite <- H1.
+    rewrite <- H2.
+    apply reflexive.
   Defined.
 End Sets.
 
@@ -326,7 +426,7 @@ Module Export Object.
 
   Polymorphic Definition Object (C: Category) := {| type := C |}.
 
-  Coercion Object: Category >-> setoid.
+  Coercion Object: Category >-> Setoid.
 End Object.
 
 Module Functor.
