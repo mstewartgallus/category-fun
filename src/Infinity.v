@@ -6,9 +6,6 @@ Unset Printing Primitive Projection Parameters.
 
 Reserved Notation "| A |" (at level 40).
 
-Reserved Notation "A /~ B" (at level 30).
-Reserved Notation "∈ B" (at level 30).
-Reserved Notation "A ~ B" (at level 70).
 Reserved Notation "A == B" (at level 70).
 
 Reserved Notation "A ~> B" (at level 80).
@@ -31,134 +28,36 @@ End TruncateNotations.
 
 Import TruncateNotations.
 
-Module Export Foundations.
-  Close Scope nat.
-
-  (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
-     embedding on presheafs work properly *)
-  (* The technical jargon is that a Setoid is a 0-trivial groupoid,
-     equality is the hom *)
-
-  Polymorphic Cumulative Record span A B := {
-    dom: Type ;
-    proj1: dom -> A ;
-    proj2: dom -> B ;
-  }.
-
-  Polymorphic Definition corr A := span A A.
-
-  Polymorphic Definition equiv {A} (c:corr A) x y := {p|proj1 _ _ c p = x /\ proj2 _ _ c p = y}.
-
-  Polymorphic Cumulative Class Reflexive {A} (c: corr A) := {
-    reflexive x: equiv c x x
-  }.
-  Coercion reflexive: Reflexive >-> Funclass.
-
-  Polymorphic Cumulative Class Symmetric {A} (c: corr A) := {
-    symmetry x y: equiv c x y -> equiv c y x
-  }.
-  Coercion symmetry: Symmetric >-> Funclass.
-
-  Polymorphic Cumulative Class Transitive {A} (c: corr A) := {
-    transitive x y z:
-      equiv c x y -> equiv c y z ->
-      equiv c x z
-  }.
-  Coercion transitive: Transitive >-> Funclass.
-
-  Polymorphic Cumulative Class Groupoid := {
-    type: Type ;
-    relate: corr type ;
-    set_Reflexive :> Reflexive relate ;
-    set_Transitive :> Transitive relate ;
-    set_Symmetric :> Symmetric relate ;
-  }.
-
-  Coercion type: Groupoid >-> Sortclass.
-
-  Polymorphic Definition equal {A:Groupoid} (x y:A) := |equiv (relate (Groupoid:=A)) x y|.
-
-  Module Export SetNotations.
-    Notation "∈ A" := (relate (Groupoid := A)).
-    Notation "A /~ Q" := {| type := A ; relate := Q |}.
-    Notation "A ~ B" := (equiv relate A B).
-    Notation "x == y" := (equal x y).
-  End SetNotations.
-
-  Polymorphic Definition IsSet (A:Groupoid): Prop := forall (x y: A), (x ~ y) -> x = y.
-  Polymorphic Class Setoid := {
-    Setoid_Groupoid:> Groupoid ;
-    Setoid_IsSet: IsSet Setoid_Groupoid
-  }.
-
-  Coercion Setoid_Groupoid: Setoid >-> Groupoid.
-
-  Instance equal_Equivalence (A:Groupoid): Equivalence (@equal A).
-  exists.
-  - intros x.
-    destruct (reflexive x).
-    exists.
-    exists x0.
-    apply a.
-  - intros x y p.
-    destruct p as [p].
-    exists.
-    apply (symmetry x y).
-    apply p.
-  - intros x y z p q.
-    destruct p as [p], q as [q].
-    exists.
-    apply (transitive x y z).
-    + apply p.
-    + apply q.
-  Qed.
-
-  Polymorphic Definition ident (A: Type): Setoid.
-  eexists.
-  Unshelve.
-  2: {
-    exists A {| proj1 x := x ; proj2 x := x |}.
-    - exists.
-      intros.
-      exists x.
-      split.
-      all: auto.
-    - exists.
-      intros ? ? ? p q.
-      destruct p as [p pe], q as [q qe].
-      exists p.
-      cbn.
-      cbn in p, q, pe, qe.
-      destruct pe as [pe pe'], qe as [qe qe'].
-      split.
-      all: auto.
-      rewrite pe'.
-      rewrite <- qe.
-      rewrite qe'.
-      reflexivity.
-    - exists.
-      intros ? ? p.
-      destruct p as [p pe].
-      exists p.
-      cbn.
-      cbn in p, pe.
-      destruct pe as [pe pe'].
-      split.
-      all: auto.
-  }
-  intros ? ? p.
-  destruct p as [p pe].
-  cbn in p, pe.
-  destruct pe as [pe pe'].
-  rewrite <- pe, pe'.
-  reflexivity.
-  Defined.
-End Foundations.
-
 Module Export Category.
+  (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
+     embedding on presheafs work properly.
+
+     The technical jargon is that a Setoid is a 0-trivial groupoid,
+     equality is the hom *)
+  Polymorphic Cumulative Class Arrow := {
+    type: Type ;
+    equal: type -> type -> Prop
+    where "A == B" := (equal A B) ;
+
+    Setoid_Equivalence:> Equivalence equal
+  }.
+
+  Polymorphic Definition ThinArrow (A: Type): Arrow.
+  exists A (fun _ _ => True).
+  exists.
+  all: unfold Reflexive, Symmetric, Transitive; cbn; intros; auto.
+  Defined.
+
+  Coercion type: Arrow >-> Sortclass.
+  Coercion equal: Arrow >-> Funclass.
+
+  Module Export ArrowNotations.
+    Notation "A == B" := (equal A B).
+  End ArrowNotations.
+
   Polymorphic Cumulative Class Category := {
     object: Type ;
-    hom: object -> object -> Groupoid
+    hom: object -> object -> Arrow
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
@@ -171,7 +70,7 @@ Module Export Category.
     compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
 
     compose_compat {A B C} (f f': hom B C) (g g': hom A B):
-      f ~ f' -> g ~ g' -> (f ∘ g) ~ (f' ∘ g') ;
+      f == f' -> g == g' -> (f ∘ g) == (f' ∘ g') ;
   }.
 
   Coercion object: Category >-> Sortclass.
@@ -186,124 +85,47 @@ Module Export Category.
       with signature equal ==> equal ==> equal as compose_mor.
   Proof.
     intros ? ? p ? ? q.
-    destruct p as [p], q as [q].
-    exists.
     apply (compose_compat _ _ _ _ p q).
   Qed.
-End Category.
 
-Module Export Functions.
-  (* A function is a homeomorphism over equivalence *)
-  Polymorphic Class function (C D: Setoid) := {
-    app: C -> D ;
-    map {A B}: A ~ B -> app A ~ app B ;
+  (* A set is a category with only the identity arrow *)
+  Polymorphic Definition IsSet (C: Category) := forall A B, C A B -> A = B.
+
+  Polymorphic Cumulative Class ASet := {
+    ASet_Category:> Category ;
+    ASet_IsSet: IsSet ASet_Category
   }.
+  Coercion ASet_Category: ASet >-> Category.
 
-  Coercion app: function >-> Funclass.
-
-  Polymorphic Definition fn C D := ident (function C D).
-
-  Polymorphic Add Parametric Morphism (C D: Setoid) (F: fn C D) : (@app _ _ F)
-      with signature equal ==> equal as app_mor.
-  Proof.
-    intros ? ? p.
-    destruct p as [p].
-    exists.
-    apply map.
-    apply p.
-  Qed.
-End Functions.
-
-Module Sets.
-  Polymorphic Definition id {A}: fn A A.
-  exists (fun x => x).
+  Polymorphic Definition AsASet (A: Type): ASet.
+  eexists _.
+  Unshelve.
+  2: {
+    eexists A _ _ _.
+    Unshelve.
+    5: {
+      intros X Y.
+      apply (ThinArrow (X = Y)).
+    }
+    5: {
+      cbn.
+      intros.
+      reflexivity.
+    }
+    5: {
+      cbn.
+      intros ? ? ? p q.
+      rewrite q, p.
+      reflexivity.
+    }
+    all: cbn; intros; auto.
+  }
+  unfold IsSet.
+  cbn.
   intros ? ? p.
-  apply p.
+  auto.
   Defined.
-
-  Polymorphic Definition compose {A B C} (f: fn B C) (g: fn A B): fn A C.
-  exists (fun x => f (g x)).
-  intros ? ? p.
-  apply map.
-  apply map.
-  apply p.
-  Defined.
-
-  Polymorphic Definition set: Category.
-  exists Setoid fn @id @compose.
-  - intros ? ? ? ? f g h.
-    exists.
-    exists (compose f (compose g h)).
-    cbn.
-    split.
-    2: reflexivity.
-    unfold compose.
-    cbn.
-    reflexivity.
-  - intros ? ? f.
-    exists.
-    exists (compose id f).
-    split.
-    2: reflexivity.
-    unfold compose.
-    cbn.
-    reflexivity.
-  - intros ? ? f.
-    exists.
-    exists f.
-    split.
-    all: reflexivity.
-  - intros ? ? ? ? ? ? ? p q.
-    destruct p as [p pe], q as [q qe].
-    cbn in pe, qe.
-    destruct pe, qe.
-    rewrite <- H.
-    rewrite <- H0.
-    rewrite <- H1.
-    rewrite <- H2.
-    apply reflexive.
-  Defined.
-End Sets.
-
-Polymorphic Definition set := Sets.set.
-
-Module Opposite.
-  Section opposite.
-    Polymorphic Context `(K:Category).
-
-    Polymorphic Definition hom (A B: K) := hom B A.
-
-    Polymorphic Definition id {A} : hom A A := id.
-    Polymorphic Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
-
-    Polymorphic Definition eq {A B} (f g: hom A B) := f == g.
-
-    Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; intros; cbn.
-    - reflexivity.
-    - rewrite H.
-      reflexivity.
-    - rewrite H, H0.
-      reflexivity.
-    Qed.
-
-    Polymorphic Definition op: Category.
-    exists object hom @id @compose.
-    all: unfold hom, eq, compose, id; intros; cbn.
-    - rewrite compose_assoc.
-      reflexivity.
-    - rewrite compose_id_right.
-      reflexivity.
-    - rewrite compose_id_left.
-      reflexivity.
-    - rewrite H, H0.
-      reflexivity.
-    Defined.
-  End opposite.
-End Opposite.
-
-Polymorphic Definition op: Category -> Category := Opposite.op.
+End Category.
 
 Module Isomorphism.
   Section iso.
@@ -400,35 +222,6 @@ End Isomorphism.
 
 Definition Isomorphism: Category -> Category := Isomorphism.Isomorphism.
 
-Module Export Object.
-  Import Isomorphism.
-  Import IsomorphismNotations.
-
-  Polymorphic Definition eq {C} (A B: @object C) := | A <~> B |.
-
-  Polymorphic Instance eq_Equivalence A: Equivalence (@eq A).
-  exists.
-  all: unfold Reflexive, Symmetric, Transitive, compose, id, hom ; cbn.
-  - intros f.
-    unfold eq.
-    exists.
-    apply Category.id.
-  - intros ? ? p.
-    destruct p as [p].
-    exists.
-    apply Isomorphism.transpose.
-    apply p.
-  - intros ? ? ? p q.
-    destruct p as [p], q as [q].
-    exists.
-    apply (q ∘ p).
-  Qed.
-
-  Polymorphic Definition Object (C: Category) := {| type := C |}.
-
-  Coercion Object: Category >-> Setoid.
-End Object.
-
 Module Functor.
   Polymorphic Cumulative Class functor (C D: Category) := {
     fobj: C -> D ;
@@ -482,24 +275,44 @@ Module Functor.
       + apply q.
     Defined.
   End functor.
+
+  Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: Functor C D) : (@Functor.map _ _ F A B)
+      with signature (@equal _) ==> equal as map_mor.
+  Proof.
+    intros.
+    apply Functor.map_compat.
+    apply H.
+  Qed.
 End Functor.
 
 Polymorphic Definition Functor: Category -> Category -> Category := Functor.Functor.
-
-Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: Functor C D) : (@Functor.map _ _ F A B)
-    with signature (@equal _) ==> equal as map_mor.
-Proof.
-  intros.
-  apply Functor.map_compat.
-  apply H.
-Qed.
 
 Module cat.
   Import Functor.
   Import Isomorphism.
   Import IsomorphismNotations.
 
-  Polymorphic Definition hom (A B: Category): set := Functor A B.
+  Polymorphic Definition eq {C} (A B: @object C) := | A <~> B |.
+
+  Polymorphic Instance eq_Equivalence A: Equivalence (@eq A).
+  exists.
+  all: unfold Reflexive, Symmetric, Transitive, compose, id, hom ; cbn.
+  - intros f.
+    unfold eq.
+    exists.
+    apply Category.id.
+  - intros ? ? p.
+    destruct p as [p].
+    exists.
+    apply Isomorphism.transpose.
+    apply p.
+  - intros ? ? ? p q.
+    destruct p as [p], q as [q].
+    exists.
+    apply (q ∘ p).
+  Qed.
+
+  Polymorphic Definition hom (A B: Category): Arrow := {| type := Functor A B ; equal := eq |}.
 
   Polymorphic Definition id {A}: hom A A.
   exists (fun x => x) (fun _ _ f => f).
@@ -524,6 +337,7 @@ Module cat.
     + apply map_compat.
       * apply p.
   Defined.
+
   Polymorphic Definition compose_compat {A B C : Category} (f f' : hom B C) (g g' : hom A B):
     (f == f') ->
     (g == g') ->
@@ -594,47 +408,28 @@ End cat.
 
 Polymorphic Definition cat: Category := cat.cat.
 
-Module Monoidal.
-  Import Isomorphism.
-  Import IsomorphismNotations.
+Module Sets.
+  (* Define the category of sets as a subcategory of cat *)
+  Polymorphic Definition hom (C D: ASet): Arrow := (C: cat) ~> D.
 
-  Polymorphic Cumulative Class Monoidal `(Category) := {
-    I: object ;
-    tensor (_ _: object): object
-    where "A ⊗ B" := (tensor A B) ;
+  Polymorphic Definition id {A}: hom A A := id.
+  Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
 
-    tensor_assoc {A B C}: A ⊗ (B ⊗ C) <~> (A ⊗ B) ⊗ C ;
-    tensor_I_left {A}: I ⊗ A <~> A ;
-    tensor_I_right {A}: A ⊗ I <~> A ;
-  }.
-
-  (* FIXME use some other notation for monoidal tensor *)
-  Module MonoidalNotations.
-    Infix "⊗" := tensor.
-  End MonoidalNotations.
-End Monoidal.
-
-Module Enriched.
-  Import Monoidal.
-  Import MonoidalNotations.
-  Import Isomorphism.
-  Import IsomorphismNotations.
-
-  Polymorphic Cumulative Record Category `(Monoidal) := {
-    object: Type ;
-    hom: object -> object -> Category.object
-    where "A ~~> B" := (hom A B) ;
-
-    id {A}: I ~> (A ~~> A) ;
-    compose {A B C}: (B ~~> C) ⊗ (A ~~> B) ~> (A ~~> C) ;
-
-    (* Not going to do this laws yet *)
-  }.
-
-  Module EnrichedNotations.
-    Infix "~~>" := hom.
-  End EnrichedNotations.
-End Enriched.
+  Polymorphic Definition Sets: Category.
+  exists ASet hom @id @compose.
+  - intros.
+    apply compose_assoc.
+  - intros.
+    apply compose_id_left.
+  - intros.
+    apply compose_id_right.
+  - intros.
+    apply compose_compat.
+    + apply H.
+    + apply H0.
+  Defined.
+End Sets.
+Polymorphic Definition Sets: Category := Sets.Sets.
 
 Module Relation.
   Section relation.
@@ -804,14 +599,14 @@ Defined.
 
 (* Define the simplex category *)
 Module Simplex.
-  Definition hom (A B: nat): set := ([A]: cat) ~> [B].
+  Definition hom (A B: nat): Arrow := ([A]: cat) ~> [B].
 
   Definition id {A}: hom A A := id.
   Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
 
   Definition Δ: Category.
     exists nat hom @id @compose.
-    all: unfold hom, eq, compose, id; intros.
+    all: unfold hom, compose, id; intros.
     - rewrite compose_assoc.
       reflexivity.
     - apply compose_id_left.
@@ -824,14 +619,14 @@ End Simplex.
 Definition Δ: Category := Simplex.Δ.
 
 Module Empty.
-  Definition hom (A: Empty_set): Empty_set -> set := match A with end.
+  Definition hom (A: Empty_set): Empty_set -> Arrow := match A with end.
 
   Definition id {A}: hom A A := match A with end.
   Definition compose {A B C}: hom B C -> hom A B -> hom A C := match A with end.
 
   Definition Empty: Category.
     exists Empty_set hom @id @compose.
-    all: intros; unfold eq, compose, id; cbn; auto.
+    all: intros; unfold compose, id; cbn; auto.
     - destruct A.
     - destruct A.
     - destruct A.
@@ -841,7 +636,46 @@ End Empty.
 
 Notation Empty := Empty.Empty.
 
-Polymorphic Definition presheaf K: Category := Functor (op K) set.
+
+Module Opposite.
+  Section opposite.
+    Polymorphic Context `(K:Category).
+
+    Polymorphic Definition hom (A B: K) := hom B A.
+
+    Polymorphic Definition id {A} : hom A A := id.
+    Polymorphic Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
+
+    Polymorphic Definition eq {A B} (f g: hom A B) := f == g.
+
+    Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; intros; cbn.
+    - reflexivity.
+    - rewrite H.
+      reflexivity.
+    - rewrite H, H0.
+      reflexivity.
+    Qed.
+
+    Polymorphic Definition op: Category.
+    exists object hom @id @compose.
+    all: unfold hom, eq, compose, id; intros; cbn.
+    - rewrite compose_assoc.
+      reflexivity.
+    - rewrite compose_id_right.
+      reflexivity.
+    - rewrite compose_id_left.
+      reflexivity.
+    - rewrite H, H0.
+      reflexivity.
+    Defined.
+  End opposite.
+End Opposite.
+
+Polymorphic Definition op: Category -> Category := Opposite.op.
+
+Polymorphic Definition presheaf K: Category := Functor (op K) Sets.
 
 Module Diagrams.
   Import Functor.
@@ -887,6 +721,50 @@ Module Diagrams.
   End diagrams.
 End Diagrams.
 
+
+Module Monoidal.
+   Import Isomorphism.
+  Import IsomorphismNotations.
+
+  Polymorphic Cumulative Class Monoidal `(Category) := {
+    I: object ;
+    tensor (_ _: object): object
+    where "A ⊗ B" := (tensor A B) ;
+
+    tensor_assoc {A B C}: A ⊗ (B ⊗ C) <~> (A ⊗ B) ⊗ C ;
+    tensor_I_left {A}: I ⊗ A <~> A ;
+    tensor_I_right {A}: A ⊗ I <~> A ;
+  }.
+
+  (* FIXME use some other notation for monoidal tensor *)
+  Module MonoidalNotations.
+    Infix "⊗" := tensor.
+  End MonoidalNotations.
+End Monoidal.
+
+Module Enriched.
+  Import Monoidal.
+  Import MonoidalNotations.
+  Import Isomorphism.
+  Import IsomorphismNotations.
+
+  Polymorphic Cumulative Record Category `(Monoidal) := {
+    object: Type ;
+    hom: object -> object -> Category.object
+    where "A ~~> B" := (hom A B) ;
+
+    id {A}: I ~> (A ~~> A) ;
+    compose {A B C}: (B ~~> C) ⊗ (A ~~> B) ~> (A ~~> C) ;
+
+    (* Not going to do this laws yet *)
+  }.
+
+  Module EnrichedNotations.
+    Infix "~~>" := hom.
+  End EnrichedNotations.
+End Enriched.
+
+
 Module Presheaf.
   Import Monoidal.
   Import MonoidalNotations.
@@ -896,7 +774,7 @@ Module Presheaf.
     Polymorphic Context {C D: Category}.
     Polymorphic Variable F: Functor (op D) C.
 
-    Polymorphic Definition limit' (c: C): set.
+    Polymorphic Definition limit' (c: C): Sets.
     exists (forall t, c ~> F t) (fun x y => forall t, x t == y t).
     exists.
     - intros ? ?.
