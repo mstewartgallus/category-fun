@@ -3,7 +3,6 @@ Set Primitive Projections.
 Unset Printing Primitive Projection Parameters.
 
 Require Import Coq.Setoids.Setoid.
-Require Import Coq.Logic.ProofIrrelevance.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -466,7 +465,6 @@ End Over.
 (* FIXME Isolate this notation *)
 Notation "C / c" := (Over.over C c).
 
-
 Module Product.
   Close Scope nat.
 
@@ -580,78 +578,21 @@ Module Product.
   Defined.
 End Product.
 
-Module Props.
-  (* A mere proposition is a chaotic category I think *)
-  Polymorphic Definition IsProp (C: Category) := forall x y: C, x ~> y.
-
-  Polymorphic Cumulative Class AProp := {
-    AProp_Category:> Category ;
-    AProp_IsProp: IsProp AProp_Category
-  }.
-  Coercion AProp_Category: AProp >-> Category.
-
-(* Define the category of propositions as a subcategory of cat *)
-  Polymorphic Definition hom (C D: AProp): Arrow := (C: cat) ~> D.
-
-  Polymorphic Definition id {A}: hom A A := id.
-  Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
-
-  Polymorphic Definition Props: Category.
-  exists AProp hom @id @compose.
-  - intros.
-    apply compose_assoc.
-  - intros.
-    apply compose_id_left.
-  - intros.
-    apply compose_id_right.
-  - intros.
-    apply compose_compat.
-    + apply H.
-    + apply H0.
-  Defined.
-
-  Section props.
-    Polymorphic Variable K: Type.
-    Polymorphic Definition hom' (A B: K) := True.
-    Polymorphic Definition eq {A B} (f g: hom' A B) := True.
-    Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
-    exists.
-    all: auto.
-    Qed.
-
-    Polymorphic Definition phom A B := {| type := hom' A B; equal := eq |}.
-
-    Polymorphic Definition pid {A}: phom A A.
-    exists.
-    Defined.
-
-    Polymorphic Definition pcompose {A B C}: phom B C -> phom A B -> phom A C.
-    exists.
-    Defined.
-
-    Polymorphic Definition AsAProp: Props.
-    eexists _.
-    Unshelve.
-    2: {
-      exists K @phom @pid @pcompose.
-      all: auto.
-    }
-    exists.
-    Defined.
-  End props.
-End Props.
-
 Module Sets.
   (* FIXME find someway to combine the two *)
   (* A set is a thin groupoid *)
-  Polymorphic Definition IsProp (A: Type) := forall x y: A, x = y.
+  Polymorphic Definition IsProp (A: Arrow) := forall x y: A, x == y.
   Polymorphic Definition IsSet (C: Category) := forall A B, IsProp (C A B).
 
   Polymorphic Cumulative Class ASet := {
     ASet_Category:> Category ;
     ASet_IsSet:> IsSet ASet_Category
   }.
-  Coercion ASet_Category: ASet >-> Category.
+
+  Module Import SetNotations.
+    (* FIXME Isolate notations *)
+    Coercion ASet_Category: ASet >-> Category.
+  End SetNotations.
 
   (* Define the category of sets as a subcategory of cat *)
   Polymorphic Definition hom (C D: ASet): Arrow := (C: cat) ~> D.
@@ -673,7 +614,7 @@ Module Sets.
     + apply H0.
   Defined.
 
-  Polymorphic Definition AsASet (A: Type) (preorder: relation A) `(Reflexive _ preorder) `(Transitive _ preorder): Sets.
+  Polymorphic Definition AsASet A (preorder: relation A) `(Reflexive _ preorder) `(Transitive _ preorder): Sets.
   eexists _.
   Unshelve.
   2: {
@@ -699,43 +640,135 @@ Module Sets.
   unfold IsSet.
   cbn.
   intros ? ? ? p.
-  apply proof_irrelevance.
+  exists.
   Defined.
 
-(* Category of finite totally ordered sets *)
-  Module Finite.
-    Instance le_Reflexive: Reflexive le.
+  Polymorphic Definition prod (A B: Sets): Sets.
+  exists (Product.product A B).
+  intros ? ? ? p.
+  destruct A0, B0.
+  destruct x, p.
+  cbn in t, t0, t1, t2.
+  set (A' := ASet_IsSet _ _ t t1).
+  set (B' := ASet_IsSet _ _ t0 t2).
+  split.
+  + apply A'.
+  + apply B'.
+  Defined.
+
+  Polymorphic Definition fst {A B: Sets}: prod A B ~> A := Product.fst.
+  Polymorphic Definition snd {A B: Sets}: prod A B ~> B := Product.snd.
+
+  Polymorphic Definition fanout {A B C: Sets}: (C ~> A) -> (C ~> B) -> (C ~> prod A B) := Product.fanout.
+End Sets.
+
+Import Sets.SetNotations.
+Polymorphic Definition Sets: Category := Sets.Sets.
+
+
+Module Props.
+  Import Sets.
+  Import Isomorphism.IsomorphismNotations.
+
+  (* Define a mere proposition as a proof irrelevant set *)
+  Polymorphic Definition IsProp (C: Sets) := forall x y: C, x <~> y.
+
+  Polymorphic Cumulative Class AProp := {
+    AProp_Set:Sets ;
+    AProp_IsProp: IsProp AProp_Set
+  }.
+
+  Module Import PropNotations.
+    Coercion AProp_Set: AProp >-> object.
+  End PropNotations.
+
+  Polymorphic Definition hom (C D: AProp): Arrow := ThinArrow AProp.
+
+  Polymorphic Definition id {A}: hom A A.
+  auto.
+  Defined.
+
+  Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C.
+  auto.
+  Defined.
+
+  Polymorphic Definition Props: Category.
+  exists AProp hom @id @compose.
+  all: cbn; auto.
+  Defined.
+
+  Section props.
+    Polymorphic Variable K: Type.
+
+    Polymorphic Definition phom (A B: K) := ThinArrow K.
+
+    Polymorphic Definition pid {A}: phom A A.
     auto.
-    Qed.
-
-    Instance le_Transitive: Transitive le.
-    intros ? ? ? f g.
-    induction g.
-    - apply f.
-    - auto.
-    Qed.
-
-    Definition finite (N:nat): Sets.
-      exists ((AsASet _ le _ _)/N).
-      unfold IsSet, IsProp.
-      cbn.
-      intros.
-      destruct x, y.
-      rewrite (proof_irrelevance _ commutes commutes0).
-      cbn in slice, slice0.
-      rewrite (proof_irrelevance _ slice slice0).
-      reflexivity.
     Defined.
-  End Finite.
 
-  Definition finite := Finite.finite.
+    Polymorphic Definition pcompose {A B C}: phom B C -> phom A B -> phom A C.
+    auto.
+    Defined.
 
-  Module Import SetNotations.
+    Polymorphic Definition AsAProp: Props.
+    eexists _.
+    Unshelve.
+    2: {
+      eexists _.
+      Unshelve.
+      2: {
+        exists K @phom @pid @pcompose.
+        all: cbn; auto.
+      }
+      exists.
+    }
+    cbn.
+    unfold IsProp.
+    intros x y.
+    cbn in x, y.
+    eexists.
+    Unshelve.
+    3: {
+      cbn.
+      apply x.
+    }
+    3: {
+      cbn.
+      apply y.
+    }
+    all: exists.
+    Defined.
+  End props.
+End Props.
+
+Import Props.PropNotations.
+
+Polymorphic Definition Props: Category := Props.Props.
+Polymorphic Definition Empty: Props := Props.AsAProp Empty_set.
+Polymorphic Definition Trivial: Props := Props.AsAProp unit.
+
+Module Finite.
+ (* Definie finite totally ordered sets *)
+  Instance le_Reflexive: Reflexive le.
+  auto.
+  Qed.
+
+  Instance le_Transitive: Transitive le.
+  intros ? ? ? f g.
+  induction g.
+  - apply f.
+  - auto.
+  Qed.
+
+  Definition finite (N:nat): Sets.
+    exists ((Sets.AsASet _ le _ _)/N).
+    exists.
+  Defined.
+
+  Module Import FiniteNotations.
     (* FIXME Isolate notations *)
     Notation "[ N ]" := (finite N).
-  End SetNotations.
-
-  Definition one := [0].
+  End FiniteNotations.
 
   Definition source C: [C].
     exists 0.
@@ -762,32 +795,12 @@ Module Sets.
     cbn.
     auto.
   Defined.
+End Finite.
 
-  Polymorphic Definition prod (A B: Sets): Sets.
-  exists (Product.product A B).
-  intros ? ? ? p.
-  destruct A0, B0.
-  destruct x, p.
-  cbn in t, t0, t1, t2.
-  set (A' := ASet_IsSet _ _ t t1).
-  set (B' := ASet_IsSet _ _ t0 t2).
-  rewrite A'.
-  rewrite B'.
-  reflexivity.
-  Defined.
-
-  Polymorphic Definition fst {A B: Sets}: prod A B ~> A := Product.fst.
-  Polymorphic Definition snd {A B: Sets}: prod A B ~> B := Product.snd.
-
-  Polymorphic Definition fanout {A B C: Sets}: (C ~> A) -> (C ~> B) -> (C ~> prod A B) := Product.fanout.
-End Sets.
-
-Polymorphic Definition Sets: Category := Sets.Sets.
+Import Finite.FiniteNotations.
 
 (* Define the simplex category *)
 Module Simplex.
-  Import Sets.SetNotations.
-
   Definition hom (A B: nat): Arrow := ([A]: Sets) ~> [B].
 
   Definition id {A}: hom A A := id.
@@ -806,25 +819,6 @@ Module Simplex.
 End Simplex.
 
 Definition Δ: Category := Simplex.Δ.
-
-(* FIXME make set *)
-Module Empty.
-  Definition hom (A: Empty_set): Empty_set -> Arrow := match A with end.
-
-  Definition id {A}: hom A A := match A with end.
-  Definition compose {A B C}: hom B C -> hom A B -> hom A C := match A with end.
-
-  Definition Empty: Category.
-    exists Empty_set hom @id @compose.
-    all: intros; unfold compose, id; cbn; auto.
-    - destruct A.
-    - destruct A.
-    - destruct A.
-    - destruct A.
-  Defined.
-End Empty.
-
-Notation Empty := Empty.Empty.
 
 Module Opposite.
   Section opposite.
@@ -872,7 +866,7 @@ Module Diagrams.
   Section diagrams.
     Polymorphic Context {C:Category}.
 
-    Polymorphic Definition Empty: (op Empty: cat) ~> C.
+    Polymorphic Definition Empty: ((op (Empty: Sets): cat) ~> C).
     eexists _ _.
     Unshelve.
     3: {
@@ -891,7 +885,7 @@ Module Diagrams.
       destruct A.
     Defined.
 
-    Polymorphic Definition Constant (c: C): (op one: cat) ~> C.
+    Polymorphic Definition Constant (c: C): (op ((Trivial:Sets):cat): cat) ~> C.
     eexists _ _.
     Unshelve.
     4: {
@@ -912,7 +906,7 @@ End Diagrams.
 
 
 Module Monoidal.
-   Import Isomorphism.
+  Import Isomorphism.
   Import IsomorphismNotations.
 
   Polymorphic Cumulative Class Monoidal `(Category) := {
@@ -964,52 +958,70 @@ Module Presheaf.
     Polymorphic Variable F: Functor (op D) C.
 
     Polymorphic Definition limit' (c: C): Sets.
-    exists (forall t, c ~> F t) (fun x y => forall t, x t == y t).
-    exists.
-    - intros ? ?.
+    eapply (Sets.AsASet (forall t, c ~> F t)).
+    Unshelve.
+    3: {
+      intros x y.
+      apply (forall t, x t == y t).
+    }
+    all: unfold Reflexive, Transitive; cbn.
+    - intros.
       reflexivity.
-    - intros x y p t.
-      symmetry.
-      apply (p t).
-    - intros x y z p q t.
-      rewrite (p t).
-      apply (q t).
+    - intros.
+      rewrite (H _), (H0 _).
+      reflexivity.
     Defined.
 
     Polymorphic Definition limit_map {X Y: op C} (f: X ~> Y): limit' X ~> limit' Y.
     cbn in f, X, Y.
     unfold Opposite.hom in f.
-    eexists _.
+    eexists _ _.
     Unshelve.
-    2: {
+    4: {
       intros x t.
       apply (x t ∘ f).
     }
-    1: {
-      cbn.
-      intros.
-      rewrite (H t).
+    4: {
+      intros ? ? p t.
+      unfold limit' in A, B, p.
+      cbn in A, B, p.
+      rewrite (p t).
       reflexivity.
     }
+    all: cbn.
+    all: intros.
+    all: auto.
     Defined.
 
     Polymorphic Definition limit: presheaf C.
-    set (limit'' := limit' : op C -> set).
+    set (limit'' := limit' : op C -> Sets).
     exists limit'' @limit_map.
     - intros.
       cbn.
       unfold Opposite.compose.
-      intros ? ?.
-      cbn.
-      rewrite compose_assoc.
-      reflexivity.
-    - intros ? ? ?.
-      cbn.
-      apply compose_id_right.
-    - intros ? ? ? ? p ? ?.
-      cbn.
-      rewrite p.
-      reflexivity.
+      exists.
+      eexists.
+      Unshelve.
+      all: cbn; unfold hom', eq; cbn; intros.
+      all: auto.
+      all: rewrite compose_assoc.
+      all: reflexivity.
+    - intros.
+      exists.
+      eexists.
+      Unshelve.
+      all: cbn; unfold hom', eq; cbn; intros.
+      all: auto.
+      all: rewrite compose_id_right.
+      all: reflexivity.
+    - intros.
+      exists.
+      eexists.
+      Unshelve.
+      all: cbn; unfold hom', eq; cbn; intros.
+      all: auto.
+      all: rewrite H.
+      all: reflexivity.
     Defined.
   End limits.
 
@@ -1020,25 +1032,13 @@ Module Presheaf.
   cbn.
   eexists.
   Unshelve.
-  2: {
-    intro.
-    cbn.
-    intro x.
+  all: cbn.
+  all: auto.
+  - intros ? x.
     destruct x.
-  }
-  1: {
-    cbn.
-    intro B.
-    intro.
-    intro.
-    intro.
-    destruct t0.
-  }
+  - intros ? ? ? x.
+    destruct x.
   Defined.
-
-  Polymorphic Instance product_Monoid C: Monoidal (presheaf C).
-  admit.
-  Admitted.
 
   Section yoneda.
     Polymorphic Variables C:Category.
@@ -1049,34 +1049,54 @@ Module Presheaf.
     intros X.
     eexists.
     Unshelve.
-    2: {
-      cbn.
-      intros g x.
-      apply (f ∘ g x).
-    }
-    intros x y.
-    intro p.
-    cbn.
-    intros ?.
-    cbn in p.
-    rewrite (p _).
-    reflexivity.
+    all: cbn.
+    all: auto.
+    - intros g ?.
+      apply (f ∘ g t).
+    - cbn.
+      intros ? ? p ?.
+      rewrite (p _).
+      reflexivity.
     Defined.
 
     Polymorphic Definition Yo: (C: cat) ~> presheaf C.
     exists yo @yo_map.
-    - intros X Y Z f g ? ? ?; cbn.
-      rewrite compose_assoc.
-      reflexivity.
-    - intros X Y g x; cbn.
-      rewrite compose_id_left.
-      reflexivity.
-    - intros ? ? ? ? p ? ? ?.
+    - intros ? ? ? f g ?.
+      exists.
+      eexists.
+      Unshelve.
+      all:cbn.
+      all:unfold eq, hom';cbn.
+      all:intros.
+      all:auto.
+      all: rewrite compose_assoc.
+      all: reflexivity.
+    - cbn.
+      exists.
+      eexists.
+      Unshelve.
+      all:cbn; unfold eq, hom'; cbn.
+      all:intros.
+      all:auto.
+      all: rewrite compose_id_left.
+      all: reflexivity.
+    - intros ? ? ? ? p ?.
       cbn.
-      rewrite p.
-      reflexivity.
+      exists.
+      eexists.
+      Unshelve.
+      all: cbn; unfold eq, hom'; cbn.
+      all: auto.
+      all: intros.
+      all: rewrite p.
+      all: reflexivity.
     Defined.
   End yoneda.
+
+  (* FIXME define product on presheafs in terms of categorical/set product *)
+  Polymorphic Instance product_Monoid C: Monoidal (presheaf C).
+  admit.
+  Admitted.
 End Presheaf.
 
 Polymorphic Definition sSet := presheaf Δ.
