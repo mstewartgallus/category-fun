@@ -88,54 +88,6 @@ Module Export Category.
     intros ? ? p ? ? q.
     apply (compose_compat _ _ _ _ p q).
   Qed.
-
-  (* A set is a thin groupoid *)
-  Polymorphic Definition IsProp (A: Type) := forall x y: A, x = y.
-  Polymorphic Class IsSet `(C: Category) := {
-    thin {A B}: IsProp (C A B) ;
-    inverse {A B}: C A B -> C B A ;
-    left_inverse {A B} (f: C A B): id ∘ f == f ;
-    right_inverse {A B} (f: C A B): f ∘ id == f ;
-  }.
-
-  Polymorphic Cumulative Class ASet := {
-    ASet_Category:> Category ;
-    ASet_IsSet:> IsSet ASet_Category
-  }.
-  Coercion ASet_Category: ASet >-> Category.
-
-  Polymorphic Definition AsASet (A: Type) (eqv: relation A) `(Equivalence _ eqv): ASet.
-  eexists _.
-  Unshelve.
-  2: {
-    eexists A _ _ _.
-    Unshelve.
-    5: {
-      intros X Y.
-      apply (ThinArrow (eqv X Y)).
-    }
-    5: {
-      cbn.
-      intros.
-      reflexivity.
-    }
-    5: {
-      cbn.
-      intros ? ? ? p q.
-      rewrite q, p.
-      reflexivity.
-    }
-    all: cbn; intros; auto.
-  }
-  exists.
-  all:cbn.
-  all:auto.
-  - intros ? ? ? p.
-    apply proof_irrelevance.
-  - intros.
-    symmetry.
-    apply H0.
-  Defined.
 End Category.
 
 Module Isomorphism.
@@ -419,29 +371,6 @@ End cat.
 
 Polymorphic Definition cat: Category := cat.cat.
 
-Module Sets.
-  (* Define the category of sets as a subcategory of cat *)
-  Polymorphic Definition hom (C D: ASet): Arrow := (C: cat) ~> D.
-
-  Polymorphic Definition id {A}: hom A A := id.
-  Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
-
-  Polymorphic Definition Sets: Category.
-  exists ASet hom @id @compose.
-  - intros.
-    apply compose_assoc.
-  - intros.
-    apply compose_id_left.
-  - intros.
-    apply compose_id_right.
-  - intros.
-    apply compose_compat.
-    + apply H.
-    + apply H0.
-  Defined.
-End Sets.
-Polymorphic Definition Sets: Category := Sets.Sets.
-
 Module Relation.
   Section relation.
     Polymorphic Variable S: Type.
@@ -464,8 +393,6 @@ Module Relation.
     Defined.
   End relation.
 End Relation.
-
-Polymorphic Definition relation := Relation.relation.
 
 Module Over.
   Section over.
@@ -575,7 +502,7 @@ Module Finite.
   - auto.
   Qed.
 
-  Definition finite N := relation _ le _ _/N.
+  Definition finite N := Relation.relation _ le _ _/N.
 End Finite.
 
 Definition finite := Finite.finite.
@@ -647,6 +574,200 @@ End Empty.
 
 Notation Empty := Empty.Empty.
 
+
+Module Product.
+  Close Scope nat.
+
+  Section products.
+    Polymorphic Variable C D: Category.
+
+    Polymorphic Definition tuple := C * D.
+    Polymorphic Definition hom' (A B: tuple) := (fst A ~> fst B) * (snd A ~> snd B).
+
+    Polymorphic Definition eq {A B} (f g: hom' A B) := fst f == fst g /\ snd f == snd g.
+
+    Polymorphic Definition hom (A B: tuple): Arrow.
+    exists (hom' A B) eq.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
+    all: intros; auto.
+    - split.
+      all: reflexivity.
+    - destruct H.
+      split.
+      all: symmetry.
+      all: auto.
+    - destruct H, H0.
+      split.
+      + rewrite H, H0.
+        reflexivity.
+      + rewrite H1, H2.
+        reflexivity.
+    Defined.
+
+    Polymorphic Definition product: cat.
+    eexists tuple hom _ _.
+    Unshelve.
+    5: {
+      intros.
+      split.
+      all: apply id.
+    }
+    5: {
+      intros.
+      destruct X, X0.
+      split.
+      + apply (t ∘ t1).
+      + apply (t0 ∘ t2).
+    }
+    all:cbn.
+    all: unfold eq;cbn;intros;auto.
+    - destruct f, g, h.
+      cbn.
+      split.
+      all: apply compose_assoc.
+    - destruct f.
+      cbn.
+      split.
+      all: apply compose_id_left.
+    - destruct f.
+      cbn.
+      split.
+      all: apply compose_id_right.
+    - destruct f, f', g, g'.
+      cbn in H, H0.
+      destruct H, H0.
+      cbn.
+      split.
+      + rewrite H, H0.
+        reflexivity.
+      + rewrite H1, H2.
+        reflexivity.
+    Defined.
+  End products.
+
+  Polymorphic Definition fst {A B}: product A B ~> A.
+  exists fst (fun _ _ => fst).
+  - cbn.
+    intros.
+    destruct f, g.
+    cbn.
+    reflexivity.
+  - intros.
+    cbn.
+    reflexivity.
+  - intros.
+    apply H.
+  Defined.
+
+  Polymorphic Definition snd {A B}: product A B ~> B.
+  exists snd (fun _ _ => snd).
+  - cbn.
+    intros.
+    destruct f, g.
+    cbn.
+    reflexivity.
+  - intros.
+    cbn.
+    reflexivity.
+  - intros.
+    apply H.
+  Defined.
+
+  Import Functor.
+  Polymorphic Definition fanout {A B C: cat} (f: C ~> A) (g: C ~> B): C ~> product A B.
+  exists (fun x => (f x, g x)) (fun _ _ x => (map x, map x)).
+  all:cbn;intros;unfold Product.eq;cbn;auto.
+  - split.
+    all: apply map_composes.
+  - split.
+    all: apply map_id.
+  - split.
+    all: rewrite H.
+    all: reflexivity.
+  Defined.
+End Product.
+
+Module Sets.
+  (* A set is a thin groupoid *)
+  Polymorphic Definition IsProp (A: Type) := forall x y: A, x = y.
+  Polymorphic Definition IsSet (C: Category) := forall A B, IsProp (C A B).
+
+  Polymorphic Cumulative Class ASet := {
+    ASet_Category:> Category ;
+    ASet_IsSet:> IsSet ASet_Category
+  }.
+  Coercion ASet_Category: ASet >-> Category.
+
+  (* Define the category of sets as a subcategory of cat *)
+  Polymorphic Definition hom (C D: ASet): Arrow := (C: cat) ~> D.
+
+  Polymorphic Definition id {A}: hom A A := id.
+  Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
+
+  Polymorphic Definition Sets: Category.
+  exists ASet hom @id @compose.
+  - intros.
+    apply compose_assoc.
+  - intros.
+    apply compose_id_left.
+  - intros.
+    apply compose_id_right.
+  - intros.
+    apply compose_compat.
+    + apply H.
+    + apply H0.
+  Defined.
+
+  Polymorphic Definition AsASet (A: Type) (eqv: relation A) `(Equivalence _ eqv): Sets.
+  eexists _.
+  Unshelve.
+  2: {
+    eexists A _ _ _.
+    Unshelve.
+    5: {
+      intros X Y.
+      apply (ThinArrow (eqv X Y)).
+    }
+    5: {
+      cbn.
+      intros.
+      reflexivity.
+    }
+    5: {
+      cbn.
+      intros ? ? ? p q.
+      rewrite q, p.
+      reflexivity.
+    }
+    all: cbn; intros; auto.
+  }
+  unfold IsSet.
+  cbn.
+  intros ? ? ? p.
+  apply proof_irrelevance.
+  Defined.
+
+  Polymorphic Definition prod (A B: Sets): Sets.
+  exists (Product.product A B).
+  intros ? ? ? p.
+  destruct A0, B0.
+  destruct x, p.
+  cbn in t, t0, t1, t2.
+  set (A' := ASet_IsSet _ _ t t1).
+  set (B' := ASet_IsSet _ _ t0 t2).
+  rewrite A'.
+  rewrite B'.
+  reflexivity.
+  Defined.
+
+  Polymorphic Definition fst {A B: Sets}: prod A B ~> A := Product.fst.
+  Polymorphic Definition snd {A B: Sets}: prod A B ~> B := Product.snd.
+
+  Polymorphic Definition fanout {A B C: Sets}: (C ~> A) -> (C ~> B) -> (C ~> prod A B) := Product.fanout.
+End Sets.
+
+Polymorphic Definition Sets: Category := Sets.Sets.
 
 Module Opposite.
   Section opposite.
