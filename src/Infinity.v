@@ -578,15 +578,14 @@ Module Product.
   Defined.
 End Product.
 
-Module Sets.
-  (* FIXME find someway to combine the two *)
-  (* A set is a thin groupoid *)
-  Polymorphic Definition IsProp (A: Arrow) := forall x y: A, x == y.
-  Polymorphic Definition IsSet (C: Category) := forall A B, IsProp (C A B).
+Module Proset.
+  (* A partially ordered set is a thin category *)
+  Polymorphic Definition IsThin (A: Arrow) := forall x y: A, x == y.
+  Polymorphic Definition IsSet (C: Category) := forall A B, IsThin (C A B).
 
   Polymorphic Cumulative Class ASet := {
     ASet_Category:> Category ;
-    ASet_IsSet:> IsSet ASet_Category
+    ASet_IsSet: IsSet ASet_Category
   }.
 
   Module Import SetNotations.
@@ -594,13 +593,13 @@ Module Sets.
     Coercion ASet_Category: ASet >-> Category.
   End SetNotations.
 
-  (* Define the category of sets as a subcategory of cat *)
+  (* Define the category of prosets as a subcategory of cat *)
   Polymorphic Definition hom (C D: ASet): Arrow := (C: cat) ~> D.
 
   Polymorphic Definition id {A}: hom A A := id.
   Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
 
-  Polymorphic Definition Sets: Category.
+  Polymorphic Definition Proset: Category.
   exists ASet hom @id @compose.
   - intros.
     apply compose_assoc.
@@ -614,7 +613,7 @@ Module Sets.
     + apply H0.
   Defined.
 
-  Polymorphic Definition AsASet A (preorder: relation A) `(Reflexive _ preorder) `(Transitive _ preorder): Sets.
+  Polymorphic Definition AsASet A (preorder: relation A) `(Reflexive _ preorder) `(Transitive _ preorder): Proset.
   eexists _.
   Unshelve.
   2: {
@@ -643,7 +642,7 @@ Module Sets.
   exists.
   Defined.
 
-  Polymorphic Definition prod (A B: Sets): Sets.
+  Polymorphic Definition prod (A B: Proset): Proset.
   exists (Product.product A B).
   intros ? ? ? p.
   destruct A0, B0.
@@ -656,25 +655,25 @@ Module Sets.
   + apply B'.
   Defined.
 
-  Polymorphic Definition fst {A B: Sets}: prod A B ~> A := Product.fst.
-  Polymorphic Definition snd {A B: Sets}: prod A B ~> B := Product.snd.
+  Polymorphic Definition fst {A B: Proset}: prod A B ~> A := Product.fst.
+  Polymorphic Definition snd {A B: Proset}: prod A B ~> B := Product.snd.
 
-  Polymorphic Definition fanout {A B C: Sets}: (C ~> A) -> (C ~> B) -> (C ~> prod A B) := Product.fanout.
-End Sets.
+  Polymorphic Definition fanout {A B C: Proset}: (C ~> A) -> (C ~> B) -> (C ~> prod A B) := Product.fanout.
+End Proset.
 
-Import Sets.SetNotations.
-Polymorphic Definition Sets: Category := Sets.Sets.
+Import Proset.SetNotations.
+Polymorphic Definition Proset: Category := Proset.Proset.
 
 
 Module Props.
-  Import Sets.
+  Import Proset.
   Import Isomorphism.IsomorphismNotations.
 
-  (* Define a mere proposition as a proof irrelevant set *)
-  Polymorphic Definition IsProp (C: Sets) := forall x y: C, x <~> y.
+  (* Define a mere proposition as a proof irrelevant proset *)
+  Polymorphic Definition IsProp (C: Proset) := forall x y: C, x <~> y.
 
   Polymorphic Cumulative Class AProp := {
-    AProp_Set:Sets ;
+    AProp_Set:Proset ;
     AProp_IsProp: IsProp AProp_Set
   }.
 
@@ -760,8 +759,8 @@ Module Finite.
   - auto.
   Qed.
 
-  Definition finite (N:nat): Sets.
-    exists ((Sets.AsASet _ le _ _)/N).
+  Definition finite (N:nat): Proset.
+    exists ((Proset.AsASet _ le _ _)/N).
     exists.
   Defined.
 
@@ -801,7 +800,7 @@ Import Finite.FiniteNotations.
 
 (* Define the simplex category *)
 Module Simplex.
-  Definition hom (A B: nat): Arrow := ([A]: Sets) ~> [B].
+  Definition hom (A B: nat): Arrow := ([A]: Proset) ~> [B].
 
   Definition id {A}: hom A A := id.
   Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
@@ -858,7 +857,7 @@ End Opposite.
 
 Polymorphic Definition op: Category -> Category := Opposite.op.
 
-Polymorphic Definition presheaf K: Category := Functor (op K) Sets.
+Polymorphic Definition presheaf K: Category := Functor (op K) Proset.
 
 Module Diagrams.
   Import Functor.
@@ -866,7 +865,7 @@ Module Diagrams.
   Section diagrams.
     Polymorphic Context {C:Category}.
 
-    Polymorphic Definition Empty: ((op (Empty: Sets): cat) ~> C).
+    Polymorphic Definition Empty: ((op (Empty: Proset): cat) ~> C).
     eexists _ _.
     Unshelve.
     3: {
@@ -885,7 +884,7 @@ Module Diagrams.
       destruct A.
     Defined.
 
-    Polymorphic Definition Constant (c: C): (op ((Trivial:Sets):cat): cat) ~> C.
+    Polymorphic Definition Constant (c: C): (op ((Trivial:Proset):cat): cat) ~> C.
     eexists _ _.
     Unshelve.
     4: {
@@ -957,8 +956,8 @@ Module Presheaf.
     Polymorphic Context {C D: Category}.
     Polymorphic Variable F: Functor (op D) C.
 
-    Polymorphic Definition limit' (c: C): Sets.
-    eapply (Sets.AsASet (forall t, c ~> F t)).
+    Polymorphic Definition limit' (c: C): Proset.
+    eapply (Proset.AsASet (forall t, c ~> F t)).
     Unshelve.
     3: {
       intros x y.
@@ -994,7 +993,7 @@ Module Presheaf.
     Defined.
 
     Polymorphic Definition limit: presheaf C.
-    set (limit'' := limit' : op C -> Sets).
+    set (limit'' := limit' : op C -> Proset).
     exists limit'' @limit_map.
     - intros.
       cbn.
