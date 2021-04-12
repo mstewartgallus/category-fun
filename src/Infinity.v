@@ -1,8 +1,9 @@
-Require Import Coq.Setoids.Setoid.
-
 (* Seems to make classes go faster? *)
 Set Primitive Projections.
 Unset Printing Primitive Projection Parameters.
+
+Require Import Coq.Setoids.Setoid.
+Require Import Coq.Logic.ProofIrrelevance.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -88,16 +89,22 @@ Module Export Category.
     apply (compose_compat _ _ _ _ p q).
   Qed.
 
-  (* A set is a category with only the identity arrow *)
-  Polymorphic Definition IsSet (C: Category) := forall A B, C A B -> A = B.
+  (* A set is a thin groupoid *)
+  Polymorphic Definition IsProp (A: Type) := forall x y: A, x = y.
+  Polymorphic Class IsSet `(C: Category) := {
+    thin {A B}: IsProp (C A B) ;
+    inverse {A B}: C A B -> C B A ;
+    left_inverse {A B} (f: C A B): id ∘ f == f ;
+    right_inverse {A B} (f: C A B): f ∘ id == f ;
+  }.
 
   Polymorphic Cumulative Class ASet := {
     ASet_Category:> Category ;
-    ASet_IsSet: IsSet ASet_Category
+    ASet_IsSet:> IsSet ASet_Category
   }.
   Coercion ASet_Category: ASet >-> Category.
 
-  Polymorphic Definition AsASet (A: Type): ASet.
+  Polymorphic Definition AsASet (A: Type) (eqv: relation A) `(Equivalence _ eqv): ASet.
   eexists _.
   Unshelve.
   2: {
@@ -105,7 +112,7 @@ Module Export Category.
     Unshelve.
     5: {
       intros X Y.
-      apply (ThinArrow (X = Y)).
+      apply (ThinArrow (eqv X Y)).
     }
     5: {
       cbn.
@@ -120,10 +127,14 @@ Module Export Category.
     }
     all: cbn; intros; auto.
   }
-  unfold IsSet.
-  cbn.
-  intros ? ? p.
-  auto.
+  exists.
+  all:cbn.
+  all:auto.
+  - intros ? ? ? p.
+    apply proof_irrelevance.
+  - intros.
+    symmetry.
+    apply H0.
   Defined.
 End Category.
 
