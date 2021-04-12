@@ -580,7 +580,69 @@ Module Product.
   Defined.
 End Product.
 
+Module Props.
+  (* A mere proposition is a chaotic category I think *)
+  Polymorphic Definition IsProp (C: Category) := forall x y: C, x ~> y.
+
+  Polymorphic Cumulative Class AProp := {
+    AProp_Category:> Category ;
+    AProp_IsProp: IsProp AProp_Category
+  }.
+  Coercion AProp_Category: AProp >-> Category.
+
+(* Define the category of propositions as a subcategory of cat *)
+  Polymorphic Definition hom (C D: AProp): Arrow := (C: cat) ~> D.
+
+  Polymorphic Definition id {A}: hom A A := id.
+  Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
+
+  Polymorphic Definition Props: Category.
+  exists AProp hom @id @compose.
+  - intros.
+    apply compose_assoc.
+  - intros.
+    apply compose_id_left.
+  - intros.
+    apply compose_id_right.
+  - intros.
+    apply compose_compat.
+    + apply H.
+    + apply H0.
+  Defined.
+
+  Section props.
+    Polymorphic Variable K: Type.
+    Polymorphic Definition hom' (A B: K) := True.
+    Polymorphic Definition eq {A B} (f g: hom' A B) := True.
+    Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
+    exists.
+    all: auto.
+    Qed.
+
+    Polymorphic Definition phom A B := {| type := hom' A B; equal := eq |}.
+
+    Polymorphic Definition pid {A}: phom A A.
+    exists.
+    Defined.
+
+    Polymorphic Definition pcompose {A B C}: phom B C -> phom A B -> phom A C.
+    exists.
+    Defined.
+
+    Polymorphic Definition AsAProp: Props.
+    eexists _.
+    Unshelve.
+    2: {
+      exists K @phom @pid @pcompose.
+      all: auto.
+    }
+    exists.
+    Defined.
+  End props.
+End Props.
+
 Module Sets.
+  (* FIXME find someway to combine the two *)
   (* A set is a thin groupoid *)
   Polymorphic Definition IsProp (A: Type) := forall x y: A, x = y.
   Polymorphic Definition IsSet (C: Category) := forall A B, IsProp (C A B).
