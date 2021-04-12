@@ -371,29 +371,6 @@ End cat.
 
 Polymorphic Definition cat: Category := cat.cat.
 
-Module Relation.
-  Section relation.
-    Polymorphic Variable S: Type.
-    Polymorphic Variable rel : relation S.
-    Polymorphic Context `(reflexive: Reflexive _ rel) `(transitive: Transitive _ rel).
-
-    Polymorphic Definition eq {A B} (_ _: rel A B) := True.
-
-    Polymorphic Instance eq_Equivalence A B : Equivalence (@eq A B).
-    exists.
-    all: intros; cbn; unfold eq; auto.
-    Qed.
-
-    Polymorphic Definition hom (A B: S):= {| type := rel A B; equal := eq |}.
-
-    Polymorphic Definition compose {A B C} (f: rel B C) (g: rel A B): rel A C := transitive _ _ _ g f.
-    Polymorphic Definition relation: Category.
-      exists S hom reflexive @compose.
-      all: intros; cbn; unfold eq; auto.
-    Defined.
-  End relation.
-End Relation.
-
 Module Over.
   Section over.
     Polymorphic Context `(Category).
@@ -488,91 +465,6 @@ End Over.
 
 (* FIXME Isolate this notation *)
 Notation "C / c" := (Over.over C c).
-
-(* Category of finite totally ordered sets *)
-Module Finite.
-  Instance le_Reflexive: Reflexive le.
-  auto.
-  Qed.
-
-  Instance le_Transitive: Transitive le.
-  intros ? ? ? f g.
-  induction g.
-  - apply f.
-  - auto.
-  Qed.
-
-  Definition finite N := Relation.relation _ le _ _/N.
-End Finite.
-
-Definition finite := Finite.finite.
-
-(* FIXME Isolate notations *)
-Notation "[ N ]" := (finite N).
-
-Definition one := [0].
-
-Definition source C: [C].
-  exists 0.
-  cbn.
-  induction C.
-  - auto.
-  - auto.
-Defined.
-Definition target C: [C] := {| Over.proj := id |}.
-
-Definition I := [1].
-Definition walk {C}: source C ~> target C.
-  cbn.
-  eexists.
-  Unshelve.
-  2: {
-    cbn.
-    apply source.
-  }
-  cbn.
-  unfold Relation.eq.
-  auto.
-Defined.
-
-(* Define the simplex category *)
-Module Simplex.
-  Definition hom (A B: nat): Arrow := ([A]: cat) ~> [B].
-
-  Definition id {A}: hom A A := id.
-  Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
-
-  Definition Δ: Category.
-    exists nat hom @id @compose.
-    all: unfold hom, compose, id; intros.
-    - rewrite compose_assoc.
-      reflexivity.
-    - apply compose_id_left.
-    - apply compose_id_right.
-    - rewrite H, H0.
-      reflexivity.
-  Defined.
-End Simplex.
-
-Definition Δ: Category := Simplex.Δ.
-
-Module Empty.
-  Definition hom (A: Empty_set): Empty_set -> Arrow := match A with end.
-
-  Definition id {A}: hom A A := match A with end.
-  Definition compose {A B C}: hom B C -> hom A B -> hom A C := match A with end.
-
-  Definition Empty: Category.
-    exists Empty_set hom @id @compose.
-    all: intros; unfold compose, id; cbn; auto.
-    - destruct A.
-    - destruct A.
-    - destruct A.
-    - destruct A.
-  Defined.
-End Empty.
-
-Notation Empty := Empty.Empty.
 
 
 Module Product.
@@ -719,7 +611,7 @@ Module Sets.
     + apply H0.
   Defined.
 
-  Polymorphic Definition AsASet (A: Type) (eqv: relation A) `(Equivalence _ eqv): Sets.
+  Polymorphic Definition AsASet (A: Type) (preorder: relation A) `(Reflexive _ preorder) `(Transitive _ preorder): Sets.
   eexists _.
   Unshelve.
   2: {
@@ -727,7 +619,7 @@ Module Sets.
     Unshelve.
     5: {
       intros X Y.
-      apply (ThinArrow (eqv X Y)).
+      apply (ThinArrow (preorder X Y)).
     }
     5: {
       cbn.
@@ -746,6 +638,67 @@ Module Sets.
   cbn.
   intros ? ? ? p.
   apply proof_irrelevance.
+  Defined.
+
+(* Category of finite totally ordered sets *)
+  Module Finite.
+    Instance le_Reflexive: Reflexive le.
+    auto.
+    Qed.
+
+    Instance le_Transitive: Transitive le.
+    intros ? ? ? f g.
+    induction g.
+    - apply f.
+    - auto.
+    Qed.
+
+    Definition finite (N:nat): Sets.
+      exists ((AsASet _ le _ _)/N).
+      unfold IsSet, IsProp.
+      cbn.
+      intros.
+      destruct x, y.
+      rewrite (proof_irrelevance _ commutes commutes0).
+      cbn in slice, slice0.
+      rewrite (proof_irrelevance _ slice slice0).
+      reflexivity.
+    Defined.
+  End Finite.
+
+  Definition finite := Finite.finite.
+
+  Module Import SetNotations.
+    (* FIXME Isolate notations *)
+    Notation "[ N ]" := (finite N).
+  End SetNotations.
+
+  Definition one := [0].
+
+  Definition source C: [C].
+    exists 0.
+    cbn.
+    induction C.
+    - auto.
+    - auto.
+  Defined.
+  Definition target C: [C].
+    exists C.
+    cbn.
+    auto.
+  Defined.
+
+  Definition I := [1].
+  Definition walk {C}: source C ~> target C.
+    cbn.
+    eexists.
+    Unshelve.
+    2: {
+      cbn.
+      apply source.
+    }
+    cbn.
+    auto.
   Defined.
 
   Polymorphic Definition prod (A B: Sets): Sets.
@@ -768,6 +721,48 @@ Module Sets.
 End Sets.
 
 Polymorphic Definition Sets: Category := Sets.Sets.
+
+(* Define the simplex category *)
+Module Simplex.
+  Import Sets.SetNotations.
+
+  Definition hom (A B: nat): Arrow := ([A]: Sets) ~> [B].
+
+  Definition id {A}: hom A A := id.
+  Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
+
+  Definition Δ: Category.
+    exists nat hom @id @compose.
+    all: unfold hom, compose, id; intros.
+    - rewrite compose_assoc.
+      reflexivity.
+    - apply compose_id_left.
+    - apply compose_id_right.
+    - rewrite H, H0.
+      reflexivity.
+  Defined.
+End Simplex.
+
+Definition Δ: Category := Simplex.Δ.
+
+(* FIXME make set *)
+Module Empty.
+  Definition hom (A: Empty_set): Empty_set -> Arrow := match A with end.
+
+  Definition id {A}: hom A A := match A with end.
+  Definition compose {A B C}: hom B C -> hom A B -> hom A C := match A with end.
+
+  Definition Empty: Category.
+    exists Empty_set hom @id @compose.
+    all: intros; unfold compose, id; cbn; auto.
+    - destruct A.
+    - destruct A.
+    - destruct A.
+    - destruct A.
+  Defined.
+End Empty.
+
+Notation Empty := Empty.Empty.
 
 Module Opposite.
   Section opposite.
