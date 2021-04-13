@@ -12,20 +12,23 @@ Reserved Notation "A ~> B" (at level 80).
 Reserved Notation "A ∘ B" (at level 30).
 
 Reserved Notation "A <~> B" (at level 80).
+Reserved Notation "F 'ᵀ'" (at level 1).
 
-Reserved Notation "! F" (at level 1).
+Reserved Notation "F ! X" (at level 1).
+Reserved Notation "F *" (at level 1).
 
 Reserved Notation "A ⊗ B" (at level 30).
 Reserved Notation "A ~~> B" (at level 80).
 
 (* FIXME get propositional truncation from elsewhere *)
-Polymorphic Definition id (A: Type) := A.
-Polymorphic Variant truncate A: Prop := truncate_intro (_:id A).
+Polymorphic Variant truncate A: Prop :=
+  | truncate_intro (_: A): truncate A.
 
 Module TruncateNotations.
   Notation "| A |" := (truncate A).
 
-  Coercion truncate_intro: id >-> truncate.
+  Polymorphic Definition ident (A: Type) := A.
+  Coercion truncate_id {A}: ident A -> |A| := truncate_intro _.
 End TruncateNotations.
 
 Module Export Category.
@@ -98,7 +101,7 @@ Module Isomorphism.
       from: K B A ;
       to_from: to ∘ from == id ;
       from_to: from ∘ to == id ;
-    }.
+   }.
 
     Polymorphic Definition eq {A B} (f g: hom' A B) : Prop := @to _ _ f == @to _ _ g /\ @from _ _ f == @from _ _ g.
 
@@ -169,17 +172,19 @@ Module Isomorphism.
     Defined.
   End iso.
 
-  Module IsomorphismNotations.
+  Polymorphic Definition transpose {C:Category} {A B: C} (f: Isomorphism _ A B): Isomorphism _ B A.
+  exists (@from _ _ _ f) (@to _ _ _ f).
+  - apply from_to.
+  - apply to_from.
+  Defined.
+
+  Module Import IsomorphismNotations.
+    Notation "A 'ᵀ'" := (transpose A).
     Notation "A <~> B" := (Isomorphism _ A B).
   End IsomorphismNotations.
 
   Import IsomorphismNotations.
 
-  Polymorphic Definition transpose {C:Category} {A B: C} (f: A <~> B): B <~> A.
-  exists (@from _ _ _ f) (@to _ _ _ f).
-  - apply from_to.
-  - apply to_from.
-  Defined.
 End Isomorphism.
 
 Definition Isomorphism: Category -> Category := Isomorphism.Isomorphism.
@@ -236,11 +241,6 @@ Module Functor.
     Defined.
   End functor.
 
-  Module Import FunctorNotations.
-    Coercion fobj: functor >-> Funclass.
-    Notation "! F" := (map (functor := F)).
-  End FunctorNotations.
-
   Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: Functor C D) : (@Functor.map _ _ F A B)
       with signature (@equal _) ==> equal as map_mor.
   Proof.
@@ -250,7 +250,6 @@ Module Functor.
   Qed.
 End Functor.
 
-Import Functor.FunctorNotations.
 Polymorphic Definition Functor: Category -> Category -> Category := Functor.Functor.
 
 Module cat.
@@ -260,24 +259,26 @@ Module cat.
   Import Isomorphism.
   Import IsomorphismNotations.
 
-  Polymorphic Definition eq {C} (A B: @object C) := | A <~> B |.
+  Polymorphic Definition eq {C D} (A B: Functor C D) :=
+  forall x: C, | (@fobj _ _ A x) <~> (@fobj _ _ B x) |.
 
-  Polymorphic Instance eq_Equivalence A: Equivalence (@eq A).
+  Polymorphic Instance eq_Equivalence C D: Equivalence (@eq C D).
   exists.
   all: unfold Reflexive, Symmetric, Transitive, compose, id, hom ; cbn.
-  - intros f.
+  - intros ? f.
     unfold eq.
     exists.
     apply Category.id.
-  - intros ? ? p.
-    destruct p as [p].
+  - intros ? ? p t.
+    unfold eq in p.
+    destruct (p t) as [p'].
     exists.
     apply Isomorphism.transpose.
-    apply p.
-  - intros ? ? ? p q.
-    destruct p as [p], q as [q].
+    apply p'.
+  - intros ? ? ? p q t.
+    destruct (p t) as [p'], (q t) as [q'].
     exists.
-    apply (q ∘ p).
+    apply (q' ∘ p').
   Qed.
 
   Polymorphic Definition hom (A B: Category): Arrow := {| type := Functor A B ; equal := eq |}.
@@ -293,7 +294,7 @@ Module cat.
   Defined.
 
   Polymorphic Definition compose {A B C} (F: hom B C) (G: hom A B): hom A C.
-  exists (fun x => F (G x)) (fun _ _ x => map (functor := F) (map (functor := G) x)).
+  exists (fun x => @fobj _ _ F (@fobj _ _ G x)) (fun _ _ x => map (map x)).
   - intros.
     rewrite map_composes, map_composes.
     reflexivity.
@@ -306,73 +307,108 @@ Module cat.
       * apply p.
   Defined.
 
+  Polymorphic Definition pullback {A B C} (f: hom A B): hom (Functor B C) (Functor A C).
+  eexists (fun g => compose g f) _.
+  Unshelve.
+  4: {
+    intros ? ? g ?.
+    apply (g _).
+  }
+  all: cbn.
+  all: unfold Functor.eq,Functor.hom',Functor.id,Functor.compose.
+  - intros.
+    reflexivity.
+  - intros.
+    reflexivity.
+  - intros.
+    rewrite (H _).
+    reflexivity.
+  Defined.
+
+  Module Import FunctorNotations.
+    Coercion fobj: functor >-> Funclass.
+    Notation "F *" := (pullback F).
+    Notation "F ! X" := (map (functor := F) X).
+  End FunctorNotations.
+
+  Polymorphic Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B).
+  eexists.
+  Unshelve.
+  4: {
+    intro x.
+    apply (f x).
+  }
+  4: {
+    cbn.
+    intros X Y p.
+    exists (f ! (@to _ _ _ p)) (f ! (@from _ _ _ p)).
+    all: rewrite map_composes.
+    all: rewrite <- map_id.
+    all: apply map_compat.
+    1: rewrite <- to_from.
+    2: rewrite <- from_to.
+    all: reflexivity.
+  }
+  all: cbn.
+  - intros.
+    exists.
+    + cbn.
+      rewrite map_composes.
+      reflexivity.
+    + cbn.
+      rewrite map_composes.
+      reflexivity.
+  - intros.
+    exists.
+    + cbn.
+      apply map_id.
+    + cbn.
+      apply map_id.
+  - intros.
+    exists.
+    + destruct H.
+      cbn.
+      apply map_compat.
+      apply H.
+    + destruct H.
+      apply map_compat.
+      apply H0.
+  Defined.
+
   Polymorphic Definition compose_compat {A B C : Category} (f f' : hom B C) (g g' : hom A B):
     (f == f') ->
     (g == g') ->
     compose f g == compose f' g'.
-  intros p q.
-  destruct p as [p], q as [q].
+  intros p q x.
+  set (f_iso := to_iso f).
+  destruct (q x) as [q'].
+  destruct (p (g' x)) as [p'].
+  set (pq := p' ∘ (f_iso ! q') : f (g x) <~> f' (g' x)).
   exists.
-  exists
-    (fun x => !f' (@to _ _ _ q x) ∘ @to _ _ _ p (g x))
-    (fun x => @from _ _ _ p (g x) ∘ (!f' (@from _ _ _ q x))).
-  - cbn.
-    intro x.
-    unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
-    rewrite <- (compose_assoc _ (@to _ _ _ p _)).
-    rewrite (compose_assoc _ (@from _ _ _ p _)).
-    set (p' := @to_from _ _ _ p (g x)).
-    set (q' := @to_from _ _ _ q x).
-    cbn in p', q'.
-    unfold Functor.eq, Functor.id, Functor.compose, Functor.hom in p', q'; cbn in p', q'.
-    rewrite p'.
-    rewrite compose_id_left.
-    rewrite map_composes.
-    rewrite q'.
-    rewrite map_id.
-    reflexivity.
-  - intro x.
-    unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
-    unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
-    rewrite compose_assoc.
-    setoid_replace
-      ((@from _ _ _ p (g x) ∘ ! f' (@from _ _ _ q x)) ∘ ! f' (@to _ _ _ q x))
-      with
-        (@from _ _ _ p (g x) ∘ ! f' (@from _ _ _ q x ∘ @to _ _ _ q x)).
-    2: {
-      rewrite <- compose_assoc.
-      rewrite map_composes.
-      reflexivity.
-    }
-    set (p' := @from_to _ _ _ p (g x)).
-    set (q' := @from_to _ _ _ q x).
-    rewrite q'.
-    rewrite map_id.
-    rewrite compose_id_right.
-    rewrite p'.
-    cbn.
-    unfold Functor.id.
-    reflexivity.
+  eexists.
+  Unshelve.
+  3: apply (@to _ _ _ pq).
+  3: apply (@from _ _ _ pq).
+  - apply to_from.
+  - apply from_to.
   Qed.
 
   Polymorphic Definition cat: Category.
   exists Category hom @id @compose.
-  - intros ? ? ? ? ? ? ?.
+  - intros ? ? ? ? ? ? ? ?.
     exists.
-    exists (fun _ => Category.id) (fun _ => Category.id).
-    all: cbn; intro; apply compose_id_left.
-  - intros ? ? ?.
+    apply Isomorphism.id.
+  - intros ? ? ? ?.
     exists.
-    exists (fun _ => Category.id) (fun _ => Category.id).
-    all: cbn; intro; apply compose_id_left.
-  - intros ? ? ?.
+    apply Isomorphism.id.
+  - intros ? ? ? ?.
     exists.
-    exists (fun _ => Category.id) (fun _ => Category.id).
-    all: cbn; intro; apply compose_id_left.
+    apply Isomorphism.id.
   - apply @compose_compat.
   Defined.
 End cat.
 
+Import cat.FunctorNotations.
 Polymorphic Definition cat: Category := cat.cat.
 
 Module Over.
@@ -476,8 +512,8 @@ Module Product.
   Section products.
     Polymorphic Variable C D: Category.
 
-    Polymorphic Definition tuple := C * D.
-    Polymorphic Definition hom' (A B: tuple) := (fst A ~> fst B) * (snd A ~> snd B).
+    Polymorphic Definition tuple := prod C D.
+    Polymorphic Definition hom' (A B: tuple) := prod (fst A ~> fst B) (snd A ~> snd B).
 
     Polymorphic Definition eq {A B} (f g: hom' A B) := fst f == fst g /\ snd f == snd g.
 
@@ -548,12 +584,18 @@ Module Product.
   Polymorphic Definition eval_map {A B C} (f: A ~> (Functor B C:cat)):
     forall X Y,
       product A B X Y -> C (eval' f X) (eval' f Y).
-  apply (fun X Y g => !f (fst g) _ ∘ ! (f (fst X)) (snd g)).
+  apply (fun X Y g => f ! (fst g) _ ∘ (f (fst X)) ! (snd g)).
   Defined.
 
   Polymorphic Definition eval {A B C} (f: A ~> (Functor B C:cat)): product A B ~> C.
   exists (eval' f) (eval_map f).
-  - admit.
+  - cbn.
+    intros.
+    destruct X, Y, Z.
+    cbn.
+    destruct f0, g.
+    unfold eval_map.
+    admit.
   - admit.
   - admit.
   Admitted.
@@ -588,7 +630,7 @@ Module Product.
 
   Import Functor.
   Polymorphic Definition fanout {A B C: cat} (f: C ~> A) (g: C ~> B): C ~> product A B.
-  exists (fun x => (f x, g x)) (fun _ _ x => (!f x, !g x)).
+  exists (fun x => (f x, g x)) (fun _ _ x => (f ! x, g ! x)).
   all:cbn;intros;unfold Product.eq;cbn;auto.
   - split.
     all: apply map_composes.
@@ -972,27 +1014,6 @@ End Finite.
 
 Import Finite.FiniteNotations.
 
-(* Define the simplex category *)
-Module Simplex.
-  Definition hom (A B: nat): Arrow := ([A]: Proset) ~> [B].
-
-  Definition id {A}: hom A A := id.
-  Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
-
-  Definition Δ: Category.
-    exists nat hom @id @compose.
-    all: unfold hom, compose, id; intros.
-    - rewrite compose_assoc.
-      reflexivity.
-    - apply compose_id_left.
-    - apply compose_id_right.
-    - rewrite H, H0.
-      reflexivity.
-  Defined.
-End Simplex.
-
-Definition Δ: Category := Simplex.Δ.
-
 Module Opposite.
   Section opposite.
     Polymorphic Context `(K:Category).
@@ -1031,7 +1052,102 @@ End Opposite.
 
 Polymorphic Definition op: Category -> Category := Opposite.op.
 
-Polymorphic Definition presheaf K: Category := Functor (op K) Proset.
+Module Hom.
+  Polymorphic Definition Hom C: Product.product (op C) C ~> Proset.
+  eexists.
+  Unshelve.
+  4: {
+    intro x.
+    set (F := (C (Product.fst x) (Product.snd x))).
+    set (H := @Setoid_Equivalence F).
+    apply (Proset.AsASet F equal _ _).
+  }
+  4: {
+    intros A B x.
+    eexists.
+    Unshelve.
+    4: {
+      intro f.
+      apply (fst x ∘ f ∘ snd x).
+    }
+    all: cbn.
+    all: auto.
+    intros.
+    unfold Opposite.compose.
+    rewrite H.
+    reflexivity.
+  }
+  all: cbn.
+  - intros.
+    intro.
+    exists.
+    cbn.
+    eexists.
+    Unshelve.
+    3: {
+      cbn.
+      unfold Opposite.compose.
+      cbn.
+      cbn in x.
+      destruct f, g.
+      cbn.
+      repeat rewrite compose_assoc.
+      reflexivity.
+    }
+    3: {
+      cbn.
+      cbn in x.
+      unfold Opposite.compose.
+      destruct f, g.
+      cbn.
+      repeat rewrite compose_assoc.
+      reflexivity.
+    }
+    all:cbn.
+    all:auto.
+  - intros ? ?.
+    exists.
+    cbn.
+    eexists.
+    Unshelve.
+    3: {
+      cbn.
+      unfold Opposite.compose, Opposite.id.
+      rewrite compose_id_left, compose_id_right.
+      reflexivity.
+    }
+    3: {
+      cbn.
+      unfold Opposite.compose, Opposite.id.
+      rewrite compose_id_left, compose_id_right.
+      reflexivity.
+    }
+    all:cbn.
+    all:auto.
+  - cbn.
+    exists.
+    eexists.
+    Unshelve.
+    3: {
+      cbn.
+      unfold Opposite.compose.
+      cbn in x.
+      destruct H.
+      rewrite H, H0.
+      reflexivity.
+    }
+    3: {
+      cbn.
+      unfold Opposite.compose.
+      cbn in x.
+      destruct H.
+      rewrite H, H0.
+      reflexivity.
+    }
+    all:cbn.
+    all:auto.
+  Defined.
+End Hom.
 
 Module Diagrams.
   Import Functor.
@@ -1077,6 +1193,106 @@ Module Diagrams.
   End diagrams.
 End Diagrams.
 
+Module Limits.
+  Import Hom.
+
+  Polymorphic Definition pt {D:cat}: D ~> Proset.
+  eexists (fun _ => (Trivial:Proset)) _.
+  Unshelve.
+  4: {
+    intros.
+    apply id.
+  }
+  3: {
+    intros.
+    cbn.
+    reflexivity.
+  }
+  all:cbn.
+  2: {
+    intro.
+    reflexivity.
+  }
+  intros.
+  exists.
+  eexists.
+  Unshelve.
+  3,4:exists.
+  all: cbn.
+  all: auto.
+  Defined.
+
+  Polymorphic Definition limit {D:cat} (F: (op D:cat) ~> Proset): Proset :=
+    Hom (Functor (op D) Proset) (pt, F).
+
+  Polymorphic Definition unit := limit Diagrams.Empty.
+  Polymorphic Definition bang {A} : A ~> unit.
+  eexists _ _.
+  Unshelve.
+  4: {
+    intros.
+    intro.
+    destruct x.
+  }
+  4: {
+    intros.
+    cbn.
+    intro.
+    cbn in x.
+    destruct x.
+  }
+  all: cbn.
+  all: auto.
+  Defined.
+
+  (* Not really sure there's a point here or what it means *)
+  Polymorphic Definition yo (c: Proset) := limit (Diagrams.Constant c).
+  Polymorphic Definition yo_map' {A B} (f: A ~> B): yo A -> yo B.
+  intros ? ?.
+  exists (fun _ => f (X I I)) (fun _ _ _ => f ! id).
+  all: cbn.
+  all: intros.
+  - rewrite Functor.map_composes.
+    rewrite compose_id_left.
+    reflexivity.
+  - intros.
+    apply Functor.map_id.
+  - intros.
+    reflexivity.
+  Defined.
+
+  Polymorphic Definition yo_map'' {A B} (f: A ~> B):
+    forall X Y, yo A X Y -> yo B (yo_map' f X) (yo_map' f Y).
+  intros X Y g ?.
+  destruct (g I I) as [g'].
+  exists.
+  eexists.
+  Unshelve.
+  3: {
+    cbn.
+    apply Functor.map.
+    apply (@Isomorphism.to _ _ _ g').
+  }
+  3: {
+    cbn.
+    apply Functor.map.
+    apply (@Isomorphism.from _ _ _ g').
+  }
+  all:cbn.
+  all:rewrite Functor.map_composes.
+  all:rewrite <- Functor.map_id.
+  all:apply Functor.map_compat.
+  1:rewrite Isomorphism.to_from.
+  2:rewrite Isomorphism.from_to.
+  all:reflexivity.
+  Defined.
+
+  Polymorphic Definition yo_map {A B} (f: A ~> B): yo A ~> yo B.
+  exists (yo_map' f) (yo_map'' f).
+  all: intros; cbn; auto.
+  Defined.
+End Limits.
+
 Module Monoidal.
   Import Isomorphism.
   Import IsomorphismNotations.
@@ -1119,6 +1335,28 @@ Module Enriched.
   End EnrichedNotations.
 End Enriched.
 
+(* Define the simplex category *)
+Module Simplex.
+  Definition hom (A B: nat): Arrow := ([A]: Proset) ~> [B].
+
+  Definition id {A}: hom A A := id.
+  Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
+
+  Definition Δ: Category.
+    exists nat hom @id @compose.
+    all: unfold hom, compose, id; intros.
+    - rewrite compose_assoc.
+      reflexivity.
+    - apply compose_id_left.
+    - apply compose_id_right.
+    - rewrite H, H0.
+      reflexivity.
+  Defined.
+End Simplex.
+
+Definition Δ: Category := Simplex.Δ.
+
+Polymorphic Definition presheaf K: Category := Functor (op K) Proset.
 
 Module Presheaf.
   Import Monoidal.
