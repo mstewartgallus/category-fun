@@ -13,6 +13,8 @@ Reserved Notation "A ∘ B" (at level 30).
 
 Reserved Notation "A <~> B" (at level 80).
 
+Reserved Notation "! F" (at level 1).
+
 Reserved Notation "A ⊗ B" (at level 30).
 Reserved Notation "A ~~> B" (at level 80).
 
@@ -25,8 +27,6 @@ Module TruncateNotations.
 
   Coercion truncate_intro: id >-> truncate.
 End TruncateNotations.
-
-Import TruncateNotations.
 
 Module Export Category.
   (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
@@ -195,12 +195,10 @@ Module Functor.
     map_compat {A B} (f f': C A B): f == f' -> map f == map f' ;
   }.
 
-  Coercion fobj: functor >-> Funclass.
-
   Section functor.
     Polymorphic Variables K L : Category.
 
-    Polymorphic Definition hom' (A B: functor K L) := forall x, L (A x) (B x).
+    Polymorphic Definition hom' (A B: functor K L) := forall x, L (@fobj _ _ A x) (@fobj _ _ B x).
 
     Polymorphic Definition eq {A B} (f g: hom' A B): Prop := forall x, f x == g x.
 
@@ -238,6 +236,11 @@ Module Functor.
     Defined.
   End functor.
 
+  Module Import FunctorNotations.
+    Coercion fobj: functor >-> Funclass.
+    Notation "! F" := (map (functor := F)).
+  End FunctorNotations.
+
   Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: Functor C D) : (@Functor.map _ _ F A B)
       with signature (@equal _) ==> equal as map_mor.
   Proof.
@@ -247,9 +250,12 @@ Module Functor.
   Qed.
 End Functor.
 
+Import Functor.FunctorNotations.
 Polymorphic Definition Functor: Category -> Category -> Category := Functor.Functor.
 
 Module cat.
+  Import TruncateNotations.
+
   Import Functor.
   Import Isomorphism.
   Import IsomorphismNotations.
@@ -287,7 +293,7 @@ Module cat.
   Defined.
 
   Polymorphic Definition compose {A B C} (F: hom B C) (G: hom A B): hom A C.
-  exists (fun x => F (G x)) (fun _ _ x => map (map x)).
+  exists (fun x => F (G x)) (fun _ _ x => map (functor := F) (map (functor := G) x)).
   - intros.
     rewrite map_composes, map_composes.
     reflexivity.
@@ -308,8 +314,8 @@ Module cat.
   destruct p as [p], q as [q].
   exists.
   exists
-    (fun x => map (@to _ _ _ q x) ∘ @to _ _ _ p (g x))
-    (fun x => @from _ _ _ p (g x) ∘ map (@from _ _ _ q x)).
+    (fun x => !f' (@to _ _ _ q x) ∘ @to _ _ _ p (g x))
+    (fun x => @from _ _ _ p (g x) ∘ (!f' (@from _ _ _ q x))).
   - cbn.
     intro x.
     unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
@@ -330,10 +336,9 @@ Module cat.
     unfold Functor.eq, Functor.id, Functor.compose, Functor.hom ; cbn.
     rewrite compose_assoc.
     setoid_replace
-      ((@from _ _ _ p (g x) ∘ map (@from _ _ _ q x))
-         ∘ map (@to _ _ _ q x))
+      ((@from _ _ _ p (g x) ∘ ! f' (@from _ _ _ q x)) ∘ ! f' (@to _ _ _ q x))
       with
-        (@from _ _ _ p (g x) ∘ map (@from _ _ _ q x ∘ @to _ _ _ q x)).
+        (@from _ _ _ p (g x) ∘ ! f' (@from _ _ _ q x ∘ @to _ _ _ q x)).
     2: {
       rewrite <- compose_assoc.
       rewrite map_composes.
@@ -536,6 +541,23 @@ Module Product.
     Defined.
   End products.
 
+  (* Polymorphic Definition eval {A B C} (f: A ~> (Functor B C:cat)): product A B ~> C. *)
+  Polymorphic Definition eval' {A B C} (f: A ~> (Functor B C:cat)): product A B -> C
+    := fun x => f (fst x) (snd x).
+
+  Polymorphic Definition eval_map {A B C} (f: A ~> (Functor B C:cat)):
+    forall X Y,
+      product A B X Y -> C (eval' f X) (eval' f Y).
+  apply (fun X Y g => !f (fst g) _ ∘ ! (f (fst X)) (snd g)).
+  Defined.
+
+  Polymorphic Definition eval {A B C} (f: A ~> (Functor B C:cat)): product A B ~> C.
+  exists (eval' f) (eval_map f).
+  - admit.
+  - admit.
+  - admit.
+  Admitted.
+
   Polymorphic Definition fst {A B}: product A B ~> A.
   exists fst (fun _ _ => fst).
   - cbn.
@@ -566,7 +588,7 @@ Module Product.
 
   Import Functor.
   Polymorphic Definition fanout {A B C: cat} (f: C ~> A) (g: C ~> B): C ~> product A B.
-  exists (fun x => (f x, g x)) (fun _ _ x => (map x, map x)).
+  exists (fun x => (f x, g x)) (fun _ _ x => (!f x, !g x)).
   all:cbn;intros;unfold Product.eq;cbn;auto.
   - split.
     all: apply map_composes.
@@ -576,6 +598,7 @@ Module Product.
     all: rewrite H.
     all: reflexivity.
   Defined.
+
 End Product.
 
 Module Coproduct.
@@ -668,7 +691,6 @@ Module Coproduct.
         reflexivity.
     Defined.
   End coproducts.
-
 
   Import Functor.
 
@@ -798,6 +820,13 @@ Module Proset.
   split.
   + apply A'.
   + apply B'.
+  Defined.
+
+  (* Huh domain doesn't even need to be a Proset *)
+  Polymorphic Definition exp (A B: Proset): Proset.
+  exists (Functor A B).
+  intros X Y f g ?.
+  apply (ASet_IsSet _ _ (f x) (g x)).
   Defined.
 
   Polymorphic Definition fst {A B: Proset}: prod A B ~> A := Product.fst.
