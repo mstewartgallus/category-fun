@@ -578,6 +578,151 @@ Module Product.
   Defined.
 End Product.
 
+Module Coproduct.
+  Close Scope nat.
+
+  Section coproducts.
+    Polymorphic Variable C D: Category.
+
+    Polymorphic Definition sum := C + D.
+    Polymorphic Definition hom' (A B: sum): Type.
+    destruct A as [AL|AR], B as [BL|BR].
+    1: apply (AL ~> BL).
+    3: apply (AR ~> BR).
+    all: apply False.
+    Defined.
+
+    Polymorphic Definition eq {A B} (f g: hom' A B): Prop.
+    destruct A as [AL|AR], B as [BL|BR].
+    1: apply (f == g).
+    3: apply (f == g).
+    all: apply False.
+    Defined.
+
+    Polymorphic Definition hom (A B: sum): Arrow.
+    exists (hom' A B) eq.
+    all: destruct A as [AL|AR], B as [BL|BR].
+    all: exists.
+    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
+    all: intros; auto.
+    all: try reflexivity.
+    - symmetry.
+      apply H.
+    - rewrite H, H0.
+      reflexivity.
+    - symmetry.
+      apply H.
+    - rewrite H, H0.
+      reflexivity.
+    Defined.
+
+    Polymorphic Definition coproduct: cat.
+    eexists sum hom _ _.
+    Unshelve.
+    5: {
+      intros.
+      destruct A.
+      all: apply id.
+    }
+    5: {
+      cbn.
+      intros X Y Z.
+      destruct X, Y, Z.
+      all: cbn.
+      all: intros f g.
+      all: auto.
+      all: try contradiction.
+      all: apply (f ∘ g).
+    }
+    all: cbn.
+    all: unfold eq;cbn;auto.
+    - intros X Y Z W.
+      destruct X, Y, Z, W.
+      cbn.
+      all: auto.
+      all: try contradiction.
+      all: intros f g h.
+      all: apply compose_assoc.
+    - intros A B.
+      destruct A, B.
+      cbn.
+      all: auto.
+      all: intros.
+      all: apply compose_id_left.
+    - intros A B.
+      destruct A, B.
+      all: cbn.
+      all: auto.
+      all: intros.
+      all: apply compose_id_right.
+    - intros X Y Z.
+      destruct X, Y, Z.
+      all: cbn.
+      all: auto.
+      all: try contradiction.
+      + intros ? ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+      + intros ? ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Defined.
+  End coproducts.
+
+
+  Import Functor.
+
+  Polymorphic Definition fanin {A B C: cat} (f: A ~> C) (g: B ~> C): coproduct A B ~> C.
+  eexists (fun x => match x with | inl x' => f x' | inr x' => g x' end) _.
+  Unshelve.
+  4: {
+    cbn.
+    intros X Y.
+    destruct X, Y.
+    all: cbn.
+    all: try contradiction.
+    all: apply map.
+  }
+  all: cbn.
+  - intros X Y Z.
+    destruct X, Y, Z.
+    all: cbn.
+    all: try contradiction.
+    all: intros; apply map_composes.
+  - intros X.
+    destruct X.
+    all: apply map_id.
+  - intros X Y.
+    destruct X, Y.
+    cbn.
+    all: try contradiction.
+    all: apply map_compat.
+  Defined.
+
+  Polymorphic Definition inl {A B}: A ~> coproduct (A:cat) B.
+  exists inl (fun _ _ x => x).
+  - cbn.
+    intros.
+    reflexivity.
+  - intros.
+    reflexivity.
+  - intros.
+    apply H.
+  Defined.
+
+  Polymorphic Definition inr {A B}: B ~> coproduct (A:cat) (B:cat).
+  exists inr (fun _ _ x => x).
+  - cbn.
+    intros.
+    reflexivity.
+  - intros.
+    reflexivity.
+  - intros.
+    apply H.
+  Defined.
+End Coproduct.
+
+(* FIXME define Set as Prosets that are groupoids? *)
 Module Proset.
   (* A partially ordered set is a thin category *)
   Polymorphic Definition IsThin (A: Arrow) := forall x y: A, x == y.
@@ -743,8 +888,8 @@ End Props.
 Import Props.PropNotations.
 
 Polymorphic Definition Props: Category := Props.Props.
-Polymorphic Definition Empty: Props := Props.AsAProp Empty_set.
-Polymorphic Definition Trivial: Props := Props.AsAProp unit.
+Polymorphic Definition Empty: Props := Props.AsAProp False.
+Polymorphic Definition Trivial: Props := Props.AsAProp True.
 
 Module Finite.
  (* Definie finite totally ordered sets *)
@@ -902,7 +1047,6 @@ Module Diagrams.
     Defined.
   End diagrams.
 End Diagrams.
-
 
 Module Monoidal.
   Import Isomorphism.
@@ -1099,5 +1243,6 @@ Module Presheaf.
 End Presheaf.
 
 Polymorphic Definition sSet := presheaf Δ.
+
 
 Polymorphic Definition InfinityCategory := Enriched.Category sSet (Presheaf.product_Monoid _).
