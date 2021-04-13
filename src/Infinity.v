@@ -6,6 +6,7 @@ Require Import Coq.Setoids.Setoid.
 
 Reserved Notation "| A |" (at level 40).
 
+Reserved Notation "A /~ B" (at level 40).
 Reserved Notation "A == B" (at level 70).
 
 Reserved Notation "A ~> B" (at level 80).
@@ -37,7 +38,7 @@ Module Export Category.
 
      The technical jargon is that a Setoid is a 0-trivial groupoid,
      equality is the hom *)
-  Polymorphic Cumulative Class Arrow := {
+  Polymorphic Cumulative Class Morphism := {
     type: Type ;
     equal: type -> type -> Prop
     where "A == B" := (equal A B) ;
@@ -45,22 +46,23 @@ Module Export Category.
     Setoid_Equivalence:> Equivalence equal
   }.
 
-  Polymorphic Definition ThinArrow (A: Type): Arrow.
+  Polymorphic Definition ThinMorphism (A: Type): Morphism.
   exists A (fun _ _ => True).
   exists.
   all: unfold Reflexive, Symmetric, Transitive; cbn; intros; auto.
   Defined.
 
-  Coercion type: Arrow >-> Sortclass.
-  Coercion equal: Arrow >-> Funclass.
+  Coercion type: Morphism >-> Sortclass.
+  Coercion equal: Morphism >-> Funclass.
 
-  Module Export ArrowNotations.
+  Module Export MorphismNotations.
+    Notation "A /~ B" := {| type := A ; equal := B |}.
     Notation "A == B" := (equal A B).
-  End ArrowNotations.
+  End MorphismNotations.
 
   Polymorphic Cumulative Class Category := {
     object: Type ;
-    hom: object -> object -> Arrow
+    hom: object -> object -> Morphism
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
@@ -120,7 +122,7 @@ Module Isomorphism.
       all: try rewrite H0, H2; try rewrite H1, H3; reflexivity.
     Qed.
 
-    Polymorphic Definition hom A B := {| type := hom' A B; equal := eq |}.
+    Polymorphic Definition hom A B := hom' A B /~ eq.
 
     Polymorphic Definition id {A: K}: hom A A.
     exists id id.
@@ -220,7 +222,7 @@ Module Functor.
       reflexivity.
     Qed.
 
-    Polymorphic Definition hom A B := {| type := hom' A B |}.
+    Polymorphic Definition hom A B := hom' A B /~ eq.
 
     Polymorphic Definition id {A}: hom A A := fun _ => id.
     Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => (f _) ∘ (g _).
@@ -281,7 +283,7 @@ Module cat.
     apply (q' ∘ p').
   Qed.
 
-  Polymorphic Definition hom (A B: Category): Arrow := {| type := Functor A B ; equal := eq |}.
+  Polymorphic Definition hom (A B: Category): Morphism := Functor A B /~ eq.
 
   Polymorphic Definition id {A}: hom A A.
   exists (fun x => x) (fun _ _ f => f).
@@ -397,13 +399,13 @@ Module cat.
   exists Category hom @id @compose.
   - intros ? ? ? ? ? ? ? ?.
     exists.
-    apply Isomorphism.id.
+    apply Category.id.
   - intros ? ? ? ?.
     exists.
-    apply Isomorphism.id.
+    apply Category.id.
   - intros ? ? ? ?.
     exists.
-    apply Isomorphism.id.
+    apply Category.id.
   - apply @compose_compat.
   Defined.
 End cat.
@@ -443,7 +445,7 @@ Module Over.
       reflexivity.
     Qed.
 
-    Polymorphic Definition hom A B := {| type := hom' A B ; equal := eq |}.
+    Polymorphic Definition hom A B := hom' A B /~ eq.
 
     Polymorphic Definition id {A} : hom A A.
     exists id.
@@ -517,7 +519,7 @@ Module Product.
 
     Polymorphic Definition eq {A B} (f g: hom' A B) := fst f == fst g /\ snd f == snd g.
 
-    Polymorphic Definition hom (A B: tuple): Arrow.
+    Polymorphic Definition hom (A B: tuple): Morphism.
     exists (hom' A B) eq.
     exists.
     all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
@@ -589,12 +591,8 @@ Module Product.
 
   Polymorphic Definition eval {A B C} (f: A ~> (Functor B C:cat)): product A B ~> C.
   exists (eval' f) (eval_map f).
-  - cbn.
-    intros.
-    destruct X, Y, Z.
-    cbn.
-    destruct f0, g.
-    unfold eval_map.
+  - intros.
+
     admit.
   - admit.
   - admit.
@@ -664,7 +662,7 @@ Module Coproduct.
     all: apply False.
     Defined.
 
-    Polymorphic Definition hom (A B: sum): Arrow.
+    Polymorphic Definition hom (A B: sum): Morphism.
     exists (hom' A B) eq.
     all: destruct A as [AL|AR], B as [BL|BR].
     all: exists.
@@ -789,7 +787,7 @@ End Coproduct.
 (* FIXME define Set as Prosets that are groupoids? *)
 Module Proset.
   (* A partially ordered set is a thin category *)
-  Polymorphic Definition IsThin (A: Arrow) := forall x y: A, x == y.
+  Polymorphic Definition IsThin (A: Morphism) := forall x y: A, x == y.
   Polymorphic Definition IsSet (C: Category) := forall A B, IsThin (C A B).
 
   Polymorphic Cumulative Class ASet := {
@@ -803,7 +801,7 @@ Module Proset.
   End SetNotations.
 
   (* Define the category of prosets as a subcategory of cat *)
-  Polymorphic Definition hom (C D: ASet): Arrow := (C: cat) ~> D.
+  Polymorphic Definition hom (C D: ASet): Morphism := (C: cat) ~> D.
 
   Polymorphic Definition id {A}: hom A A := id.
   Polymorphic Definition compose {A B C}: hom B C -> hom A B -> hom A C := compose.
@@ -830,7 +828,7 @@ Module Proset.
     Unshelve.
     5: {
       intros X Y.
-      apply (ThinArrow (preorder X Y)).
+      apply (ThinMorphism (preorder X Y)).
     }
     5: {
       cbn.
@@ -897,7 +895,7 @@ Module Props.
     Coercion AProp_Set: AProp >-> object.
   End PropNotations.
 
-  Polymorphic Definition hom (C D: AProp): Arrow := ThinArrow AProp.
+  Polymorphic Definition hom (C D: AProp): Morphism := ThinMorphism AProp.
 
   Polymorphic Definition id {A}: hom A A.
   auto.
@@ -915,7 +913,7 @@ Module Props.
   Section props.
     Polymorphic Variable K: Type.
 
-    Polymorphic Definition phom (A B: K) := ThinArrow K.
+    Polymorphic Definition phom (A B: K) := ThinMorphism K.
 
     Polymorphic Definition pid {A}: phom A A.
     auto.
@@ -1337,7 +1335,7 @@ End Enriched.
 
 (* Define the simplex category *)
 Module Simplex.
-  Definition hom (A B: nat): Arrow := ([A]: Proset) ~> [B].
+  Definition hom (A B: nat): Morphism := ([A]: Proset) ~> [B].
 
   Definition id {A}: hom A A := id.
   Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
