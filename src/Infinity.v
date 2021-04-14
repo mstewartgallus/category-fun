@@ -49,7 +49,7 @@ Module Export Category.
   Polymorphic Definition ThinMorphism (A: Type): Morphism.
   exists A (fun _ _ => True).
   exists.
-  all: unfold Reflexive, Symmetric, Transitive; cbn; intros; auto.
+  all:auto.
   Defined.
 
   Coercion type: Morphism >-> Sortclass.
@@ -75,13 +75,13 @@ Module Export Category.
     compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
 
     compose_compat {A B C} (f f': hom B C) (g g': hom A B):
-      f == f' -> g == g' -> (f ∘ g) == (f' ∘ g') ;
+      f == f' -> g == g' -> f ∘ g == f' ∘ g' ;
   }.
 
-  Coercion object: Category >-> Sortclass.
-  Coercion hom: Category >-> Funclass.
-
   Module Export CategoryNotations.
+    Coercion object: Category >-> Sortclass.
+    Coercion hom: Category >-> Funclass.
+
     Notation "f ∘ g" := (compose f g).
     Notation "A ~> B" := ((_:Category) A B).
   End CategoryNotations.
@@ -90,7 +90,9 @@ Module Export Category.
       with signature equal ==> equal ==> equal as compose_mor.
   Proof.
     intros ? ? p ? ? q.
-    apply (compose_compat _ _ _ _ p q).
+    apply compose_compat.
+    apply p.
+    apply q.
   Qed.
 End Category.
 
@@ -98,28 +100,32 @@ Module Isomorphism.
   Section iso.
     Polymorphic Context `(K:Category).
 
-    Polymorphic Cumulative Class hom' (A B: K) := {
+    Polymorphic Cumulative Record hom' (A B: K) := {
       to: K A B ;
       from: K B A ;
       to_from: to ∘ from == id ;
       from_to: from ∘ to == id ;
    }.
 
-    Polymorphic Definition eq {A B} (f g: hom' A B) : Prop := @to _ _ f == @to _ _ g /\ @from _ _ f == @from _ _ g.
+    Polymorphic Definition eq {A B} (f g: hom' A B): Prop :=
+      @to _ _ f == @to _ _ g /\ @from _ _ f == @from _ _ g.
 
     Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
+    Proof using Type.
     exists.
     - split.
       all: reflexivity.
     - intros ? ? p.
-      destruct p as [H0 H1].
+      destruct p.
       split.
-      all: try rewrite H0; try rewrite H1; reflexivity.
+      all: symmetry.
+      all: auto.
     - intros ? ? ? p q.
-      destruct p as [H0 H1].
-      destruct q as [H2 H3].
+      destruct p as [p1 p2].
+      destruct q as [q1 q2].
       split.
-      all: try rewrite H0, H2; try rewrite H1, H3; reflexivity.
+      + apply (Equivalence_Transitive _ _ _ p1 q1).
+      + apply (Equivalence_Transitive _ _ _ p2 q2).
     Qed.
 
     Polymorphic Definition hom A B := hom' A B /~ eq.
@@ -210,22 +216,22 @@ Module Functor.
     Polymorphic Definition eq {A B} (f g: hom' A B): Prop := forall x, f x == g x.
 
     Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
+    Proof using Type.
     exists.
     all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; cbn.
     - intros.
       reflexivity.
     - intros ? ? p t.
-      rewrite (p t).
-      reflexivity.
+      symmetry.
+      apply (p t).
     - intros ? ? ? p q t.
-      rewrite (p t), (q t).
-      reflexivity.
+      apply (Equivalence_Transitive _ _ _ (p t) (q t)).
     Qed.
 
     Polymorphic Definition hom A B := hom' A B /~ eq.
 
     Polymorphic Definition id {A}: hom A A := fun _ => id.
-    Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => (f _) ∘ (g _).
+    Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => f _ ∘ g _.
 
     Polymorphic Definition Functor: Category.
     exists (functor _ _) hom @id @compose.
@@ -246,9 +252,9 @@ Module Functor.
   Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: Functor C D) : (@Functor.map _ _ F A B)
       with signature (@equal _) ==> equal as map_mor.
   Proof.
-    intros.
+    intros ? ? p.
     apply Functor.map_compat.
-    apply H.
+    apply p.
   Qed.
 End Functor.
 
@@ -262,21 +268,19 @@ Module cat.
   Import IsomorphismNotations.
 
   Polymorphic Definition eq {C D} (A B: Functor C D) :=
-  forall x: C, | (@fobj _ _ A x) <~> (@fobj _ _ B x) |.
+    forall x: C, | (@fobj _ _ A x) <~> (@fobj _ _ B x) |.
 
   Polymorphic Instance eq_Equivalence C D: Equivalence (@eq C D).
+  Proof.
   exists.
   all: unfold Reflexive, Symmetric, Transitive, compose, id, hom ; cbn.
   - intros ? f.
-    unfold eq.
     exists.
     apply Category.id.
   - intros ? ? p t.
-    unfold eq in p.
     destruct (p t) as [p'].
     exists.
-    apply Isomorphism.transpose.
-    apply p'.
+    apply (p' ᵀ).
   - intros ? ? ? p q t.
     destruct (p t) as [p'], (q t) as [q'].
     exists.
@@ -309,37 +313,15 @@ Module cat.
       * apply p.
   Defined.
 
-  Polymorphic Definition pullback {A B C} (f: hom A B): hom (Functor B C) (Functor A C).
-  eexists (fun g => compose g f) _.
-  Unshelve.
-  4: {
-    intros ? ? g ?.
-    apply (g _).
-  }
-  all: cbn.
-  all: unfold Functor.eq,Functor.hom',Functor.id,Functor.compose.
-  - intros.
-    reflexivity.
-  - intros.
-    reflexivity.
-  - intros.
-    rewrite (H _).
-    reflexivity.
-  Defined.
-
   Module Import FunctorNotations.
     Coercion fobj: functor >-> Funclass.
-    Notation "F *" := (pullback F).
     Notation "F ! X" := (map (functor := F) X).
   End FunctorNotations.
 
   Polymorphic Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B).
-  eexists.
+  eexists _ _.
   Unshelve.
-  4: {
-    intro x.
-    apply (f x).
-  }
+  4: apply (fun x => f x).
   4: {
     cbn.
     intros X Y p.
@@ -381,18 +363,16 @@ Module cat.
     (f == f') ->
     (g == g') ->
     compose f g == compose f' g'.
-  intros p q x.
-  set (f_iso := to_iso f).
-  destruct (q x) as [q'].
-  destruct (p (g' x)) as [p'].
-  set (pq := p' ∘ (f_iso ! q') : f (g x) <~> f' (g' x)).
-  exists.
-  eexists.
-  Unshelve.
-  3: apply (@to _ _ _ pq).
-  3: apply (@from _ _ _ pq).
-  - apply to_from.
-  - apply from_to.
+  Proof.
+    intros p q x.
+    destruct (q x) as [q'].
+    destruct (p (g' x)) as [p'].
+    set (f_iso := to_iso f).
+    set (pq := p' ∘ (f_iso ! q') : f (g x) <~> f' (g' x)).
+    exists.
+    exists (@to _ _ _ pq) (@from _ _ _ pq).
+    - apply to_from.
+    - apply from_to.
   Qed.
 
   Polymorphic Definition cat: Category.
@@ -419,7 +399,7 @@ Module Over.
     Polymorphic Variable c : object.
 
     Polymorphic Cumulative Record bundle := {
-      dom : object ;
+      dom: object ;
       proj: dom ~> c ;
     }.
 
@@ -433,16 +413,17 @@ Module Over.
     Polymorphic Definition eq {A B} (f g: hom' A B) := slice _ _ f == slice _ _ g.
 
     Polymorphic Instance eq_Equivalence A B: Equivalence (@eq A B).
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive, eq.
-    - intro.
-      reflexivity.
-    - intro.
-      symmetry.
-      apply H0.
-    - intros ? ? ? p q.
-      rewrite p, q.
-      reflexivity.
+    Proof using Type.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive, eq.
+      - intro.
+        reflexivity.
+      - intros ? ? p.
+        symmetry.
+        apply p.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
     Qed.
 
     Polymorphic Definition hom A B := hom' A B /~ eq.
@@ -462,26 +443,17 @@ Module Over.
 
     Polymorphic Definition compose_assoc {X Y Z W} (f: hom Z W) (g: hom Y Z) (h: hom X Y): eq (compose f (compose g h)) (compose (compose f g) h).
     Proof using Type.
-      unfold eq.
-      cbn.
-      rewrite -> compose_assoc.
-      reflexivity.
+      apply compose_assoc.
     Qed.
 
     Polymorphic Definition compose_id_left A B (f: hom A B): eq (compose id f) f.
     Proof using Type.
-      unfold eq.
-      cbn.
-      rewrite -> compose_id_left.
-      reflexivity.
+      apply compose_id_left.
     Qed.
 
     Polymorphic Definition compose_id_right {A B} (f: hom A B): eq (compose f id) f.
     Proof using Type.
-      unfold eq.
-      cbn.
-      rewrite -> compose_id_right.
-      reflexivity.
+      apply compose_id_right.
     Qed.
 
     Polymorphic Definition compose_compat {A B C} (f f': hom B C) (g g': hom A B):
