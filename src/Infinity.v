@@ -32,11 +32,11 @@ Module TruncateNotations.
   Coercion truncate_id {A}: ident A → |A| := truncate_intro _.
 End TruncateNotations.
 
-Module Bishop.
+Module Import Bishop.
   (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
      embedding on presheafs work properly.
 
-     The technical jargon is that a Bishop is a 0-trivial groupoid,
+     The technical jargon is that a Bishop Set is a 0-trivial groupoid,
      equality is the hom. *)
   Polymorphic Cumulative Class Bishop := {
     type: Type ;
@@ -45,14 +45,13 @@ Module Bishop.
 
   Module Import BishopNotations.
     Coercion type: Bishop >-> Sortclass.
+    Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
   End BishopNotations.
 End Bishop.
 
-Import Bishop.BishopNotations.
+Import BishopNotations.
 
 Module Import Category.
-  Import Bishop.
-
   Polymorphic Cumulative Class Category := {
     object: Type ;
     hom: object → object → Bishop
@@ -89,17 +88,20 @@ Module Import Category.
   End CategoryNotations.
 End Category.
 
-Module Import Sets.
-  Import Bishop.
+Import CategoryNotations.
 
+Module Import Sets.
   Module Import Fns.
     Polymorphic Class fn (A B: Bishop) := {
       op: @type A → @type B ;
       map {A B}: A == B → op A == op B
     }.
   End Fns.
+  Module Import BishopNotations.
+    Coercion op: fn >-> Funclass.
+  End BishopNotations.
 
-  Polymorphic Local Definition eq {A B} (f g: fn A B) := ∀ x, @op _ _ f x == @op _ _ g x.
+  Polymorphic Local Definition eq {A B} (f g: fn A B) := ∀ x, f x == g x.
   Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
   exists.
   all:unfold Reflexive, Symmetric, Transitive, eq;cbn.
@@ -118,19 +120,16 @@ Module Import Sets.
     setoid_equiv := eq_Equivalence A B
   }.
 
-  Polymorphic Local Definition hom A B := {|
-    type := fn A B ;
-    Bishop_Setoid := eq_setoid _ _ ;
-  |}.
+  Polymorphic Local Definition hom A B := fn A B /~ eq_setoid _ _.
 
-  Polymorphic Local Definition id {A}: @type (hom A A).
+  Polymorphic Local Definition id {A}: hom A A.
   exists (λ x, x).
-  intros.
-  apply H.
+  intros ? ? p.
+  apply p.
   Defined.
 
-  Polymorphic Local Definition compose {A B C} (f: @type (hom B C)) (g: @type (hom A B)): @type (hom A C).
-  exists (λ x, @op _ _ f (@op _ _ g x)).
+  Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C.
+  exists (λ x, f (g x)).
   cbn.
   unfold compose.
   intros ? ? x.
@@ -154,16 +153,9 @@ Module Import Sets.
     rewrite (q _).
     reflexivity.
   Defined.
-
-  Module Import BishopNotations.
-    Coercion op: fn >-> Funclass.
-
-    Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
-  End BishopNotations.
 End Sets.
 
 Import BishopNotations.
-Import CategoryNotations.
 
 Module Bishops.
   Definition True: Bishop.
@@ -781,13 +773,13 @@ Module Import Finite.
   - auto.
   Qed.
 
-  Local Definition eq {A B} (_ _:A <= B) := True.
+  Local Definition eq {A B} (_ _:A ≤ B) := True.
   Local Instance eq_Equivalence A B: Equivalence (@eq A B).
   exists.
   all:exists.
   Qed.
 
-  Local Definition hom (A B: nat) := (A <= B) /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _  |}.
+  Local Definition hom (A B: nat) := (A ≤ B) /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _  |}.
 
   Local Definition id {A}: hom A A.
   cbn.
@@ -813,7 +805,7 @@ Module Import Finite.
     Notation "[ N ]" := (finite N).
   End FiniteNotations.
 
-  Local Definition any_gt_0 C: 0 <= C.
+  Local Definition any_gt_0 C: 0 ≤ C.
   Proof.
     induction C.
     - auto.
