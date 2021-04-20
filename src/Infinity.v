@@ -157,8 +157,8 @@ Module Import Sets.
   Module Import SetoidNotations.
     Coercion op: fn >-> Funclass.
 
-    Notation "A ~ B" := (@equal (_:Setoid) A B).
-    Notation "A /~ B" := ({| type := A ; equal := (B:relation A) |}:Setoid).
+    Notation "A ~ B" := (equal A B).
+    Notation "A /~ B" := ({| type := A ; equal := (B:relation A) |}).
   End SetoidNotations.
 End Sets.
 
@@ -180,34 +180,6 @@ Module Setoids.
     all:contradiction.
   Defined.
 End Setoids.
-
-Module Import Preset.
-  Polymorphic Local Definition eq {A B}: relation (A -> B) := fun f g => forall x, f x = g x.
-  Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
-  exists.
-  all:unfold Reflexive, Symmetric, Transitive, eq;cbn.
-  all:auto.
-  intros ? ? ? p q ?.
-  rewrite (p _), (q _).
-  reflexivity.
-  Qed.
-
-  Polymorphic Local Definition hom A B := (A -> B) /~ (@eq A B).
-
-  Polymorphic Local Definition id {A}: hom A A := fun x => x.
-
-  Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
-    fun x => f (g x).
-
-  Polymorphic Definition Preset: Category.
-  exists Type hom @id @compose.
-  all:unfold hom, eq, compose;cbn.
-  all:auto.
-  intros ? ? ? ? ? ? ? p q ?.
-  rewrite (p _), (q _).
-  reflexivity.
-  Defined.
-End Preset.
 
 Module Import Isomorphism.
   Section iso.
@@ -495,6 +467,35 @@ Module Import NaturalTransformation.
   End functor.
 End NaturalTransformation.
 
+
+Module Import Preset.
+  Polymorphic Local Definition eq {A B}: relation (A -> B) := fun f g => forall x, f x = g x.
+  Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
+  exists.
+  all:unfold Reflexive, Symmetric, Transitive, eq;cbn.
+  all:auto.
+  intros ? ? ? p q ?.
+  rewrite (p _), (q _).
+  reflexivity.
+  Qed.
+
+  Polymorphic Local Definition hom A B := (A -> B) /~ (@eq A B).
+
+  Polymorphic Local Definition id {A}: hom A A := fun x => x.
+
+  Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
+    fun x => f (g x).
+
+  Polymorphic Definition Preset: Category.
+  exists Type hom @id @compose.
+  all:unfold hom, eq, compose;cbn.
+  all:auto.
+  intros ? ? ? ? ? ? ? p q ?.
+  rewrite (p _), (q _).
+  reflexivity.
+  Defined.
+End Preset.
+
 Module Import Over.
   Section over.
     Polymorphic Context `(Category).
@@ -682,7 +683,7 @@ Module Import Interval.
   Defined.
 End Interval.
 
-Module Import Arrow.
+Module Arrow.
   Section arrows.
     Polymorphic Variables K: Category.
 
@@ -829,8 +830,6 @@ Module Import Finite.
     exists.
   Defined.
 End Finite.
-
-Import FiniteNotations.
 
 Module Import Opposite.
   Section opposite.
@@ -1233,13 +1232,15 @@ Module Enriched.
 End Enriched.
 
 (* Define the simplex category *)
-Module Simplex.
-  Definition hom (A B: nat): Setoid := ([A]: Cat) ~> [B].
+Module Import Simplex.
+  Import FiniteNotations.
 
-  Definition id {A}: hom A A := id.
-  Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
+  Local Definition hom (A B: nat): Setoid := ([A]: Cat) ~> [B].
 
-  Definition Δ: Category.
+  Local Definition id {A}: hom A A := id.
+  Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
+
+  Local Definition Δ: Category.
     exists nat hom @id @compose.
     all: unfold hom, compose, id; intros.
     - rewrite compose_assoc.
@@ -1250,8 +1251,6 @@ Module Simplex.
       reflexivity.
   Defined.
 End Simplex.
-
-Definition Δ: Category := Simplex.Δ.
 
 Polymorphic Definition presheaf K: Category := NaturalTransformation (op K) Setoid.
 
