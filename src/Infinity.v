@@ -2,7 +2,9 @@
 Set Primitive Projections.
 Unset Printing Primitive Projection Parameters.
 
+Require Import Coq.Unicode.Utf8.
 Require Import Coq.Setoids.Setoid.
+Require Import Coq.Classes.SetoidClass.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -32,33 +34,30 @@ Module TruncateNotations.
   Coercion truncate_id {A}: ident A -> |A| := truncate_intro _.
 End TruncateNotations.
 
-Module Setoid.
+Module Bishop.
   (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
      embedding on presheafs work properly.
 
-     The technical jargon is that a Setoid is a 0-trivial groupoid,
+     The technical jargon is that a Bishop is a 0-trivial groupoid,
      equality is the hom. *)
-  Polymorphic Cumulative Class Setoid := {
+  Polymorphic Cumulative Class Bishop := {
     type: Type ;
-    equal: relation type ;
-    Setoid_Equivalence:> Equivalence equal
+    Bishop_Setoid:> Setoid type ;
   }.
 
-  Module Import SetoidNotations.
-    Coercion type: Setoid >-> Sortclass.
-    Coercion equal: Setoid >-> relation.
-  End SetoidNotations.
-End Setoid.
+  Module Import BishopNotations.
+    Coercion type: Bishop >-> Sortclass.
+  End BishopNotations.
+End Bishop.
 
-Import Setoid.SetoidNotations.
+Import Bishop.BishopNotations.
 
 Module Import Category.
-  Import Setoid.
-  Local Notation "A ~ B" := (equal A B).
+  Import Bishop.
 
   Polymorphic Cumulative Class Category := {
     object: Type ;
-    hom: object -> object -> Setoid
+    hom: object -> object -> Bishop
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
@@ -66,16 +65,16 @@ Module Import Category.
     where "f ∘ g" := (compose f g) ;
 
     compose_assoc {A B C D} (f: hom C D) (g: hom B C) (h: hom A B):
-      (f ∘ (g ∘ h)) ~ ((f ∘ g) ∘ h );
-    compose_id_left {A B} (f: hom A B): (id ∘ f) ~ f ;
-    compose_id_right {A B} (f: hom A B): (f ∘ id) ~ f ;
+      (f ∘ (g ∘ h)) == ((f ∘ g) ∘ h );
+    compose_id_left {A B} (f: hom A B): (id ∘ f) == f ;
+    compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
 
     compose_compat {A B C} (f f': hom B C) (g g': hom A B):
-      f ~ f' -> g ~ g' -> f ∘ g ~ f' ∘ g' ;
+      f == f' -> g == g' -> f ∘ g == f' ∘ g' ;
   }.
 
   Polymorphic Add Parametric Morphism (K: Category) (A B C: @object K) : (@compose _ A B C)
-      with signature equal ==> equal ==> equal as compose_mor.
+      with signature equiv ==> equiv ==> equiv as compose_mor.
   Proof.
     intros ? ? p ? ? q.
     apply compose_compat.
@@ -93,17 +92,17 @@ Module Import Category.
 End Category.
 
 Module Import Sets.
-  Import Setoid.
+  Import Bishop.
 
   Module Import Fns.
-    Polymorphic Class fn (A B: Setoid) := {
+    Polymorphic Class fn (A B: Bishop) := {
       op: @type A -> @type B ;
-      map {A B}: equal A B -> equal (op A) (op B)
+      map {A B}: A == B -> op A == op B
     }.
   End Fns.
 
-  Polymorphic Local Definition eq {A B} (f g: fn A B) := forall x, equal (@op _ _ f x) (@op _ _ g x).
-  Polymorphic Local Definition eq_Equivalence {A B}: Equivalence (@eq A B).
+  Polymorphic Local Definition eq {A B} (f g: fn A B) := forall x, @op _ _ f x == @op _ _ g x.
+  Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
   exists.
   all:unfold Reflexive, Symmetric, Transitive, eq;cbn.
   - intros.
@@ -116,10 +115,14 @@ Module Import Sets.
     reflexivity.
   Qed.
 
+  Polymorphic Local Instance eq_setoid A B: Setoid (fn A B) := {
+    equiv := eq ;
+    setoid_equiv := eq_Equivalence A B
+  }.
+
   Polymorphic Local Definition hom A B := {|
-    type := fn A B;
-    equal := eq;
-    Setoid_Equivalence := eq_Equivalence;
+    type := fn A B ;
+    Bishop_Setoid := eq_setoid _ _ ;
   |}.
 
   Polymorphic Local Definition id {A}: @type (hom A A).
@@ -138,8 +141,8 @@ Module Import Sets.
   apply x.
   Defined.
 
-  Polymorphic Definition Setoid: Category.
-  exists Setoid hom @id @compose.
+  Polymorphic Definition Bishop: Category.
+  exists Bishop hom @id @compose.
   - intros ? ? ? ? ? ? ? ?.
     reflexivity.
   - intros.
@@ -154,32 +157,33 @@ Module Import Sets.
     reflexivity.
   Defined.
 
-  Module Import SetoidNotations.
+  Module Import BishopNotations.
     Coercion op: fn >-> Funclass.
 
-    Notation "A ~ B" := (equal A B).
-    Notation "A /~ B" := ({| type := A ; equal := (B:relation A) |}).
-  End SetoidNotations.
+    Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
+  End BishopNotations.
 End Sets.
 
-Import SetoidNotations.
+Import BishopNotations.
 Import CategoryNotations.
 
-Module Setoids.
-  Definition True: Setoid.
-    exists True (fun _ _ => True).
+Module Bishops.
+  Definition True: Bishop.
+    exists True.
+    exists (fun _ _ => True).
     exists.
     all:auto.
   Defined.
 
-  Definition False: Setoid.
-    exists False (fun (A:False) _ => match A with end).
+  Definition False: Bishop.
+    exists False.
+    exists(fun (A:False) _ => match A with end).
     exists.
     all:unfold Reflexive, Symmetric, Transitive; cbn.
     all:intros.
     all:contradiction.
   Defined.
-End Setoids.
+End Bishops.
 
 Module Import Isomorphism.
   Section iso.
@@ -188,12 +192,12 @@ Module Import Isomorphism.
     Polymorphic Cumulative Record iso (A B: K) := {
       to: K A B ;
       from: K B A ;
-      to_from: to ∘ from ~ id ;
-      from_to: from ∘ to ~ id ;
+      to_from: to ∘ from == id ;
+      from_to: from ∘ to == id ;
    }.
 
     Polymorphic Local Definition eq {A B} (f g: iso A B): Prop :=
-      @to _ _ f ~ @to _ _ g /\ @from _ _ f ~ @from _ _ g.
+      @to _ _ f == @to _ _ g /\ @from _ _ f == @from _ _ g.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     Proof using Type.
@@ -213,7 +217,12 @@ Module Import Isomorphism.
       + apply (Equivalence_Transitive _ _ _ p2 q2).
     Qed.
 
-    Polymorphic Local Definition hom A B := iso A B /~ eq.
+    Polymorphic Local Instance eq_Setoid A B: Setoid (iso A B).
+    exists eq.
+    apply eq_Equivalence.
+    Defined.
+
+    Polymorphic Local Definition hom A B := iso A B /~ eq_Setoid _ _.
 
     Polymorphic Local Definition id {A: K}: hom A A.
     exists id id.
@@ -286,10 +295,10 @@ Module Import Functor.
     fobj: C -> D ;
     map {A B}: C A B -> D (fobj A) (fobj B) ;
 
-    map_composes {X Y Z} (f: C Y Z) (g: C X Y): map f ∘ map g~ map (f ∘ g) ;
+    map_composes {X Y Z} (f: C Y Z) (g: C X Y): map f ∘ map g == map (f ∘ g) ;
 
-    map_id {A}: map (@id _ A) ~ id ;
-    map_compat {A B} (f f': C A B): f ~ f' -> map f ~ map f' ;
+    map_id {A}: map (@id _ A) == id ;
+    map_compat {A B} (f f': C A B): f == f' -> map f == map f' ;
   }.
 
   Module Import FunctorNotations.
@@ -298,7 +307,7 @@ Module Import Functor.
   End FunctorNotations.
 
   Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: functor C D) : (@map _ _ F A B)
-      with signature (@Setoid.equal _) ==> Setoid.equal as map_mor.
+      with signature equiv ==> equiv as map_mor.
   Proof.
     intros ? ? p.
     apply map_compat.
@@ -324,7 +333,12 @@ Module Import Functor.
     apply (q' ∘ p').
   Qed.
 
-  Polymorphic Definition Functor (A B: Category): Setoid := functor A B /~ eq.
+  Polymorphic Local Instance eq_Setoid C D: Setoid (functor C D).
+  exists eq.
+  apply eq_Equivalence.
+  Defined.
+
+  Polymorphic Definition Functor (A B: Category): Bishop := functor A B /~ eq_Setoid _ _.
 
   Polymorphic Local Definition id {A}: Functor A A.
   exists (fun x => x) (fun _ _ f => f).
@@ -392,9 +406,9 @@ Module Import Functor.
   Defined.
 
   Polymorphic Local Definition compose_compat {A B C : Category} (f f' : Functor B C) (g g' : Functor A B):
-    (f ~ f') ->
-    (g ~ g') ->
-    compose f g ~ compose f' g'.
+    f == f' ->
+    g == g' ->
+    compose f g == compose f' g'.
   Proof.
     intros p q x.
     destruct (q x) as [q'].
@@ -430,7 +444,7 @@ Module Import NaturalTransformation.
 
     Polymorphic Local Definition nt (A B: Functor K L) := forall x, L (@fobj _ _ A x) (@fobj _ _ B x).
 
-    Polymorphic Local Definition eq {A B} (f g: nt A B): Prop := forall x, f x ~ g x.
+    Polymorphic Local Definition eq {A B} (f g: nt A B): Prop := forall x, f x == g x.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     Proof using Type.
@@ -445,14 +459,19 @@ Module Import NaturalTransformation.
       apply (Equivalence_Transitive _ _ _ (p t) (q t)).
     Qed.
 
-    Polymorphic Local Definition hom A B := nt A B /~ eq.
+    Polymorphic Local Instance eq_Setoid A B: Setoid (nt A B).
+    exists eq.
+    apply eq_Equivalence.
+    Defined.
+
+    Polymorphic Local Definition hom A B := nt A B /~ eq_Setoid _ _.
 
     Polymorphic Local Definition id {A}: hom A A := fun _ => id.
     Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => f _ ∘ g _.
 
     Polymorphic Definition NaturalTransformation: Category.
     exists (Functor _ _) hom @id @compose.
-    all: unfold compose, id, hom, eq ; cbn.
+    all: unfold compose, id, hom, eq ; cbn; unfold eq.
     - intros.
       apply compose_assoc.
     - intros.
@@ -479,7 +498,9 @@ Module Import Preset.
   reflexivity.
   Qed.
 
-  Polymorphic Local Definition hom A B := (A -> B) /~ (@eq A B).
+  Polymorphic Local Definition hom A B := (A -> B) /~ {|
+                                                     equiv := eq ;
+                                                     setoid_equiv := eq_Equivalence _ _ |}.
 
   Polymorphic Local Definition id {A}: hom A A := fun x => x.
 
@@ -510,10 +531,10 @@ Module Import Over.
     types messier down the line *)
     Polymorphic Cumulative Record over A B := {
       slice: dom A ~> dom B;
-      commutes: proj B ∘ slice ~ proj A
+      commutes: proj B ∘ slice == proj A
     }.
 
-    Polymorphic Local Definition eq {A B} (f g: over A B) := slice _ _ f ~ slice _ _ g.
+    Polymorphic Local Definition eq {A B} (f g: over A B) := slice _ _ f == slice _ _ g.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     Proof using Type.
@@ -529,7 +550,7 @@ Module Import Over.
         reflexivity.
     Qed.
 
-    Polymorphic Local Definition hom A B := over A B /~ eq.
+    Polymorphic Local Definition hom A B := over A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
 
     Polymorphic Local Definition id {A} : hom A A.
     exists id.
@@ -590,7 +611,7 @@ End Over.
 Import OverNotations.
 
 Module Import Empty.
-  Local Definition hom (A: False): False -> Setoid := match A with end.
+  Local Definition hom (A: False): False -> Bishop := match A with end.
 
   Local Definition id {A: False}: hom A A := match A with end.
   Local Definition compose {A B C}: hom B C -> hom A B -> hom A C := match A with end.
@@ -605,7 +626,7 @@ Module Import Empty.
 End Empty.
 
 Module Import Trivial.
-  Local Definition hom (A B:True) := Setoids.True.
+  Local Definition hom (A B:True) := Bishops.True.
 
   Local Definition id {A}: hom A A := I.
   Local Definition compose {A B C} (_: hom B C) (_: hom A B): hom A C := I.
@@ -619,32 +640,20 @@ Module Import Trivial.
 End Trivial.
 
 Module Import Props.
-  Polymorphic Definition ProofIrrelevance (S: Setoid) := forall x y: S, x ~ y.
+  Polymorphic Definition ProofIrrelevance (S: Bishop) := forall x y: S, x == y.
 
   Polymorphic Cumulative Class MereProp := {
-    Prop_Setoid: Setoid ;
-    Prop_Irrelevant: ProofIrrelevance Prop_Setoid ;
+    Prop_Bishop: Bishop ;
+    Prop_Irrelevant: ProofIrrelevance Prop_Bishop ;
   }.
-
-  Polymorphic Definition ThinSet (A: Type): Setoid.
-  eapply (A /~ (fun _ _ => True)).
-  Unshelve.
-  exists.
-  all:auto.
-  Defined.
-
-  Polymorphic Definition AProp (A: Type): MereProp.
-  exists (ThinSet A).
-  exists.
-  Defined.
 End Props.
 
 Module Import Interval.
   Local Definition hom A B := match (A, B) with
-                        | (true, true) => Setoids.True
-                        | (false, false) => Setoids.True
-                        | (false, true) => Setoids.True
-                        | (_, _) => Setoids.False
+                        | (true, true) => Bishops.True
+                        | (false, false) => Bishops.True
+                        | (false, true) => Bishops.True
+                        | (_, _) => Bishops.False
                         end.
 
   Local Definition id {A}: hom A A.
@@ -696,11 +705,11 @@ Module Arrow.
     Polymorphic Record arr (A B: arrow) := {
       to: cod A ~> cod B ;
       from: dom A ~> dom B ;
-      commutes: to ∘ proj A ~ proj B ∘ from ;
+      commutes: to ∘ proj A == proj B ∘ from ;
     }.
 
     Polymorphic Local Definition eq {A B} (f g: arr A B) :=
-      (to _ _ f ~ to _ _ g) /\ (from _ _ f ~ from _ _ g).
+      (to _ _ f == to _ _ g) /\ (from _ _ f == from _ _ g).
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     exists.
     all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
@@ -720,7 +729,7 @@ Module Arrow.
       reflexivity.
     Qed.
 
-    Polymorphic Local Definition hom A B := arr A B /~ eq.
+    Polymorphic Local Definition hom A B := arr A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
 
     Polymorphic Local Definition id {A}: hom A A.
     exists id id.
@@ -780,7 +789,7 @@ Module Import Finite.
   all:exists.
   Qed.
 
-  Local Definition hom (A B: nat) := (A <= B) /~ eq.
+  Local Definition hom (A B: nat) := (A <= B) /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _  |}.
 
   Local Definition id {A}: hom A A.
   cbn.
@@ -840,7 +849,7 @@ Module Import Opposite.
     Polymorphic Local Definition id {A} : hom A A := id.
     Polymorphic Local Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
 
-    Polymorphic Local Definition eq {A B} (f g: hom A B) := f ~ g.
+    Polymorphic Local Definition eq {A B} (f g: hom A B) := f == g.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     exists.
@@ -923,14 +932,14 @@ Module Diagrams.
 End Diagrams.
 
 Module Limit.
-  Polymorphic Definition weighted {D:Cat} (F G: (op D:Cat) ~> Setoid):Setoid :=
+  Polymorphic Definition weighted {D:Cat} (F G: (op D:Cat) ~> Bishop):Bishop :=
     NaturalTransformation _ _ F G.
 
-  Polymorphic Definition pt {D:Cat}: (op D:Cat) ~> Setoid := Diagrams.Constant Setoids.True.
+  Polymorphic Definition pt {D:Cat}: (op D:Cat) ~> Bishop := Diagrams.Constant Bishops.True.
 
-  Polymorphic Definition limit (D:Cat) (F: (op D:Cat) ~> Setoid) := weighted pt F.
+  Polymorphic Definition limit (D:Cat) (F: (op D:Cat) ~> Bishop) := weighted pt F.
   (* Not sure if it should be point or empty *)
-  Polymorphic Definition colimit (D:Cat) (F: (op D:Cat) ~> Setoid) := weighted F pt.
+  Polymorphic Definition colimit (D:Cat) (F: (op D:Cat) ~> Bishop) := weighted F pt.
 
   (* Just an example *)
   Polymorphic Definition unit := limit _ Diagrams.Empty.
@@ -957,7 +966,7 @@ Module Product.
 
     Polymorphic Local Definition hom' (A B: C * D) := prod (fst A ~> fst B) (snd A ~> snd B).
 
-    Polymorphic Local Definition eq {A B} (f g: hom' A B) := fst f ~ fst g /\ snd f ~ snd g.
+    Polymorphic Local Definition eq {A B} (f g: hom' A B) := fst f == fst g /\ snd f == snd g.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     exists.
@@ -977,7 +986,7 @@ Module Product.
         reflexivity.
     Qed.
 
-    Polymorphic Definition hom (A B: C * D): Setoid := hom' A B /~ eq.
+    Polymorphic Definition hom (A B: C * D): Bishop := hom' A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
 
     Polymorphic Definition id {A}: hom A A := (id, id).
     Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
@@ -1059,8 +1068,8 @@ Module Coproduct.
 
     Polymorphic Local Definition eq {A B} (f g: hom' A B): Prop.
     destruct A as [AL|AR], B as [BL|BR].
-    1: apply (f ~ g).
-    3: apply (f ~ g).
+    1: apply (f == g).
+    3: apply (f == g).
     all: apply False.
     Defined.
 
@@ -1082,7 +1091,7 @@ Module Coproduct.
       reflexivity.
     Qed.
 
-    Polymorphic Local Definition hom (A B: sum): Setoid := hom' A B /~ eq.
+    Polymorphic Local Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
 
     Polymorphic Definition coproduct: Category.
     eexists sum hom _ _.
@@ -1235,7 +1244,7 @@ End Enriched.
 Module Import Simplex.
   Import FiniteNotations.
 
-  Local Definition hom (A B: nat): Setoid := ([A]: Cat) ~> [B].
+  Local Definition hom (A B: nat): Bishop := ([A]: Cat) ~> [B].
 
   Local Definition id {A}: hom A A := id.
   Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
@@ -1252,7 +1261,7 @@ Module Import Simplex.
   Defined.
 End Simplex.
 
-Polymorphic Definition presheaf K: Category := NaturalTransformation (op K) Setoid.
+Polymorphic Definition presheaf K: Category := NaturalTransformation (op K) Bishop.
 
 Module Presheaf.
   Import Monoidal.
@@ -1262,7 +1271,7 @@ Module Presheaf.
     Polymorphic Context {C D: Category}.
     Polymorphic Variable F: Functor (op D) C.
 
-    Polymorphic Definition limit' (c: C): Setoid.
+    Polymorphic Definition limit' (c: C): Bishop.
     eapply (Proset.AsASet (forall t, c ~> F t)).
     Unshelve.
     3: {
