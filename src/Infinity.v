@@ -8,8 +8,6 @@ Require Import Coq.Classes.SetoidClass.
 
 Reserved Notation "| A |" (at level 40).
 
-Reserved Notation "A ~ B" (at level 70).
-
 Reserved Notation "A /~ B" (at level 40).
 
 Reserved Notation "A ~> B" (at level 80).
@@ -31,7 +29,7 @@ Module TruncateNotations.
   Notation "| A |" := (truncate A).
 
   Polymorphic Definition ident (A: Type) := A.
-  Coercion truncate_id {A}: ident A -> |A| := truncate_intro _.
+  Coercion truncate_id {A}: ident A → |A| := truncate_intro _.
 End TruncateNotations.
 
 Module Bishop.
@@ -57,11 +55,11 @@ Module Import Category.
 
   Polymorphic Cumulative Class Category := {
     object: Type ;
-    hom: object -> object -> Bishop
+    hom: object → object → Bishop
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
-    compose {A B C}: hom B C -> hom A B -> hom A C
+    compose {A B C}: hom B C → hom A B → hom A C
     where "f ∘ g" := (compose f g) ;
 
     compose_assoc {A B C D} (f: hom C D) (g: hom B C) (h: hom A B):
@@ -70,7 +68,7 @@ Module Import Category.
     compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
 
     compose_compat {A B C} (f f': hom B C) (g g': hom A B):
-      f == f' -> g == g' -> f ∘ g == f' ∘ g' ;
+      f == f' → g == g' → f ∘ g == f' ∘ g' ;
   }.
 
   Polymorphic Add Parametric Morphism (K: Category) (A B C: @object K) : (@compose _ A B C)
@@ -96,12 +94,12 @@ Module Import Sets.
 
   Module Import Fns.
     Polymorphic Class fn (A B: Bishop) := {
-      op: @type A -> @type B ;
-      map {A B}: A == B -> op A == op B
+      op: @type A → @type B ;
+      map {A B}: A == B → op A == op B
     }.
   End Fns.
 
-  Polymorphic Local Definition eq {A B} (f g: fn A B) := forall x, @op _ _ f x == @op _ _ g x.
+  Polymorphic Local Definition eq {A B} (f g: fn A B) := ∀ x, @op _ _ f x == @op _ _ g x.
   Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
   exists.
   all:unfold Reflexive, Symmetric, Transitive, eq;cbn.
@@ -126,13 +124,13 @@ Module Import Sets.
   |}.
 
   Polymorphic Local Definition id {A}: @type (hom A A).
-  exists (fun x => x).
+  exists (λ x, x).
   intros.
   apply H.
   Defined.
 
   Polymorphic Local Definition compose {A B C} (f: @type (hom B C)) (g: @type (hom A B)): @type (hom A C).
-  exists (fun x => @op _ _ f (@op _ _ g x)).
+  exists (λ x, @op _ _ f (@op _ _ g x)).
   cbn.
   unfold compose.
   intros ? ? x.
@@ -170,14 +168,14 @@ Import CategoryNotations.
 Module Bishops.
   Definition True: Bishop.
     exists True.
-    exists (fun _ _ => True).
+    exists (λ _ _, True).
     exists.
     all:auto.
   Defined.
 
   Definition False: Bishop.
     exists False.
-    exists(fun (A:False) _ => match A with end).
+    exists(λ (A:False) _, match A with end).
     exists.
     all:unfold Reflexive, Symmetric, Transitive; cbn.
     all:intros.
@@ -197,7 +195,7 @@ Module Import Isomorphism.
    }.
 
     Polymorphic Local Definition eq {A B} (f g: iso A B): Prop :=
-      @to _ _ f == @to _ _ g /\ @from _ _ f == @from _ _ g.
+      @to _ _ f == @to _ _ g ∧ @from _ _ f == @from _ _ g.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     Proof using Type.
@@ -292,13 +290,13 @@ Module Import Functor.
   Import TruncateNotations.
 
   Polymorphic Cumulative Class functor (C D: Category) := {
-    fobj: C -> D ;
-    map {A B}: C A B -> D (fobj A) (fobj B) ;
+    fobj: C → D ;
+    map {A B}: C A B → D (fobj A) (fobj B) ;
 
     map_composes {X Y Z} (f: C Y Z) (g: C X Y): map f ∘ map g == map (f ∘ g) ;
 
     map_id {A}: map (@id _ A) == id ;
-    map_compat {A B} (f f': C A B): f == f' -> map f == map f' ;
+    map_compat {A B} (f f': C A B): f == f' → map f == map f' ;
   }.
 
   Module Import FunctorNotations.
@@ -314,7 +312,7 @@ Module Import Functor.
     apply p.
   Qed.
 
-  Polymorphic Local Definition eq {C D} (A B: functor C D) := forall x: C, | A x <~> B x |.
+  Polymorphic Local Definition eq {C D} (A B: functor C D) := ∀ x: C, | A x <~> B x |.
 
   Polymorphic Local Instance eq_Equivalence C D: Equivalence (@eq C D).
   Proof.
@@ -341,7 +339,7 @@ Module Import Functor.
   Polymorphic Definition Functor (A B: Category): Bishop := functor A B /~ eq_Setoid _ _.
 
   Polymorphic Local Definition id {A}: Functor A A.
-  exists (fun x => x) (fun _ _ f => f).
+  exists (λ x, x) (λ _ _ f, f).
   - intros ? ? ? ? ?.
     reflexivity.
   - intros.
@@ -351,7 +349,7 @@ Module Import Functor.
   Defined.
 
   Polymorphic Local Definition compose {A B C} (F: Functor B C) (G: Functor A B): Functor A C.
-  exists (fun x => F (G x)) (fun _ _ x => F ! (G ! x)).
+  exists (λ x, F (G x)) (λ _ _ x, F ! (G ! x)).
   - intros.
     rewrite map_composes, map_composes.
     reflexivity.
@@ -367,7 +365,7 @@ Module Import Functor.
   Polymorphic Local Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B).
   eexists _ _.
   Unshelve.
-  4: apply (fun x => f x).
+  4: apply (λ x, f x).
   4: {
     cbn.
     intros X Y p.
@@ -406,8 +404,8 @@ Module Import Functor.
   Defined.
 
   Polymorphic Local Definition compose_compat {A B C : Category} (f f' : Functor B C) (g g' : Functor A B):
-    f == f' ->
-    g == g' ->
+    f == f' →
+    g == g' →
     compose f g == compose f' g'.
   Proof.
     intros p q x.
@@ -442,9 +440,9 @@ Module Import NaturalTransformation.
   Section functor.
     Polymorphic Variables K L : Category.
 
-    Polymorphic Local Definition nt (A B: Functor K L) := forall x, L (@fobj _ _ A x) (@fobj _ _ B x).
+    Polymorphic Local Definition nt (A B: Functor K L) := ∀ x, L (@fobj _ _ A x) (@fobj _ _ B x).
 
-    Polymorphic Local Definition eq {A B} (f g: nt A B): Prop := forall x, f x == g x.
+    Polymorphic Local Definition eq {A B} (f g: nt A B): Prop := ∀ x, f x == g x.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     Proof using Type.
@@ -466,8 +464,8 @@ Module Import NaturalTransformation.
 
     Polymorphic Local Definition hom A B := nt A B /~ eq_Setoid _ _.
 
-    Polymorphic Local Definition id {A}: hom A A := fun _ => id.
-    Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := fun _ => f _ ∘ g _.
+    Polymorphic Local Definition id {A}: hom A A := λ _, id.
+    Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := λ _, f _ ∘ g _.
 
     Polymorphic Definition NaturalTransformation: Category.
     exists (Functor _ _) hom @id @compose.
@@ -488,7 +486,7 @@ End NaturalTransformation.
 
 
 Module Import Preset.
-  Polymorphic Local Definition eq {A B}: relation (A -> B) := fun f g => forall x, f x = g x.
+  Polymorphic Local Definition eq {A B}: relation (A → B) := λ f g, ∀ x, f x = g x.
   Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
   exists.
   all:unfold Reflexive, Symmetric, Transitive, eq;cbn.
@@ -498,14 +496,14 @@ Module Import Preset.
   reflexivity.
   Qed.
 
-  Polymorphic Local Definition hom A B := (A -> B) /~ {|
+  Polymorphic Local Definition hom A B := (A → B) /~ {|
                                                      equiv := eq ;
                                                      setoid_equiv := eq_Equivalence _ _ |}.
 
-  Polymorphic Local Definition id {A}: hom A A := fun x => x.
+  Polymorphic Local Definition id {A}: hom A A := λ x, x.
 
   Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
-    fun x => f (g x).
+    λ x, f (g x).
 
   Polymorphic Definition Preset: Category.
   exists Type hom @id @compose.
@@ -557,7 +555,7 @@ Module Import Over.
     apply compose_id_right.
     Defined.
 
-    Polymorphic Local Definition compose {X Y Z} : hom Y Z -> hom X Y -> hom X Z.
+    Polymorphic Local Definition compose {X Y Z} : hom Y Z → hom X Y → hom X Z.
     intros f g.
     exists (slice _ _ f ∘ slice _ _ g).
     rewrite compose_assoc.
@@ -581,7 +579,7 @@ Module Import Over.
     Qed.
 
     Polymorphic Local Definition compose_compat {A B C} (f f': hom B C) (g g': hom A B):
-      eq f f' -> eq g g' -> eq (compose f g) (compose f' g').
+      eq f f' → eq g g' → eq (compose f g) (compose f' g').
     Proof using Type.
       unfold eq.
       cbn.
@@ -611,10 +609,10 @@ End Over.
 Import OverNotations.
 
 Module Import Empty.
-  Local Definition hom (A: False): False -> Bishop := match A with end.
+  Local Definition hom (A: False): False → Bishop := match A with end.
 
   Local Definition id {A: False}: hom A A := match A with end.
-  Local Definition compose {A B C}: hom B C -> hom A B -> hom A C := match A with end.
+  Local Definition compose {A B C}: hom B C → hom A B → hom A C := match A with end.
 
   Definition Empty: Category.
     exists False hom @id @compose.
@@ -640,7 +638,7 @@ Module Import Trivial.
 End Trivial.
 
 Module Import Props.
-  Polymorphic Definition ProofIrrelevance (S: Bishop) := forall x y: S, x == y.
+  Polymorphic Definition ProofIrrelevance (S: Bishop) := ∀ x y: S, x == y.
 
   Polymorphic Cumulative Class MereProp := {
     Prop_Bishop: Bishop ;
@@ -662,7 +660,7 @@ Module Import Interval.
     all:auto.
   Defined.
 
-  Local Definition compose {A B C}: hom B C -> hom A B -> hom A C.
+  Local Definition compose {A B C}: hom B C → hom A B → hom A C.
     destruct A, B, C.
     all:cbn.
     all:auto.
@@ -709,7 +707,7 @@ Module Arrow.
     }.
 
     Polymorphic Local Definition eq {A B} (f g: arr A B) :=
-      (to _ _ f == to _ _ g) /\ (from _ _ f == from _ _ g).
+      (to _ _ f == to _ _ g) ∧ (from _ _ f == from _ _ g).
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     exists.
     all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
@@ -796,7 +794,7 @@ Module Import Finite.
   auto.
   Defined.
 
-  Local Definition compose {A B C}: hom B C -> hom A B -> hom A C.
+  Local Definition compose {A B C}: hom B C → hom A B → hom A C.
   cbn.
   intros f g.
   rewrite g, f.
@@ -847,7 +845,7 @@ Module Import Opposite.
     Polymorphic Local Definition hom (A B: K) := hom B A.
 
     Polymorphic Local Definition id {A} : hom A A := id.
-    Polymorphic Local Definition compose {A B C} : hom B C -> hom A B -> hom A C := fun f g => g ∘ f.
+    Polymorphic Local Definition compose {A B C} : hom B C → hom A B → hom A C := λ f g, g ∘ f.
 
     Polymorphic Local Definition eq {A B} (f g: hom A B) := f == g.
 
@@ -887,7 +885,7 @@ Module Diagrams.
     Defined.
 
     Polymorphic Definition Constant {D} (c: C): (op D:Cat) ~> C.
-    exists (fun _ => c) (fun _ _ _ => id).
+    exists (λ _, c) (λ _ _ _, id).
     all: intros; cbn.
     1: apply compose_id_left.
     all: reflexivity.
@@ -944,7 +942,7 @@ Module Limit.
   (* Just an example *)
   Polymorphic Definition unit := limit _ Diagrams.Empty.
   Polymorphic Definition bang {A} : A ~> unit.
-  exists (fun _ x => match x:False with end).
+  exists (λ _ x, match x:False with end).
   intros.
   cbn.
   unfold NaturalTransformation.eq.
@@ -966,7 +964,7 @@ Module Product.
 
     Polymorphic Local Definition hom' (A B: C * D) := prod (fst A ~> fst B) (snd A ~> snd B).
 
-    Polymorphic Local Definition eq {A B} (f g: hom' A B) := fst f == fst g /\ snd f == snd g.
+    Polymorphic Local Definition eq {A B} (f g: hom' A B) := fst f == fst g ∧ snd f == snd g.
 
     Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
     exists.
@@ -1018,7 +1016,7 @@ Module Product.
   End products.
 
   Polymorphic Definition fst {A B}: product A B ~> A.
-  exists fst (fun _ _ => fst).
+  exists fst (λ _ _, fst).
   - intros.
     destruct f, g.
     reflexivity.
@@ -1029,7 +1027,7 @@ Module Product.
   Defined.
 
   Polymorphic Definition snd {A B}: product A B ~> B.
-  exists snd (fun _ _ => snd).
+  exists snd (λ _ _, snd).
   - intros.
     destruct f, g.
     reflexivity.
@@ -1040,7 +1038,7 @@ Module Product.
   Defined.
 
   Polymorphic Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> product A B.
-  exists (fun x => (f x, g x)) (fun _ _ x => (f ! x, g ! x)).
+  exists (λ x, (f x, g x)) (λ _ _ x, (f ! x, g ! x)).
   all:cbn;intros;unfold Product.eq;cbn;auto.
   - split.
     all: apply map_composes.
@@ -1149,7 +1147,7 @@ Module Coproduct.
   Import Functor.
 
   Polymorphic Definition fanin {A B C: Cat} (f: A ~> C) (g: B ~> C): (coproduct A B:Cat) ~> C.
-  eexists (fun x => match x with | inl x' => f x' | inr x' => g x' end) _.
+  eexists (λ x, match x with | inl x' => f x' | inr x' => g x' end) _.
   Unshelve.
   4: {
     cbn.
@@ -1176,7 +1174,7 @@ Module Coproduct.
   Defined.
 
   Polymorphic Definition inl {A B:Cat}: A ~> coproduct A B.
-  exists inl (fun _ _ x => x).
+  exists inl (λ _ _ x, x).
   - cbn.
     intros.
     reflexivity.
@@ -1187,7 +1185,7 @@ Module Coproduct.
   Defined.
 
   Polymorphic Definition inr {A B:Cat}: B ~> coproduct A B.
-  exists inr (fun _ _ x => x).
+  exists inr (λ _ _ x, x).
   - cbn.
     intros.
     reflexivity.
@@ -1226,7 +1224,7 @@ Module Enriched.
 
   Polymorphic Cumulative Record Category `(Monoidal) := {
     object: Type ;
-    hom: object -> object -> Category.object
+    hom: object → object → Category.object
     where "A ~~> B" := (hom A B) ;
 
     id {A}: I ~> (A ~~> A) ;
@@ -1272,11 +1270,11 @@ Module Presheaf.
     Polymorphic Variable F: Functor (op D) C.
 
     Polymorphic Definition limit' (c: C): Bishop.
-    eapply (Proset.AsASet (forall t, c ~> F t)).
+    eapply (Proset.AsASet (∀ t, c ~> F t)).
     Unshelve.
     3: {
       intros x y.
-      apply (forall t, x t == y t).
+      apply (∀ t, x t == y t).
     }
     all: unfold Reflexive, Transitive; cbn.
     - intros.
@@ -1308,7 +1306,7 @@ Module Presheaf.
     Defined.
 
     Polymorphic Definition limit: presheaf C.
-    set (limit'' := limit' : op C -> Proset).
+    set (limit'' := limit' : op C → Proset).
     exists limit'' @limit_map.
     - intros.
       cbn.
