@@ -21,16 +21,21 @@ Reserved Notation "F ! X" (at level 1).
 Reserved Notation "A ⊗ B" (at level 30).
 Reserved Notation "A ~~> B" (at level 80).
 
+Set Universe Polymorphism.
+Set Program Mode.
+
 (* FIXME get propositional truncation from elsewhere *)
-Polymorphic Variant truncate A: Prop :=
-  | truncate_intro (_: A): truncate A.
+Module Import Utils.
+  Definition ident (A: Type) := A.
 
-Module TruncateNotations.
-  Notation "| A |" := (truncate A).
+  Variant truncate A: Prop :=
+  | truncate_intro (_: ident A): truncate A.
 
-  Polymorphic Definition ident (A: Type) := A.
-  Coercion truncate_id {A}: ident A → |A| := truncate_intro _.
-End TruncateNotations.
+  Module TruncateNotations.
+    Notation "| A |" := (truncate A).
+    Coercion truncate_intro: ident >-> truncate.
+  End TruncateNotations.
+End Utils.
 
 Module Import Bishop.
   (* We need Bishop sets (AKA Setoids) not Coq's Type to make the Yoneda
@@ -38,12 +43,13 @@ Module Import Bishop.
 
      The technical jargon is that a Bishop Set is a 0-trivial groupoid,
      equality is the hom. *)
-  Polymorphic Cumulative Class Bishop := {
+  #[universes(cumulative)]
+  Class Bishop := {
     type: Type ;
     Bishop_Setoid:> Setoid type ;
   }.
 
-  Polymorphic Program Definition fn (A B: Bishop) :=
+  Definition fn (A B: Bishop) :=
     {|
     type := { op: @type A → @type B |
              ∀ A B, A == B → op A == op B
@@ -70,7 +76,7 @@ Module Import Bishop.
     Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
   End BishopNotations.
 
-  Polymorphic Add Parametric Morphism {A B} (f: fn A B) : (proj1_sig f)
+  Add Parametric Morphism {A B} (f: fn A B) : (proj1_sig f)
       with signature equiv ==> equiv as fn_mor.
   Proof.
     intros.
@@ -84,7 +90,8 @@ End Bishop.
 Import BishopNotations.
 
 Module Import Category.
-  Polymorphic Cumulative Class Category := {
+  #[universes(cumulative)]
+  Class Category := {
     object: Type ;
     hom: object → object → Bishop
     where "A ~> B" := (hom A B) ;
@@ -102,7 +109,7 @@ Module Import Category.
       f == f' → g == g' → f ∘ g == f' ∘ g' ;
   }.
 
-  Polymorphic Add Parametric Morphism (K: Category) (A B C: @object K) : (@compose _ A B C)
+  Add Parametric Morphism (K: Category) (A B C: @object K) : (@compose _ A B C)
       with signature equiv ==> equiv ==> equiv as compose_mor.
   Proof.
     intros ? ? p ? ? q.
@@ -123,7 +130,7 @@ End Category.
 Import CategoryNotations.
 
 Module Import Sets.
-  Polymorphic Program Instance Bishop: Category := {
+  Instance Bishop: Category := {
     object := Bishop ;
     hom := fn ;
     id _ x := x ;
@@ -149,9 +156,8 @@ End Sets.
 Import BishopNotations.
 
 Module Bishops.
-  Program Definition True: Bishop := True /~ {| equiv _ _ := True |}.
-
-  Program Definition False: Bishop := False /~ {| equiv A := match A with end |}.
+  Definition True: Bishop := True /~ {| equiv _ _ := True |}.
+  Definition False: Bishop := False /~ {| equiv A := match A with end |}.
 
   Obligation 1 of True.
   Proof.
@@ -170,20 +176,21 @@ End Bishops.
 
 Module Import Isomorphism.
   Section isos.
-    Polymorphic Context `(K:Category).
+    Context `(K:Category).
 
     Section iso.
-      Polymorphic Variable A B: K.
+      Variable A B: K.
 
-      Polymorphic Cumulative Record iso := {
+      #[universes(cumulative)]
+      Record iso := {
         to: K A B ;
         from: K B A ;
         to_from: to ∘ from == id ;
         from_to: from ∘ to == id ;
       }.
 
-      Polymorphic Program Local Definition hom :=
-        iso /~ {| equiv f g := to f == to g ∧ from f == from g |}.
+      #[local]
+      Definition hom := iso /~ {| equiv f g := to f == to g ∧ from f == from g |}.
 
       Obligation 1.
       Proof using Type.
@@ -204,10 +211,9 @@ Module Import Isomorphism.
           + rewrite p2, q2.
             reflexivity.
       Qed.
-
     End iso.
 
-    Polymorphic Program Instance Isomorphism: Category := {
+    Instance Isomorphism: Category := {
       object := object ;
       hom := hom ;
       id _ :=  {| to := id ; from := id |} ;
@@ -281,7 +287,7 @@ Module Import Isomorphism.
     Qed.
   End isos.
 
-  Polymorphic Program Definition transpose {C:Category} {A B: C} (f: Isomorphism _ A B): Isomorphism _ B A :=
+  Definition transpose {C:Category} {A B: C} (f: Isomorphism _ A B): Isomorphism _ B A :=
     {| to := from _ _ _ f ; from := to _ _ _ f |}.
 
   Obligation 1.
@@ -305,7 +311,8 @@ Import IsomorphismNotations.
 Module Import Functor.
   Import TruncateNotations.
 
-  Polymorphic Cumulative Class functor (C D: Category) := {
+  #[universes(cumulative)]
+  Class functor (C D: Category) := {
     fobj: C → D ;
     map {A B}: C A B → D (fobj A) (fobj B) ;
 
@@ -320,7 +327,7 @@ Module Import Functor.
     Notation "F ! X" := (map (functor := F) X).
   End FunctorNotations.
 
-  Polymorphic Add Parametric Morphism (C D: Category) (A B: C) (F: functor C D) : (@map _ _ F A B)
+  Add Parametric Morphism (C D: Category) (A B: C) (F: functor C D) : (@map _ _ F A B)
       with signature equiv ==> equiv as map_mor.
   Proof.
     intros ? ? p.
@@ -328,7 +335,7 @@ Module Import Functor.
     apply p.
   Qed.
 
-  Polymorphic Program Definition Functor (A B: Category): Bishop :=
+  Definition Functor (A B: Category): Bishop :=
     functor A B /~ {| equiv f g := ∀ x, | f x <~> g x | |}.
 
   Obligation 1.
@@ -348,7 +355,8 @@ Module Import Functor.
       apply (@compose (Isomorphism _) _ _ _ q' p').
   Qed.
 
-  Polymorphic Program Local Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B) := {|
+  #[local]
+  Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B) := {|
     fobj x := f x ;
     map _ _ p :=
       {|
@@ -393,7 +401,7 @@ Module Import Functor.
     all:auto.
   Qed.
 
-  Polymorphic Program Instance Cat: Category := {
+  Instance Cat: Category := {
     object := Category ;
     hom := Functor ;
     id _ := {| fobj x := x ; map _ _ f := f |} ;
@@ -455,13 +463,14 @@ End Functor.
 Import FunctorNotations.
 
 Module Import NaturalTransformation.
-  Section functor.
-    Polymorphic Variables K L : Category.
+   Section functor.
+    Variables K L : Category.
 
-    Polymorphic Program Local Definition hom (A B: Functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
+    #[local]
+    Definition hom (A B: Functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
     Obligation 1.
-    Proof using Type.
+    Proof.
     exists.
     all: unfold Reflexive, Symmetric, Transitive, compose, id, hom; cbn.
     - intros.
@@ -474,7 +483,7 @@ Module Import NaturalTransformation.
       reflexivity.
     Qed.
 
-    Polymorphic Program Instance NaturalTransformation: Category := {
+    Instance NaturalTransformation: Category := {
       object := Functor K L ;
       hom := hom ;
       id _ _ := id ;
@@ -504,48 +513,45 @@ Module Import NaturalTransformation.
   End functor.
 End NaturalTransformation.
 
-Module Import Preset.
-  Polymorphic Program Local Definition hom A B
-    := (A → B) /~ {| equiv f g := ∀ x, f x = g x |}.
+Instance Preset: Category := {
+  object := Type ;
+  hom A B := (A → B) /~ {| equiv f g := ∀ x, f x = g x |} ;
+  id _ x := x ;
+  compose _ _ _ f g x := f (g x) ;
+}.
 
-  Obligation 1.
-  Proof.
-    exists.
-    all:unfold Reflexive, Symmetric, Transitive;cbn.
-    all:auto.
-    intros ? ? ? p q ?.
-    rewrite (p _), (q _).
-    reflexivity.
-  Qed.
+Obligation 1.
+Proof.
+  exists.
+  all:unfold Reflexive, Symmetric, Transitive;cbn.
+  all:auto.
+  intros ? ? ? p q ?.
+  rewrite (p _), (q _).
+  reflexivity.
+Qed.
 
-  Polymorphic Program Instance Preset: Category := {
-    object := Type ;
-    hom := hom ;
-    id _ x := x ;
-    compose _ _ _ f g x := f (g x) ;
-  }.
-
-  Obligation 4.
-  Proof.
-    rewrite (H _), (H0 _).
-    reflexivity.
-  Qed.
-End Preset.
+Obligation 5.
+Proof.
+  rewrite (H _), (H0 _).
+  reflexivity.
+Qed.
 
 Module Import Over.
   Section over.
-    Polymorphic Context `(Category).
-    Polymorphic Variable c: object.
+    Context `(Category).
+    Variable c: object.
 
-    Polymorphic Cumulative Record bundle := {
+    #[universes(cumulative)]
+    Record bundle := {
       dom: object ;
       proj: dom ~> c ;
     }.
 
     Section over.
-      Polymorphic Variable A B: bundle.
+      Variable A B: bundle.
 
-      Polymorphic Program Local Definition hom A B :=
+      #[local]
+      Definition hom A B :=
         {f| proj B ∘ f == proj A } /~ {| equiv f g := proj1_sig f == proj1_sig g |}.
 
       Obligation 1.
@@ -563,7 +569,7 @@ Module Import Over.
       Qed.
     End over.
 
-    Polymorphic Program Instance Over: Category := {
+    Instance Over: Category := {
       object := bundle ;
       hom := hom ;
       id _ := id ;
@@ -604,7 +610,7 @@ Module Import Over.
     Qed.
   End over.
 
-  Polymorphic Definition Σ {C:Category} {c} (f: Over C c) (g: Over C (dom _ _ f)): Over C c :=
+  Definition Σ {C:Category} {c} (f: Over C c) (g: Over C (dom _ _ f)): Over C c :=
     {| proj := proj _ _ f ∘ proj _ _ g |}.
 
   Module OverNotations.
@@ -615,7 +621,7 @@ End Over.
 Import OverNotations.
 
 Module Import Empty.
-  Program Instance Empty: Category := {
+  Instance Empty: Category := {
     object := False ;
     hom A := match A with end ;
     id A := match A with end ;
@@ -626,7 +632,7 @@ Module Import Empty.
 End Empty.
 
 Module Import Trivial.
-  Program Instance Trivial: Category := {
+  Instance Trivial: Category := {
     object := True ;
     hom _ _ := Bishops.True ;
     id _ := I ;
@@ -635,29 +641,35 @@ Module Import Trivial.
 End Trivial.
 
 Module Import Props.
-  Polymorphic Definition ProofIrrelevance (S: Bishop) := ∀ x y: S, x == y.
+  Definition ProofIrrelevance (S: Bishop) := ∀ x y: S, x == y.
 
-  Polymorphic Cumulative Class MereProp := {
+  #[universes(cumulative)]
+  Class MereProp := {
     Prop_Bishop: Bishop ;
     Prop_Irrelevant: ProofIrrelevance Prop_Bishop ;
   }.
 End Props.
 
 Module Import Interval.
-  Local Definition hom A B := match (A, B) with
-                        | (true, true) => Bishops.True
-                        | (false, false) => Bishops.True
-                        | (false, true) => Bishops.True
-                        | (_, _) => Bishops.False
-                        end.
+  Unset Program Mode.
 
-  Local Definition id {A}: hom A A.
-    destruct A.
+  #[local]
+  Definition hom (A B:bool) := match (A, B) with
+                         | (true, true) => Bishops.True
+                         | (false, false) => Bishops.True
+                         | (false, true) => Bishops.True
+                         | (_, _) => Bishops.False
+                         end.
+
+  #[local]
+  Definition id {A}: hom A A.
+  destruct A.
     all:cbn.
     all:auto.
   Defined.
 
-  Local Definition compose {A B C}: hom B C → hom A B → hom A C.
+  #[local]
+  Definition compose {A B C}: hom B C → hom A B → hom A C.
     destruct A, B, C.
     all:cbn.
     all:auto.
@@ -690,21 +702,22 @@ End Interval.
 
 Module Arrow.
   Section arrows.
-    Polymorphic Variables K: Category.
+    Variables K: Category.
 
-    Polymorphic Record arrow := {
+    Record arrow := {
       dom: K ;
       cod: K ;
       proj: dom ~> cod ;
     }.
 
-    Polymorphic Record arr (A B: arrow) := {
+    Record arr (A B: arrow) := {
       to: cod A ~> cod B ;
       from: dom A ~> dom B ;
       commutes: to ∘ proj A == proj B ∘ from ;
     }.
 
-    Polymorphic Program Local Definition hom A B := arr A B /~ {| equiv f g := (to _ _ f == to _ _ g) ∧ (from _ _ f == from _ _ g) |}.
+    #[local]
+    Definition hom A B := arr A B /~ {| equiv f g := (to _ _ f == to _ _ g) ∧ (from _ _ f == from _ _ g) |}.
 
     Obligation 1 of hom.
     exists.
@@ -725,7 +738,7 @@ Module Arrow.
       reflexivity.
     Qed.
 
-    Polymorphic Program Instance Arrow: Category := {
+    Instance Arrow: Category := {
       object := arrow ;
       hom := hom ;
       id _ := {| to := id ; from := id |} ;
@@ -782,8 +795,8 @@ End Arrow.
 
 Module Import Finite.
  (* Definie finite totally ordered sets *)
-
-  Local Program Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
+  #[local]
+  Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
 
   Obligation 1.
   exists.
@@ -802,7 +815,8 @@ Module Import Finite.
   reflexivity.
   Defined.
 
-  Program Local Instance le: Category := {
+  #[local]
+  Instance le: Category := {
     object := nat ;
     hom := hom ;
     id := @id ;
@@ -816,29 +830,30 @@ Module Import Finite.
     Notation "[ N ]" := (finite N).
   End FiniteNotations.
 
-  Local Definition any_gt_0 C: 0 ≤ C.
+  #[local]
+  Definition any_gt_0 C: 0 ≤ C.
   Proof.
     induction C.
     - auto.
     - auto.
   Qed.
 
-  Program Definition source C: [C] := {| dom := 0 |}.
-  Program Definition target C: [C] := {| dom := C |}.
+  Definition source C: [C] := {| dom := 0 |}.
+  Definition target C: [C] := {| dom := C |}.
 
   Obligation 1 of source.
   Proof.
     apply any_gt_0.
   Qed.
 
-  Program Definition walk {C}: source C ~> target C := any_gt_0 C.
+  Definition walk {C}: source C ~> target C := any_gt_0 C.
 End Finite.
 
 Module Import Opposite.
   Section opposite.
-    Polymorphic Context `(K:Category).
+    Context `(K:Category).
 
-    Polymorphic Program Instance op: Category := {
+    Instance op: Category := {
       object := @object K ;
       hom A B := hom B A ;
       id _ := id ;
@@ -871,16 +886,16 @@ End Opposite.
 
 Module Diagrams.
   Section diagrams.
-    Polymorphic Context {C:Category}.
+    Context {C:Category}.
 
-    Polymorphic Program Definition Empty: (op Empty:Cat) ~> C := {|
+    Definition Empty: (op Empty:Cat) ~> C := {|
       fobj A := match A with end ;
       map A := match A with end
     |}.
 
     Solve All Obligations with contradiction.
 
-    Polymorphic Program Definition Constant {D} (c: C): (op D:Cat) ~> C := {|
+    Definition Constant {D} (c: C): (op D:Cat) ~> C := {|
       fobj _ := c ;
       map _ _ _ := id ;
     |}.
@@ -892,7 +907,7 @@ Module Diagrams.
 
     Solve Obligations with reflexivity.
 
-    Polymorphic Definition Fn {A B: C} (f: A ~> B): (op Interval:Cat) ~> C.
+    Definition Fn {A B: C} (f: A ~> B): (op Interval:Cat) ~> C.
     eexists.
     Unshelve.
     4: {
@@ -931,18 +946,18 @@ Module Diagrams.
 End Diagrams.
 
 Module Limit.
-  Polymorphic Definition weighted {D:Cat} (F G: (op D:Cat) ~> Bishop):Bishop :=
+  Definition weighted {D:Cat} (F G: (op D:Cat) ~> Bishop):Bishop :=
     NaturalTransformation _ _ F G.
 
-  Polymorphic Definition pt {D:Cat}: (op D:Cat) ~> Bishop := Diagrams.Constant Bishops.True.
+  Definition pt {D:Cat}: (op D:Cat) ~> Bishop := Diagrams.Constant Bishops.True.
 
-  Polymorphic Definition limit (D:Cat) (F: (op D:Cat) ~> Bishop) := weighted pt F.
+  Definition limit (D:Cat) (F: (op D:Cat) ~> Bishop) := weighted pt F.
   (* Not sure if it should be point or empty *)
-  Polymorphic Definition colimit (D:Cat) (F: (op D:Cat) ~> Bishop) := weighted F pt.
+  Definition colimit (D:Cat) (F: (op D:Cat) ~> Bishop) := weighted F pt.
 
   (* Just an example *)
-  Polymorphic Definition unit := limit _ Diagrams.Empty.
-  Polymorphic Program Definition bang {A} : A ~> unit := λ _ x, match x with end.
+  Definition unit := limit _ Diagrams.Empty.
+  Definition bang {A} : A ~> unit := λ _ x, match x with end.
 
   Obligation 1.
   Proof.
@@ -954,9 +969,9 @@ Module Product.
   Close Scope nat.
 
   Section products.
-    Polymorphic Variable C D: Category.
+    Variable C D: Category.
 
-    Polymorphic Program Definition hom (A B: C * D): Bishop :=
+    Definition hom (A B: C * D): Bishop :=
       prod (fst A ~> fst B) (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
 
     Obligation 1.
@@ -977,7 +992,7 @@ Module Product.
         reflexivity.
     Qed.
 
-    Polymorphic Program Instance product: Category := {
+    Instance product: Category := {
       object := C * D ;
       hom := hom ;
       id _ := (id, id) ;
@@ -1011,19 +1026,19 @@ Module Product.
     Qed.
   End products.
 
-  Polymorphic Program Definition fst {A B}: (product A B:Cat) ~> A := {|
+  Definition fst {A B}: (product A B:Cat) ~> A := {|
     fobj := fst ;
     map _ _ := fst
   |}.
 
-  Polymorphic Program Definition snd {A B}: (product A B:Cat) ~> B := {|
+  Definition snd {A B}: (product A B:Cat) ~> B := {|
     fobj := snd ;
     map _ _ := snd
   |}.
 
   Solve All Obligations with reflexivity.
 
-  Polymorphic Program Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (product A B:Cat) := {|
+  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (product A B:Cat) := {|
     fobj x := (f x, g x) ;
     map _ _ x := (f ! x, g ! x)
   |}.
@@ -1052,24 +1067,29 @@ Module Coproduct.
   Close Scope nat.
 
   Section coproducts.
-    Polymorphic Variable C D: Category.
+    Variable C D: Category.
 
-    Polymorphic Local Definition sum := C + D.
-    Polymorphic Local Definition hom' (A B: sum): Type.
+    #[local]
+    Definition sum := C + D.
+
+    #[local]
+    Definition hom' (A B: sum): Type.
     destruct A as [AL|AR], B as [BL|BR].
     1: apply (AL ~> BL).
     3: apply (AR ~> BR).
     all: apply False.
     Defined.
 
-    Polymorphic Local Definition eq {A B} (f g: hom' A B): Prop.
+    #[local]
+    Definition eq {A B} (f g: hom' A B): Prop.
     destruct A as [AL|AR], B as [BL|BR].
     1: apply (f == g).
     3: apply (f == g).
     all: apply False.
     Defined.
 
-    Polymorphic Program Local Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq |}.
+    #[local]
+    Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq |}.
 
     Obligation 1.
     all: destruct A as [AL|AR], B as [BL|BR].
@@ -1089,7 +1109,7 @@ Module Coproduct.
       reflexivity.
     Qed.
 
-    Polymorphic Definition coproduct: Category.
+    Definition coproduct: Category.
     eexists sum hom _ _.
     Unshelve.
     5: {
@@ -1144,7 +1164,7 @@ Module Coproduct.
 
   Import Functor.
 
-  Polymorphic Definition fanin {A B C: Cat} (f: A ~> C) (g: B ~> C): (coproduct A B:Cat) ~> C.
+  Definition fanin {A B C: Cat} (f: A ~> C) (g: B ~> C): (coproduct A B:Cat) ~> C.
   eexists (λ x, match x with | inl x' => f x' | inr x' => g x' end) _.
   Unshelve.
   4: {
@@ -1171,10 +1191,8 @@ Module Coproduct.
     all: apply map_compat.
   Defined.
 
-  Polymorphic Program Definition inl {A B:Cat}: A ~> coproduct A B :=
-    {| fobj := inl ; map _ _ x := x |}.
-  Polymorphic Program Definition inr {A B:Cat}: B ~> coproduct A B :=
-    {| fobj := inr ; map _ _ x := x |}.
+  Definition inl {A B:Cat}: A ~> coproduct A B := {| fobj := inl ; map _ _ x := x |}.
+  Definition inr {A B:Cat}: B ~> coproduct A B := {| fobj := inr ; map _ _ x := x |}.
 
   Solve All Obligations with reflexivity.
 End Coproduct.
@@ -1183,7 +1201,8 @@ Module Monoidal.
   Import Isomorphism.
   Import IsomorphismNotations.
 
-  Polymorphic Cumulative Class Monoidal `(Category) := {
+  #[universes(cumulative)]
+  Class Monoidal `(Category) := {
     I: object ;
     tensor (_ _: object): object
     where "A ⊗ B" := (tensor A B) ;
@@ -1205,7 +1224,8 @@ Module Enriched.
   Import Isomorphism.
   Import IsomorphismNotations.
 
-  Polymorphic Cumulative Record Category `(Monoidal) := {
+  #[universes(cumulative)]
+  Record Category `(Monoidal) := {
     object: Type ;
     hom: object → object → Category.object
     where "A ~~> B" := (hom A B) ;
@@ -1225,7 +1245,7 @@ End Enriched.
 Module Import Simplex.
   Import FiniteNotations.
 
-  Program Local Instance Δ: Category := {
+  Instance Δ: Category := {
     object := nat ;
     hom A B := ([A]: Cat) ~> [B] ;
     id _ := id ;
@@ -1261,18 +1281,17 @@ Module Import Simplex.
   Admitted.
 End Simplex.
 
-Polymorphic Definition presheaf K: Category := NaturalTransformation (op K) Bishop.
+Definition presheaf K: Category := NaturalTransformation (op K) Bishop.
 
 Module Presheaf.
   Import Monoidal.
   Import MonoidalNotations.
 
   Section limits.
-    Polymorphic Context {C D: Category}.
-    Polymorphic Variable F: Functor (op D) C.
+    Context {C D: Category}.
+    Variable F: Functor (op D) C.
 
-    Polymorphic Program Definition limit' (c: C): Bishop
-      := (∀ t, c ~> F t) /~ {| equiv x y := ∀ t, x t == y t |}.
+    Definition limit' (c: C): Bishop := (∀ t, c ~> F t) /~ {| equiv x y := ∀ t, x t == y t |}.
 
     Obligation 1.
     Proof.
@@ -1288,8 +1307,7 @@ Module Presheaf.
         reflexivity.
     Qed.
 
-    Polymorphic Program Definition limit_map {X Y: op C} (f: X ~> Y): limit' X ~> limit' Y :=
-      λ x t, x t ∘ f.
+    Definition limit_map {X Y: op C} (f: X ~> Y): limit' X ~> limit' Y := λ x t, x t ∘ f.
 
     Obligation 1.
     Proof.
@@ -1297,7 +1315,7 @@ Module Presheaf.
       reflexivity.
     Qed.
 
-    Polymorphic Program Definition limit: presheaf C := {| fobj := limit' ; map := @limit_map |}.
+    Definition limit: presheaf C := {| fobj := limit' ; map := @limit_map |}.
 
     Obligation 1.
     Proof.
@@ -1317,9 +1335,9 @@ Module Presheaf.
     Qed.
   End limits.
 
-  Polymorphic Definition unit {C}: presheaf C := limit Diagrams.Empty.
+  Definition unit {C}: presheaf C := limit Diagrams.Empty.
 
-  Polymorphic Definition bang {C} (A: presheaf C): A ~> unit.
+  Definition bang {C} (A: presheaf C): A ~> unit.
   intro t.
   cbn.
   eexists.
@@ -1334,19 +1352,19 @@ Module Presheaf.
   Defined.
 
   Section yoneda.
-    Polymorphic Variables C:Category.
+    Variables C:Category.
 
-    Polymorphic Definition yo (c: C) := limit (Diagrams.Constant c).
+    Definition yo (c: C) := limit (Diagrams.Constant c).
 
-    Polymorphic Program Definition yo_map {A B: C} (f: A ~> B): yo A ~> yo B :=
-      λ X g t, f ∘ g t.
+    Definition yo_map {A B: C} (f: A ~> B): yo A ~> yo B := λ X g t, f ∘ g t.
 
     Obligation 1.
-    rewrite (H t).
-    reflexivity.
+    Proof.
+      rewrite (H t).
+      reflexivity.
     Qed.
 
-    Polymorphic Program Definition Yo: (C: Cat) ~> presheaf C := {| fobj := yo ; map := @yo_map |}.
+    Definition Yo: (C: Cat) ~> presheaf C := {| fobj := yo ; map := @yo_map |}.
 
     Obligation 1.
     Proof.
@@ -1355,22 +1373,23 @@ Module Presheaf.
     Qed.
 
     Obligation 2.
-    apply compose_id_left.
+    Proof.
+      apply compose_id_left.
     Qed.
 
     Obligation 3.
-    rewrite H.
-    reflexivity.
+    Proof.
+      rewrite H.
+      reflexivity.
     Qed.
   End yoneda.
 
   (* FIXME define product on presheafs in terms of categorical/set product *)
-  Polymorphic Instance product_Monoid C: Monoidal (presheaf C).
+  Definition product_Monoid C: Monoidal (presheaf C).
   admit.
   Admitted.
 End Presheaf.
 
-Polymorphic Definition sSet := presheaf Δ.
+Definition sSet := presheaf Δ.
 
-
-Polymorphic Definition InfinityCategory := Enriched.Category sSet (Presheaf.product_Monoid _).
+Definition InfinityCategory := Enriched.Category sSet (Presheaf.product_Monoid _).
