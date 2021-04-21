@@ -50,12 +50,8 @@ Module Import Bishop.
   }.
 
   Definition fn (A B: Bishop) :=
-    {|
-    type := { op: @type A → @type B |
-             ∀ A B, A == B → op A == op B
-            } ;
-    Bishop_Setoid := {| equiv x y := ∀ t, x t == y t |}
-    |}.
+    {| type := { op: @type A → @type B | ∀ x y, x == y → op x == op y } ;
+       Bishop_Setoid := {| equiv x y := ∀ t, x t == y t |} |}.
 
   Obligation 1.
   Proof.
@@ -82,7 +78,6 @@ Module Import Bishop.
     intros.
     destruct f.
     cbn.
-    apply e.
     auto.
   Qed.
 End Bishop.
@@ -150,7 +145,7 @@ Module Import Sets.
     reflexivity.
   Qed.
 
-  Solve All Obligations with cbn; intros; reflexivity.
+  Solve All Obligations with cbn; reflexivity.
 End Sets.
 
 Import BishopNotations.
@@ -193,7 +188,7 @@ Module Import Isomorphism.
       Definition hom := iso /~ {| equiv f g := to f == to g ∧ from f == from g |}.
 
       Obligation 1.
-      Proof using Type.
+      Proof.
         exists.
         - split.
           all: reflexivity.
@@ -620,25 +615,21 @@ End Over.
 
 Import OverNotations.
 
-Module Import Empty.
-  Instance Empty: Category := {
-    object := False ;
-    hom A := match A with end ;
-    id A := match A with end ;
-    compose A := match A with end ;
-  }.
+Instance Empty: Category := {
+  object := False ;
+  hom A := match A with end ;
+  id A := match A with end ;
+  compose A := match A with end ;
+}.
 
-  Solve All Obligations with contradiction.
-End Empty.
+Solve All Obligations with contradiction.
 
-Module Import Trivial.
-  Instance Trivial: Category := {
-    object := True ;
-    hom _ _ := Bishops.True ;
-    id _ := I ;
-    compose _ _ _ _ _ := I ;
-  }.
-End Trivial.
+Instance Trivial: Category := {
+  object := True ;
+  hom _ _ := Bishops.True ;
+  id _ := I ;
+  compose _ _ _ _ _ := I ;
+}.
 
 Module Import Props.
   Definition ProofIrrelevance (S: Bishop) := ∀ x y: S, x == y.
@@ -808,7 +799,8 @@ Module Import Finite.
   auto.
   Defined.
 
-  Local Definition compose {A B C}: hom B C → hom A B → hom A C.
+  #[local]
+  Definition compose {A B C}: hom B C → hom A B → hom A C.
   cbn.
   intros f g.
   rewrite g, f.
