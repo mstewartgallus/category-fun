@@ -93,7 +93,7 @@ Import CategoryNotations.
 Module Import Sets.
   Module Import Fns.
     Polymorphic Class fn (A B: Bishop) := {
-      op: @type A → @type B ;
+      op: A → B ;
       map {A B}: A == B → op A == op B
     }.
   End Fns.
@@ -102,13 +102,16 @@ Module Import Sets.
     Coercion op: fn >-> Funclass.
   End BishopNotations.
 
-  Polymorphic Program Local Definition hom A B := fn A B /~ {|
-                                                       equiv f g := ∀ x, f x == g x
-                                                     |}.
+  Polymorphic Program Instance Bishop: Category := {
+    object := Bishop ;
+    hom A B := fn A B /~ {| equiv f g := ∀ x, f x == g x |} ;
+    id _ :=  {| op x := x |} ;
+    compose _ _ _ f g := {| op x := f (g x) |}
+  }.
 
   Obligation 1.
   exists.
-  all:unfold Reflexive, Symmetric, Transitive;cbn.
+  all: unfold Reflexive, Symmetric, Transitive; cbn.
   - intros.
     reflexivity.
   - intros.
@@ -119,64 +122,44 @@ Module Import Sets.
     reflexivity.
   Qed.
 
-  Polymorphic Program Instance Bishop: Category := {
-    object := Bishop ;
-    hom := hom ;
-    id _ :=  {| op := λ x, x |} ;
-    compose _ _ _ f g := {| op := λ x, f (g x) |}
-  }.
-
-  Obligations.
-
-  Obligation 2.
+  Obligation 3.
   Proof.
     apply map.
     apply map.
     auto.
   Qed.
 
-  Obligation 3.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Obligation 4.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Obligation 5.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Obligation 6.
+  Obligation 7.
   Proof.
     rewrite (H _).
     apply map.
     rewrite (H0 _).
     reflexivity.
   Qed.
+
+  Solve All Obligations with cbn; intros; reflexivity.
 End Sets.
 
 Import BishopNotations.
 
 Module Bishops.
-  Definition True: Bishop.
-    exists True.
-    exists (λ _ _, True).
-    exists.
-    all:auto.
-  Defined.
+  Program Definition True: Bishop := True /~ {| equiv _ _ := True |}.
 
-  Definition False: Bishop.
-    exists False.
-    exists(λ (A:False) _, match A with end).
+  Program Definition False: Bishop := False /~ {| equiv A := match A with end |}.
+
+  Obligation 1 of True.
+  Proof.
+    exists.
+    all:exists.
+  Qed.
+
+  Obligation 1 of False.
+  Proof.
     exists.
     all:unfold Reflexive, Symmetric, Transitive; cbn.
     all:intros.
     all:contradiction.
-  Defined.
+  Qed.
 End Bishops.
 
 Module Import Isomorphism.
@@ -255,9 +238,8 @@ Module Import Isomorphism.
     Obligation 5.
     Proof.
       split.
-      - apply compose_assoc.
-      - symmetry.
-        apply compose_assoc.
+      2: symmetry.
+      all: apply compose_assoc.
     Qed.
 
     Obligation 6.
@@ -339,10 +321,10 @@ Module Import Functor.
   Obligation 1.
   Proof.
     exists.
-    all: unfold Reflexive, Symmetric, Transitive ; cbn.
+    all: unfold Reflexive, Symmetric, Transitive.
     - intros ? f.
       exists.
-      admit.
+      apply (@id (Isomorphism _)).
     - intros ? ? p t.
       destruct (p t) as [p'].
       exists.
@@ -350,50 +332,15 @@ Module Import Functor.
     - intros ? ? ? p q t.
       destruct (p t) as [p'], (q t) as [q'].
       exists.
-      admit.
-      (* apply (q' ∘ p'). *)
-  Admitted.
-
-  Polymorphic Local Program Definition id {A}: Functor A A := {|
-    fobj x := x ;
-    map _ _ f := f ;
-  |}.
-
-  Obligation 1.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Polymorphic Local Program Definition compose {A B C} (F: Functor B C) (G: Functor A B): Functor A C :=
-    {| fobj x := F (G x) ; map _ _ x := F ! (G ! x) |}.
-
-  Obligation 1.
-  Proof.
-    rewrite map_composes, map_composes.
-    reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    rewrite map_id, map_id.
-    reflexivity.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    apply map_compat.
-    + apply map_compat.
-      * auto.
+      apply (@compose (Isomorphism _) _ _ _ q' p').
   Qed.
 
   Polymorphic Program Local Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B) := {|
     fobj x := f x ;
-    map _ _ p := {| to := f ! (@to _ _ _ p) ; from := f ! (@from _ _ _ p) |}
+    map _ _ p :=
+      {|
+        to := f ! (@to _ _ _ p) ;
+        from := f ! (@from _ _ _ p) |}
   |}.
 
   Obligation 1.
@@ -415,7 +362,6 @@ Module Import Functor.
   Obligation 3.
   Proof.
     exists.
-    all: cbn.
     all: rewrite map_composes.
     all: reflexivity.
   Qed.
@@ -434,51 +380,62 @@ Module Import Functor.
     all:auto.
   Qed.
 
-  Polymorphic Local Definition compose_compat {A B C : Category} (f f' : Functor B C) (g g' : Functor A B):
-    f == f' →
-    g == g' →
-    compose f g == compose f' g'.
+  Polymorphic Program Instance Cat: Category := {
+    object := Category ;
+    hom := Functor ;
+    id _ := {| fobj x := x ; map _ _ f := f |} ;
+    compose _ _ _ F G := {| fobj x := F (G x) ; map _ _ x := F ! (G ! x) |} ;
+  }.
+
+  Solve Obligations with try reflexivity.
+
+  Obligation 4.
   Proof.
-    intros p q x.
-    destruct (q x) as [q'].
-    destruct (p (g' x)) as [p'].
+    rewrite map_composes, map_composes.
+    reflexivity.
+  Qed.
+
+  Obligation 5.
+  Proof.
+    rewrite map_id, map_id.
+    reflexivity.
+  Qed.
+
+  Obligation 6.
+  Proof.
+    apply map_compat.
+    + apply map_compat.
+      * auto.
+  Qed.
+
+  Obligation 7.
+  Proof.
+    exists.
+    apply (@id (Isomorphism _)).
+  Qed.
+
+  Obligation 8.
+  Proof.
+    exists.
+    apply (@id (Isomorphism _)).
+  Qed.
+
+  Obligation 9.
+  Proof.
+    exists.
+    apply (@id (Isomorphism _)).
+  Qed.
+
+  Obligation 10.
+  Proof.
+    destruct (H0 x) as [q'].
+    destruct (H (g' x)) as [p'].
     set (f_iso := to_iso f).
-    set (pq := p' ∘ (f_iso ! q') : f (g x) <~> f' (g' x)).
+    set (pq := compose (Category := Isomorphism _) p' (f_iso ! q') : f (g x) <~> f' (g' x)).
     exists.
     exists (@to _ _ _ pq) (@from _ _ _ pq).
     - apply to_from.
     - apply from_to.
-  Qed.
-
-  Polymorphic Program Instance Cat: Category := {
-    object := Category ;
-    hom := Functor ;
-    id := @id ;
-    compose := @compose ;
-  }.
-
-  Obligation 1.
-  Proof.
-    exists.
-    admit.
-  Admitted.
-
-  Obligation 2.
-  Proof.
-    exists.
-    admit.
-  Admitted.
-
-  Obligation 3.
-  Proof.
-    exists.
-    admit.
-  Admitted.
-
-  Obligation 4.
-  Proof.
-    apply @compose_compat.
-    all: auto.
   Qed.
 End Functor.
 
@@ -488,9 +445,7 @@ Module Import NaturalTransformation.
   Section functor.
     Polymorphic Variables K L : Category.
 
-    Polymorphic Local Definition nt (A B: Functor K L) := ∀ x, L (@fobj _ _ A x) (@fobj _ _ B x).
-
-    Polymorphic Program Local Definition hom A B := nt A B /~ {| equiv f g := ∀ x, f x == g x |}.
+    Polymorphic Program Local Definition hom (A B: Functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
     Obligation 1.
     Proof using Type.
@@ -505,14 +460,11 @@ Module Import NaturalTransformation.
       apply (Equivalence_Transitive _ _ _ (p t) (q t)).
     Qed.
 
-    Polymorphic Local Definition id {A}: hom A A := λ _, id.
-    Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := λ _, f _ ∘ g _.
-
     Polymorphic Program Instance NaturalTransformation: Category := {
       object := Functor K L ;
       hom := hom ;
-      id := @id ;
-      compose := @compose ;
+      id _ _ := id ;
+      compose _ _ _ f g _ := f _ ∘ g _ ;
     }.
 
     Obligation 1.
@@ -539,9 +491,8 @@ Module Import NaturalTransformation.
 End NaturalTransformation.
 
 Module Import Preset.
-  Polymorphic Program Local Definition hom A B := (A → B) /~ {|
-                                                            equiv f g := ∀ x, f x = g x
-                                                          |}.
+  Polymorphic Program Local Definition hom A B
+    := (A → B) /~ {| equiv f g := ∀ x, f x = g x |}.
 
   Obligation 1.
   Proof.
@@ -570,7 +521,7 @@ End Preset.
 Module Import Over.
   Section over.
     Polymorphic Context `(Category).
-    Polymorphic Variable c : object.
+    Polymorphic Variable c: object.
 
     Polymorphic Cumulative Record bundle := {
       dom: object ;
@@ -600,46 +551,42 @@ Module Import Over.
         reflexivity.
     Qed.
 
-    Polymorphic Program Local Definition id {A} : hom A A := {| slice := id |}.
+    Polymorphic Program Instance Over: Category := {
+      object := bundle ;
+      hom := hom ;
+      id _ := {| slice := id |} ;
+      compose _ _ _ f g := {| slice := slice _ _ f ∘ slice _ _ g |} ;
+    }.
 
     Obligation 1.
     Proof.
       apply compose_id_right.
     Qed.
 
-    Polymorphic Program Local Definition compose {X Y Z} (f: hom Y Z) (g: hom X Y): hom X Z :=
-      {| slice := slice _ _ f ∘ slice _ _ g |}.
-
-    Obligation 1.
-    rewrite compose_assoc.
-    rewrite (commutes _ _ f).
-    apply (commutes _ _ g).
-    Qed.
-
-    Polymorphic Program Instance Over: Category := {
-      object := bundle ;
-      hom := hom ;
-      id := @id ;
-      compose := @compose ;
-    }.
-
-    Obligation 1.
-    Proof using Type.
-      apply compose_assoc.
-    Qed.
-
     Obligation 2.
-    Proof using Type.
-      apply compose_id_left.
+    Proof.
+      rewrite compose_assoc.
+      rewrite (commutes _ _ f).
+      apply (commutes _ _ g).
     Qed.
 
     Obligation 3.
-    Proof using Type.
-      apply compose_id_right.
+    Proof.
+      apply compose_assoc.
     Qed.
 
     Obligation 4.
-    Proof using Type.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 6.
+    Proof.
       rewrite H0, H1.
       reflexivity.
     Qed.
@@ -663,33 +610,10 @@ Module Import Empty.
     compose A := match A with end ;
   }.
 
-  Obligation 1.
-  Proof.
-    contradiction.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    contradiction.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    contradiction.
-  Qed.
-
-  Obligation 4.
-  Proof.
-    contradiction.
-  Qed.
+  Solve All Obligations with contradiction.
 End Empty.
 
 Module Import Trivial.
-  Local Definition hom (A B:True) := Bishops.True.
-
-  Local Definition id {A}: hom A A := I.
-  Local Definition compose {A B C} (_: hom B C) (_: hom A B): hom A C := I.
-
   Program Instance Trivial: Category := {
     object := True ;
     hom _ _ := Bishops.True ;
@@ -728,6 +652,7 @@ Module Import Interval.
   Defined.
 
   Definition Interval: Category.
+  Proof.
     exists bool hom @id @compose.
     - intros A B C D.
       destruct A, B, C, D.
@@ -767,13 +692,13 @@ Module Arrow.
       commutes: to ∘ proj A == proj B ∘ from ;
     }.
 
-    Polymorphic Local Definition eq {A B} (f g: arr A B) :=
-      (to _ _ f == to _ _ g) ∧ (from _ _ f == from _ _ g).
-    Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
+    Polymorphic Program Local Definition hom A B := arr A B /~ {| equiv f g := (to _ _ f == to _ _ g) ∧ (from _ _ f == from _ _ g) |}.
+
+    Obligation 1 of hom.
     exists.
-    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
+    all:unfold Reflexive, Symmetric, Transitive; cbn.
     all:split.
-    all: try reflexivity.
+    all:try reflexivity.
     - destruct H.
       symmetry.
       auto.
@@ -788,67 +713,70 @@ Module Arrow.
       reflexivity.
     Qed.
 
-    Polymorphic Local Definition hom A B := arr A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
+    Polymorphic Program Instance Arrow: Category := {
+      object := arrow ;
+      hom := hom ;
+      id _ := {| to := id ; from := id |} ;
+      compose _ _ _ f g := {| to := to _ _ f ∘ to _ _ g ; from := from _ _ f ∘ from _ _ g |} ;
+    }.
 
-    Polymorphic Local Definition id {A}: hom A A.
-    exists id id.
-    rewrite compose_id_left.
-    rewrite compose_id_right.
-    reflexivity.
-    Defined.
+    Obligation 1.
+    Proof.
+      rewrite compose_id_left.
+      rewrite compose_id_right.
+      reflexivity.
+    Qed.
 
-    Polymorphic Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C.
-    exists (to _ _ f ∘ to _ _ g) (from _ _ f ∘ from _ _ g).
-    rewrite <- compose_assoc.
-    rewrite (commutes _ _ g).
-    rewrite compose_assoc.
-    rewrite compose_assoc.
-    rewrite (commutes _ _ f).
-    reflexivity.
-    Defined.
+    Obligation 2.
+    Proof.
+      rewrite <- compose_assoc.
+      rewrite (commutes _ _ g).
+      rewrite compose_assoc.
+      rewrite compose_assoc.
+      rewrite (commutes _ _ f).
+      reflexivity.
+    Qed.
 
-    Polymorphic Definition Arrow: Category.
-    exists arrow hom @id @compose.
-    all: cbn; unfold id, compose, eq; cbn.
-    - split.
+    Obligation 3.
+    Proof.
+      split.
       all: rewrite compose_assoc.
       all: reflexivity.
-    - split.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      split.
       all:rewrite compose_id_left.
       all:reflexivity.
-    - split.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      split.
       all:rewrite compose_id_right.
       all:reflexivity.
-    - intros ? ? ? ? ? ? ? p q.
-      destruct p, q.
+    Qed.
+
+    Obligation 6.
+    Proof.
       split.
-      1: rewrite H, H1.
-      2: rewrite H0, H2.
+      1: rewrite H, H0.
+      2: rewrite H1, H2.
       all:reflexivity.
-    Defined.
+    Qed.
   End arrows.
 End Arrow.
 
 Module Import Finite.
  (* Definie finite totally ordered sets *)
-  Local Instance le_Reflexive: Reflexive le.
-  auto.
-  Qed.
 
-  Local Instance le_Transitive: Transitive le.
-  intros ? ? ? f g.
-  induction g.
-  - apply f.
-  - auto.
-  Qed.
+  Local Program Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
 
-  Local Definition eq {A B} (_ _:A ≤ B) := True.
-  Local Instance eq_Equivalence A B: Equivalence (@eq A B).
+  Obligation 1.
   exists.
-  all:exists.
+  all: auto.
   Qed.
-
-  Local Definition hom (A B: nat) := (A ≤ B) /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _  |}.
 
   Local Definition id {A}: hom A A.
   cbn.
@@ -862,10 +790,12 @@ Module Import Finite.
   reflexivity.
   Defined.
 
-  Local Definition le: Category.
-  exists nat hom @id @compose.
-  all:exists.
-  Defined.
+  Program Local Instance le: Category := {
+    object := nat ;
+    hom := hom ;
+    id := @id ;
+    compose := @compose ;
+  }.
 
   Definition finite (N:nat) := le/N.
 
@@ -881,57 +811,49 @@ Module Import Finite.
     - auto.
   Qed.
 
-  Definition source C: [C].
-    exists 0.
+  Program Definition source C: [C] := {| dom := 0 |}.
+  Program Definition target C: [C] := {| dom := C |}.
+
+  Obligation 1 of source.
+  Proof.
     apply any_gt_0.
-  Defined.
+  Qed.
 
-  Definition target C: [C].
-    exists C.
-    cbn.
-    auto.
-  Defined.
-
-  Definition walk {C}: source C ~> target C.
-    exists (any_gt_0 C).
-    cbn.
-    exists.
-  Defined.
+  Program Definition walk {C}: source C ~> target C := {| slice := any_gt_0 C |}.
 End Finite.
 
 Module Import Opposite.
   Section opposite.
     Polymorphic Context `(K:Category).
 
-    Polymorphic Local Definition hom (A B: K) := hom B A.
+    Polymorphic Program Instance op: Category := {
+      object := @object K ;
+      hom A B := hom B A ;
+      id _ := id ;
+      compose _ _ _ f g := g ∘ f ;
+    }.
 
-    Polymorphic Local Definition id {A} : hom A A := id.
-    Polymorphic Local Definition compose {A B C} : hom B C → hom A B → hom A C := λ f g, g ∘ f.
-
-    Polymorphic Local Definition eq {A B} (f g: hom A B) := f == g.
-
-    Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom, eq ; intros; cbn.
-    - reflexivity.
-    - rewrite H.
-      reflexivity.
-    - rewrite H, H0.
-      reflexivity.
+    Obligation 1.
+    Proof.
+      symmetry.
+      apply compose_assoc.
     Qed.
 
-    Polymorphic Definition op: Category.
-    exists object hom @id @compose.
-    all: unfold hom, eq, compose, id; intros; cbn.
-    - rewrite compose_assoc.
+    Obligation 2.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      rewrite H, H0.
       reflexivity.
-    - rewrite compose_id_right.
-      reflexivity.
-    - rewrite compose_id_left.
-      reflexivity.
-    - rewrite H, H0.
-      reflexivity.
-    Defined.
+    Qed.
   End opposite.
 End Opposite.
 
@@ -939,18 +861,24 @@ Module Diagrams.
   Section diagrams.
     Polymorphic Context {C:Category}.
 
-    Polymorphic Definition Empty: (op Empty:Cat) ~> C.
-    eexists _ _.
-    Unshelve.
-    all: intro A; destruct A.
-    Defined.
+    Polymorphic Program Definition Empty: (op Empty:Cat) ~> C := {|
+      fobj A := match A with end ;
+      map A := match A with end
+    |}.
 
-    Polymorphic Definition Constant {D} (c: C): (op D:Cat) ~> C.
-    exists (λ _, c) (λ _ _ _, id).
-    all: intros; cbn.
-    1: apply compose_id_left.
-    all: reflexivity.
-    Defined.
+    Solve All Obligations with contradiction.
+
+    Polymorphic Program Definition Constant {D} (c: C): (op D:Cat) ~> C := {|
+      fobj _ := c ;
+      map _ _ _ := id ;
+    |}.
+
+    Obligation 1.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Solve Obligations with reflexivity.
 
     Polymorphic Definition Fn {A B: C} (f: A ~> B): (op Interval:Cat) ~> C.
     eexists.
@@ -1002,16 +930,12 @@ Module Limit.
 
   (* Just an example *)
   Polymorphic Definition unit := limit _ Diagrams.Empty.
-  Polymorphic Definition bang {A} : A ~> unit.
-  exists (λ _ x, match x:False with end).
-  intros.
-  cbn.
-  intros.
-  cbn.
-  cbn.
-  cbn.
-  destruct x.
-  Defined.
+  Polymorphic Program Definition bang {A} : A ~> unit := {| Fns.op _ x := match x with end |}.
+
+  Obligation 1.
+  Proof.
+    contradiction.
+  Qed.
 End Limit.
 
 Module Product.
@@ -1020,13 +944,12 @@ Module Product.
   Section products.
     Polymorphic Variable C D: Category.
 
-    Polymorphic Local Definition hom' (A B: C * D) := prod (fst A ~> fst B) (snd A ~> snd B).
+    Polymorphic Program Definition hom (A B: C * D): Bishop :=
+      prod (fst A ~> fst B) (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
 
-    Polymorphic Local Definition eq {A B} (f g: hom' A B) := fst f == fst g ∧ snd f == snd g.
-
-    Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
+    Obligation 1.
     exists.
-    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
     all: intros; auto.
     - split.
       all: reflexivity.
@@ -1042,70 +965,75 @@ Module Product.
         reflexivity.
     Qed.
 
-    Polymorphic Definition hom (A B: C * D): Bishop := hom' A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
+    Polymorphic Program Instance product: Category := {
+      object := C * D ;
+      hom := hom ;
+      id _ := (id, id) ;
+      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
+    }.
 
-    Polymorphic Definition id {A}: hom A A := (id, id).
-    Polymorphic Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
-      (fst f ∘ fst g, snd f ∘ snd g).
-
-    Polymorphic Definition product: Cat.
-    exists (C * D) hom @id @compose.
-    all:cbn.
-    all:unfold eq;cbn;intros;auto.
-    - destruct f, g, h.
+    Obligation 1.
+    Proof.
       split.
       all: apply compose_assoc.
-    - destruct f.
+    Qed.
+
+    Obligation 2.
+    Proof.
       split.
       all: apply compose_id_left.
-    - destruct f.
+    Qed.
+
+    Obligation 3.
+    Proof.
       split.
       all: apply compose_id_right.
-    - destruct f, f', g, g'.
-      cbn in H, H0.
-      destruct H, H0.
-      cbn.
-      split.
-      + rewrite H, H0.
-        reflexivity.
-      + rewrite H1, H2.
-        reflexivity.
-    Defined.
+    Qed.
+
+    Obligation 4.
+    split.
+    + rewrite H, H0.
+      reflexivity.
+    + rewrite H1, H2.
+      reflexivity.
+    Qed.
   End products.
 
-  Polymorphic Definition fst {A B}: product A B ~> A.
-  exists fst (λ _ _, fst).
-  - intros.
-    destruct f, g.
-    reflexivity.
-  - intros.
-    reflexivity.
-  - intros ? ? ? ? p.
-    apply p.
-  Defined.
+  Polymorphic Program Definition fst {A B}: (product A B:Cat) ~> A := {|
+    fobj := fst ;
+    map _ _ := fst
+  |}.
 
-  Polymorphic Definition snd {A B}: product A B ~> B.
-  exists snd (λ _ _, snd).
-  - intros.
-    destruct f, g.
-    reflexivity.
-  - intros.
-    reflexivity.
-  - intros ? ? ? ? p.
-    apply p.
-  Defined.
+  Polymorphic Program Definition snd {A B}: (product A B:Cat) ~> B := {|
+    fobj := snd ;
+    map _ _ := snd
+  |}.
 
-  Polymorphic Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> product A B.
-  exists (λ x, (f x, g x)) (λ _ _ x, (f ! x, g ! x)).
-  all:cbn;intros;unfold Product.eq;cbn;auto.
-  - split.
+  Solve All Obligations with reflexivity.
+
+  Polymorphic Program Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (product A B:Cat) := {|
+    fobj x := (f x, g x) ;
+    map _ _ x := (f ! x, g ! x)
+  |}.
+
+  Obligation 1.
+  Proof.
+    split.
     all: apply map_composes.
-  - split.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    split.
     all: apply map_id.
-  - split.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    split.
     all: rewrite H.
     all: reflexivity.
-  Defined.
+  Qed.
 End Product.
 
 Module Coproduct.
@@ -1129,7 +1057,9 @@ Module Coproduct.
     all: apply False.
     Defined.
 
-    Polymorphic Local Instance eq_Equivalence A B: Equivalence (@eq A B).
+    Polymorphic Program Local Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq |}.
+
+    Obligation 1.
     all: destruct A as [AL|AR], B as [BL|BR].
     all: unfold eq.
     all: exists.
@@ -1146,8 +1076,6 @@ Module Coproduct.
     - rewrite H, H0.
       reflexivity.
     Qed.
-
-    Polymorphic Local Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq ; setoid_equiv := eq_Equivalence _ _ |}.
 
     Polymorphic Definition coproduct: Category.
     eexists sum hom _ _.
@@ -1231,27 +1159,12 @@ Module Coproduct.
     all: apply map_compat.
   Defined.
 
-  Polymorphic Definition inl {A B:Cat}: A ~> coproduct A B.
-  exists inl (λ _ _ x, x).
-  - cbn.
-    intros.
-    reflexivity.
-  - intros.
-    reflexivity.
-  - intros.
-    apply H.
-  Defined.
+  Polymorphic Program Definition inl {A B:Cat}: A ~> coproduct A B :=
+    {| fobj := inl ; map _ _ x := x |}.
+  Polymorphic Program Definition inr {A B:Cat}: B ~> coproduct A B :=
+    {| fobj := inr ; map _ _ x := x |}.
 
-  Polymorphic Definition inr {A B:Cat}: B ~> coproduct A B.
-  exists inr (λ _ _ x, x).
-  - cbn.
-    intros.
-    reflexivity.
-  - intros.
-    reflexivity.
-  - intros.
-    apply H.
-  Defined.
+  Solve All Obligations with reflexivity.
 End Coproduct.
 
 Module Monoidal.
@@ -1300,21 +1213,38 @@ End Enriched.
 Module Import Simplex.
   Import FiniteNotations.
 
-  Local Definition hom (A B: nat): Bishop := ([A]: Cat) ~> [B].
+  Program Local Instance Δ: Category := {
+    object := nat ;
+    hom A B := ([A]: Cat) ~> [B] ;
+    id _ := id ;
+    compose _ _ _ f g := f ∘ g ;
+  }.
 
-  Local Definition id {A}: hom A A := id.
-  Local Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
+  Obligation 1.
+  Proof.
+    exists.
+    apply (id (Category := Isomorphism _)).
+  Qed.
 
-  Local Definition Δ: Category.
-    exists nat hom @id @compose.
-    all: unfold hom, compose, id; intros.
-    - rewrite compose_assoc.
-      reflexivity.
-    - apply compose_id_left.
-    - apply compose_id_right.
-    - rewrite H, H0.
-      reflexivity.
-  Defined.
+  Obligation 2.
+  Proof.
+    exists.
+    apply (id (Category := Isomorphism _)).
+  Qed.
+
+  Obligation 3.
+  Proof.
+    exists.
+    apply (id (Category := Isomorphism _)).
+  Qed.
+
+  Obligation 4.
+  Proof.
+    destruct (H0 x) as [p].
+    destruct (H (g x)) as [q].
+    exists.
+    admit.
+  Admitted.
 End Simplex.
 
 Polymorphic Definition presheaf K: Category := NaturalTransformation (op K) Bishop.
