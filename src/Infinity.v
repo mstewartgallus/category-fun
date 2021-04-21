@@ -92,21 +92,27 @@ Import CategoryNotations.
 
 Module Import Sets.
   Module Import Fns.
-    Polymorphic Class fn (A B: Bishop) := {
-      op: A → B ;
-      map {A B}: A == B → op A == op B
+    Polymorphic Definition fn (A B: Bishop) := {
+      op: A → B |
+      forall A B, A == B → op A == op B
     }.
-  End Fns.
 
-  Module Import BishopNotations.
-    Coercion op: fn >-> Funclass.
-  End BishopNotations.
+    Polymorphic Definition op {A B} (f: fn A B): A -> B :=
+      match f with
+        | exist _ f' _ => f'
+      end.
+    Polymorphic Definition map {A B} (f: fn A B) {x y}: x == y -> op f x == op f y.
+    destruct f.
+    cbn.
+    auto.
+    Qed.
+  End Fns.
 
   Polymorphic Program Instance Bishop: Category := {
     object := Bishop ;
     hom A B := fn A B /~ {| equiv f g := ∀ x, f x == g x |} ;
-    id _ :=  {| op x := x |} ;
-    compose _ _ _ f g := {| op x := f (g x) |}
+    id _ x := x ;
+    compose _ _ _ f g x := f (g x) ;
   }.
 
   Obligation 1.
@@ -930,7 +936,7 @@ Module Limit.
 
   (* Just an example *)
   Polymorphic Definition unit := limit _ Diagrams.Empty.
-  Polymorphic Program Definition bang {A} : A ~> unit := {| Fns.op _ x := match x with end |}.
+  Polymorphic Program Definition bang {A} : A ~> unit := λ _ x, match x with end.
 
   Obligation 1.
   Proof.
