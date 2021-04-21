@@ -43,10 +43,42 @@ Module Import Bishop.
     Bishop_Setoid:> Setoid type ;
   }.
 
+  Polymorphic Program Definition fn (A B: Bishop) :=
+    {|
+    type := { op: @type A → @type B |
+             ∀ A B, A == B → op A == op B
+            } ;
+    Bishop_Setoid := {| equiv x y := ∀ t, x t == y t |}
+    |}.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive.
+    - intros.
+      reflexivity.
+    - intros.
+      symmetry.
+      auto.
+    - intros ? ? ? p q t.
+      rewrite (p t), (q t).
+      reflexivity.
+  Qed.
+
   Module Import BishopNotations.
     Coercion type: Bishop >-> Sortclass.
     Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
   End BishopNotations.
+
+  Polymorphic Add Parametric Morphism {A B} (f: fn A B) : (proj1_sig f)
+      with signature equiv ==> equiv as fn_mor.
+  Proof.
+    intros.
+    destruct f.
+    cbn.
+    apply e.
+    auto.
+  Qed.
 End Bishop.
 
 Import BishopNotations.
@@ -58,7 +90,7 @@ Module Import Category.
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
-    compose {A B C}: hom B C → hom A B → hom A C
+    compose {A B C}: hom B C -> hom A B -> hom A C
     where "f ∘ g" := (compose f g) ;
 
     compose_assoc {A B C D} (f: hom C D) (g: hom B C) (h: hom A B):
@@ -84,61 +116,29 @@ Module Import Category.
     Coercion hom: Category >-> Funclass.
 
     Notation "f ∘ g" := (compose f g).
-    Notation "A ~> B" := (Category.hom A B).
+    Notation "A ~> B" := (hom A B).
   End CategoryNotations.
 End Category.
 
 Import CategoryNotations.
 
 Module Import Sets.
-  Module Import Fns.
-    Polymorphic Definition fn (A B: Bishop) := {
-      op: A → B |
-      forall A B, A == B → op A == op B
-    }.
-
-    Polymorphic Definition op {A B} (f: fn A B): A -> B :=
-      match f with
-        | exist _ f' _ => f'
-      end.
-    Polymorphic Definition map {A B} (f: fn A B) {x y}: x == y -> op f x == op f y.
-    destruct f.
-    cbn.
-    auto.
-    Qed.
-  End Fns.
-
   Polymorphic Program Instance Bishop: Category := {
     object := Bishop ;
-    hom A B := fn A B /~ {| equiv f g := ∀ x, f x == g x |} ;
+    hom := fn ;
     id _ x := x ;
     compose _ _ _ f g x := f (g x) ;
   }.
 
-  Obligation 1.
-  exists.
-  all: unfold Reflexive, Symmetric, Transitive; cbn.
-  - intros.
-    reflexivity.
-  - intros.
-    symmetry.
-    auto.
-  - intros ? ? ? p q ?.
-    rewrite (p _), (q _).
-    reflexivity.
-  Qed.
-
   Obligation 3.
   Proof.
-    apply map.
-    apply map.
-    auto.
+    reflexivity.
   Qed.
 
-  Obligation 7.
+  Obligation 6.
   Proof.
     rewrite (H _).
-    apply map.
+    apply (H3 _).
     rewrite (H0 _).
     reflexivity.
   Qed.
@@ -169,36 +169,43 @@ Module Bishops.
 End Bishops.
 
 Module Import Isomorphism.
-  Section iso.
+  Section isos.
     Polymorphic Context `(K:Category).
 
-    Polymorphic Cumulative Record iso (A B: K) := {
-      to: K A B ;
-      from: K B A ;
-      to_from: to ∘ from == id ;
-      from_to: from ∘ to == id ;
-    }.
+    Section iso.
+      Polymorphic Variable A B: K.
 
-    Polymorphic Program Local Definition hom A B :=
-      iso A B /~ {| equiv f g := @to _ _ f == @to _ _ g ∧ @from _ _ f == @from _ _ g |}.
+      Polymorphic Cumulative Record iso := {
+        to: K A B ;
+        from: K B A ;
+        to_from: to ∘ from == id ;
+        from_to: from ∘ to == id ;
+      }.
 
-    Obligation 1.
-    Proof using Type.
-      exists.
-      - split.
-        all: reflexivity.
-      - intros ? ? p.
-        destruct p.
-        split.
-        all: symmetry.
-        all: auto.
-      - intros ? ? ? p q.
-        destruct p as [p1 p2].
-        destruct q as [q1 q2].
-        split.
-        + apply (Equivalence_Transitive _ _ _ p1 q1).
-        + apply (Equivalence_Transitive _ _ _ p2 q2).
-    Qed.
+      Polymorphic Program Local Definition hom :=
+        iso /~ {| equiv f g := to f == to g ∧ from f == from g |}.
+
+      Obligation 1.
+      Proof using Type.
+        exists.
+        - split.
+          all: reflexivity.
+        - intros ? ? p.
+          destruct p.
+          split.
+          all: symmetry.
+          all: auto.
+        - intros ? ? ? p q.
+          destruct p as [p1 p2].
+          destruct q as [q1 q2].
+          split.
+          + rewrite p1, q1.
+            reflexivity.
+          + rewrite p2, q2.
+            reflexivity.
+      Qed.
+
+    End iso.
 
     Polymorphic Program Instance Isomorphism: Category := {
       object := object ;
@@ -206,8 +213,8 @@ Module Import Isomorphism.
       id _ :=  {| to := id ; from := id |} ;
       compose _ _ _ f g :=
         {|
-          to := @to _ _ f ∘ @to _ _ g ;
-          from := @from _ _ g ∘ @from _ _ f
+          to := to _ _ f ∘ to _ _ g ;
+          from := from _ _ g ∘ from _ _ f
         |} ;
     }.
 
@@ -224,7 +231,7 @@ Module Import Isomorphism.
     Obligation 3.
     Proof.
       rewrite <- compose_assoc.
-      rewrite -> (compose_assoc (@to _ _ g)).
+      rewrite -> (compose_assoc (to _ _ g)).
       rewrite to_from.
       rewrite compose_id_left.
       rewrite to_from.
@@ -234,7 +241,7 @@ Module Import Isomorphism.
     Obligation 4.
     Proof.
       rewrite <- compose_assoc.
-      rewrite -> (compose_assoc (@from _ _ f)).
+      rewrite -> (compose_assoc (from _ _ f)).
       rewrite from_to.
       rewrite compose_id_left.
       rewrite from_to.
@@ -272,10 +279,10 @@ Module Import Isomorphism.
         * apply H1.
         * apply H2.
     Qed.
-  End iso.
+  End isos.
 
   Polymorphic Program Definition transpose {C:Category} {A B: C} (f: Isomorphism _ A B): Isomorphism _ B A :=
-    {| to := @from _ _ _ f ; from := @to _ _ _ f |}.
+    {| to := from _ _ _ f ; from := to _ _ _ f |}.
 
   Obligation 1.
   Proof.
@@ -463,7 +470,8 @@ Module Import NaturalTransformation.
       symmetry.
       apply (p t).
     - intros ? ? ? p q t.
-      apply (Equivalence_Transitive _ _ _ (p t) (q t)).
+      rewrite (p t), (q t).
+      reflexivity.
     Qed.
 
     Polymorphic Program Instance NaturalTransformation: Category := {
@@ -534,34 +542,32 @@ Module Import Over.
       proj: dom ~> c ;
     }.
 
-    (* I really could just use an ordinary sigma type but it makes the
-    types messier down the line *)
-    Polymorphic Cumulative Record over A B := {
-      slice: dom A ~> dom B;
-      commutes: proj B ∘ slice == proj A
-    }.
+    Section over.
+      Polymorphic Variable A B: bundle.
 
-    Polymorphic Program Local Definition hom A B := over A B /~ {| equiv f g := slice _ _ f == slice _ _ g |}.
+      Polymorphic Program Local Definition hom A B :=
+        {f| proj B ∘ f == proj A } /~ {| equiv f g := proj1_sig f == proj1_sig g |}.
 
-    Obligation 1.
-    Proof using Type.
-      exists.
-      all: unfold Reflexive, Symmetric, Transitive.
-      - intro.
-        reflexivity.
-      - intros ? ? p.
-        symmetry.
-        apply p.
-      - intros ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-    Qed.
+      Obligation 1.
+      Proof using Type.
+        exists.
+        all: unfold Reflexive, Symmetric, Transitive.
+        - intro.
+          reflexivity.
+        - intros ? ? p.
+          symmetry.
+          apply p.
+        - intros ? ? ? p q.
+          rewrite p, q.
+          reflexivity.
+      Qed.
+    End over.
 
     Polymorphic Program Instance Over: Category := {
       object := bundle ;
       hom := hom ;
-      id _ := {| slice := id |} ;
-      compose _ _ _ f g := {| slice := slice _ _ f ∘ slice _ _ g |} ;
+      id _ := id ;
+      compose _ _ _ f g := f ∘ g ;
     }.
 
     Obligation 1.
@@ -572,8 +578,8 @@ Module Import Over.
     Obligation 2.
     Proof.
       rewrite compose_assoc.
-      rewrite (commutes _ _ f).
-      apply (commutes _ _ g).
+      rewrite H1, H0.
+      reflexivity.
     Qed.
 
     Obligation 3.
@@ -825,7 +831,7 @@ Module Import Finite.
     apply any_gt_0.
   Qed.
 
-  Program Definition walk {C}: source C ~> target C := {| slice := any_gt_0 C |}.
+  Program Definition walk {C}: source C ~> target C := any_gt_0 C.
 End Finite.
 
 Module Import Opposite.
@@ -1249,6 +1255,8 @@ Module Import Simplex.
     destruct (H0 x) as [p].
     destruct (H (g x)) as [q].
     exists.
+    eapply (compose (Category := Isomorphism _) _ q).
+    Unshelve.
     admit.
   Admitted.
 End Simplex.
@@ -1263,72 +1271,50 @@ Module Presheaf.
     Polymorphic Context {C D: Category}.
     Polymorphic Variable F: Functor (op D) C.
 
-    Polymorphic Definition limit' (c: C): Bishop.
-    eapply (Proset.AsASet (∀ t, c ~> F t)).
-    Unshelve.
-    3: {
-      intros x y.
-      apply (∀ t, x t == y t).
-    }
-    all: unfold Reflexive, Transitive; cbn.
-    - intros.
-      reflexivity.
-    - intros.
-      rewrite (H _), (H0 _).
-      reflexivity.
-    Defined.
+    Polymorphic Program Definition limit' (c: C): Bishop
+      := (∀ t, c ~> F t) /~ {| equiv x y := ∀ t, x t == y t |}.
 
-    Polymorphic Definition limit_map {X Y: op C} (f: X ~> Y): limit' X ~> limit' Y.
-    cbn in f, X, Y.
-    unfold Opposite.hom in f.
-    eexists _ _.
-    Unshelve.
-    4: {
-      intros x t.
-      apply (x t ∘ f).
-    }
-    4: {
-      intros ? ? p t.
-      unfold limit' in A, B, p.
-      cbn in A, B, p.
-      rewrite (p t).
-      reflexivity.
-    }
-    all: cbn.
-    all: intros.
-    all: auto.
-    Defined.
+    Obligation 1.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive; cbn.
+      - intros.
+        reflexivity.
+      - intros.
+        symmetry.
+        auto.
+      - intros.
+        rewrite (H _), (H0 _).
+        reflexivity.
+    Qed.
 
-    Polymorphic Definition limit: presheaf C.
-    set (limit'' := limit' : op C → Proset).
-    exists limit'' @limit_map.
-    - intros.
-      cbn.
-      unfold Opposite.compose.
-      exists.
-      eexists.
-      Unshelve.
-      all: cbn; unfold hom', eq; cbn; intros.
-      all: auto.
-      all: rewrite compose_assoc.
-      all: reflexivity.
-    - intros.
-      exists.
-      eexists.
-      Unshelve.
-      all: cbn; unfold hom', eq; cbn; intros.
-      all: auto.
-      all: rewrite compose_id_right.
-      all: reflexivity.
-    - intros.
-      exists.
-      eexists.
-      Unshelve.
-      all: cbn; unfold hom', eq; cbn; intros.
-      all: auto.
-      all: rewrite H.
-      all: reflexivity.
-    Defined.
+    Polymorphic Program Definition limit_map {X Y: op C} (f: X ~> Y): limit' X ~> limit' Y :=
+      λ x t, x t ∘ f.
+
+    Obligation 1.
+    Proof.
+      rewrite (H _).
+      reflexivity.
+    Qed.
+
+    Polymorphic Program Definition limit: presheaf C := {| fobj := limit' ; map := @limit_map |}.
+
+    Obligation 1.
+    Proof.
+      symmetry.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      rewrite H.
+      reflexivity.
+    Qed.
   End limits.
 
   Polymorphic Definition unit {C}: presheaf C := limit Diagrams.Empty.
@@ -1338,67 +1324,44 @@ Module Presheaf.
   cbn.
   eexists.
   Unshelve.
-  all: cbn.
-  all: auto.
-  - intros ? x.
-    destruct x.
-  - intros ? ? ? x.
-    destruct x.
+  2: {
+    intros.
+    contradiction.
+  }
+  cbn.
+  intros.
+  contradiction.
   Defined.
-
-  Polymorphic Definition unit {C}: presheaf C := limit Diagrams.Empty.
 
   Section yoneda.
     Polymorphic Variables C:Category.
 
     Polymorphic Definition yo (c: C) := limit (Diagrams.Constant c).
 
-    Polymorphic Definition yo_map {A B: C} (f: A ~> B): yo A ~> yo B.
-    intros X.
-    eexists.
-    Unshelve.
-    all: cbn.
-    all: auto.
-    - intros g ?.
-      apply (f ∘ g t).
-    - cbn.
-      intros ? ? p ?.
-      rewrite (p _).
-      reflexivity.
-    Defined.
+    Polymorphic Program Definition yo_map {A B: C} (f: A ~> B): yo A ~> yo B :=
+      λ X g t, f ∘ g t.
 
-    Polymorphic Definition Yo: (C: cat) ~> presheaf C.
-    exists yo @yo_map.
-    - intros ? ? ? f g ?.
-      exists.
-      eexists.
-      Unshelve.
-      all:cbn.
-      all:unfold eq, hom';cbn.
-      all:intros.
-      all:auto.
-      all: rewrite compose_assoc.
-      all: reflexivity.
-    - cbn.
-      exists.
-      eexists.
-      Unshelve.
-      all:cbn; unfold eq, hom'; cbn.
-      all:intros.
-      all:auto.
-      all: rewrite compose_id_left.
-      all: reflexivity.
-    - intros ? ? ? ? p ?.
-      cbn.
-      exists.
-      eexists.
-      Unshelve.
-      all: cbn; unfold eq, hom'; cbn.
-      all: auto.
-      all: intros.
-      all: rewrite p.
-      all: reflexivity.
-    Defined.
+    Obligation 1.
+    rewrite (H t).
+    reflexivity.
+    Qed.
+
+    Polymorphic Program Definition Yo: (C: Cat) ~> presheaf C := {| fobj := yo ; map := @yo_map |}.
+
+    Obligation 1.
+    Proof.
+      rewrite compose_assoc.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    rewrite H.
+    reflexivity.
+    Qed.
   End yoneda.
 
   (* FIXME define product on presheafs in terms of categorical/set product *)
