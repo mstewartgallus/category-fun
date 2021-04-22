@@ -49,9 +49,13 @@ Module Import Bishop.
     Bishop_Setoid:> Setoid type ;
   }.
 
+  Module Import BishopNotations.
+    Coercion type: Bishop >-> Sortclass.
+    Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
+  End BishopNotations.
+
   Definition fn (A B: Bishop) :=
-    {| type := { op: @type A → @type B | ∀ x y, x == y → op x == op y } ;
-       Bishop_Setoid := {| equiv x y := ∀ t, x t == y t |} |}.
+    { op: @type A → @type B | ∀ x y, x == y → op x == op y } /~ {| equiv x y := ∀ t, x t == y t |}.
 
   Obligation 1.
   Proof.
@@ -67,11 +71,6 @@ Module Import Bishop.
       reflexivity.
   Qed.
 
-  Module Import BishopNotations.
-    Coercion type: Bishop >-> Sortclass.
-    Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
-  End BishopNotations.
-
   Add Parametric Morphism {A B} (f: fn A B) : (proj1_sig f)
       with signature equiv ==> equiv as fn_mor.
   Proof.
@@ -79,6 +78,29 @@ Module Import Bishop.
     destruct f.
     cbn.
     auto.
+  Qed.
+
+  (* FIXME use for stuff *)
+  Local Definition prod (A B: Bishop) := (A * B) /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
+
+  Obligation 1.
+  exists.
+  all:unfold Reflexive, Symmetric, Transitive;cbn.
+  all:intros; split.
+  all:try reflexivity.
+  - symmetry.
+    destruct H.
+    auto.
+  - symmetry.
+    destruct H.
+    auto.
+  - symmetry.
+    destruct H, H0.
+    rewrite H, H0.
+    reflexivity.
+  - destruct H, H0.
+    rewrite H1, H2.
+    reflexivity.
   Qed.
 End Bishop.
 
@@ -123,6 +145,10 @@ Module Import Category.
 End Category.
 
 Import CategoryNotations.
+
+Create HintDb category discriminated.
+(* Hint Rewrite compose_id_left: category. *)
+(* Hint Rewrite compose_id_right: category. *)
 
 Module Import Sets.
   Instance Bishop: Category := {
@@ -274,11 +300,9 @@ Module Import Isomorphism.
     Proof.
       split.
       + apply compose_compat.
-        * apply H.
-        * apply H0.
+        all:assumption.
       + apply compose_compat.
-        * apply H1.
-        * apply H2.
+        all:assumption.
     Qed.
   End isos.
 
@@ -325,9 +349,9 @@ Module Import Functor.
   Add Parametric Morphism (C D: Category) (A B: C) (F: functor C D) : (@map _ _ F A B)
       with signature equiv ==> equiv as map_mor.
   Proof.
-    intros ? ? p.
+    intros ? ? ?.
     apply map_compat.
-    apply p.
+    assumption.
   Qed.
 
   Definition Functor (A B: Category): Bishop :=
@@ -337,7 +361,7 @@ Module Import Functor.
   Proof.
     exists.
     all: unfold Reflexive, Symmetric, Transitive.
-    - intros ? f.
+    - intros.
       exists.
       apply (@id (Isomorphism _)).
     - intros ? ? p t.
@@ -354,9 +378,8 @@ Module Import Functor.
   Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B) := {|
     fobj x := f x ;
     map _ _ p :=
-      {|
-        to := f ! (@to _ _ _ p) ;
-        from := f ! (@from _ _ _ p) |}
+      {| to := f ! (to _ _ _ p) ;
+         from := f ! (from _ _ _ p) |}
   |}.
 
   Obligation 1.
@@ -393,7 +416,7 @@ Module Import Functor.
   Proof.
     split.
     all:apply map_compat.
-    all:auto.
+    all:assumption.
   Qed.
 
   Instance Cat: Category := {
@@ -421,7 +444,7 @@ Module Import Functor.
   Proof.
     apply map_compat.
     + apply map_compat.
-      * auto.
+      * assumption.
   Qed.
 
   Obligation 7.
@@ -449,7 +472,7 @@ Module Import Functor.
     set (f_iso := to_iso f).
     set (pq := compose (Category := Isomorphism _) p' (f_iso ! q') : f (g x) <~> f' (g' x)).
     exists.
-    exists (@to _ _ _ pq) (@from _ _ _ pq).
+    exists (to _ _ _ pq) (from _ _ _ pq).
     - apply to_from.
     - apply from_to.
   Qed.
@@ -553,11 +576,9 @@ Module Import Over.
       Proof using Type.
         exists.
         all: unfold Reflexive, Symmetric, Transitive.
-        - intro.
-          reflexivity.
-        - intros ? ? p.
-          symmetry.
-          apply p.
+        - reflexivity.
+        - symmetry.
+          assumption.
         - intros ? ? ? p q.
           rewrite p, q.
           reflexivity.
@@ -656,39 +677,51 @@ Module Import Interval.
   Definition id {A}: hom A A.
   destruct A.
     all:cbn.
-    all:auto.
+    all:exists.
   Defined.
 
   #[local]
   Definition compose {A B C}: hom B C → hom A B → hom A C.
     destruct A, B, C.
     all:cbn.
-    all:auto.
+    all:try contradiction.
+    all:exists.
   Defined.
 
-  Definition Interval: Category.
+  Program Instance Interval: Category := {
+    object := bool ;
+    hom := hom ;
+    id := @id ;
+    compose := @compose ;
+  }.
+
+  Obligation 1.
   Proof.
-    exists bool hom @id @compose.
-    - intros A B C D.
-      destruct A, B, C, D.
-      all:cbn.
-      all:auto.
-      all:contradiction.
-    - intros A B.
-      destruct A, B.
-      all:cbn.
-      all:auto.
-      all:contradiction.
-    - intros A B.
-      destruct A, B.
-      all:cbn.
-      all:auto.
-      all:contradiction.
-    - intros A B C.
-      destruct A, B, C.
-      all:cbn.
-      all:auto.
-  Defined.
+    destruct A, B, C, D.
+    all:try contradiction.
+    all:exists.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    destruct A, B.
+    all:try contradiction.
+    all:exists.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    destruct A, B.
+    all:try contradiction.
+    all:exists.
+  Qed.
+
+  Obligation 4.
+  Proof.
+    destruct A, B, C.
+    all:try contradiction.
+    all:exists.
+  Qed.
 End Interval.
 
 Module Arrow.
@@ -713,20 +746,18 @@ Module Arrow.
     Obligation 1 of hom.
     exists.
     all:unfold Reflexive, Symmetric, Transitive; cbn.
-    all:split.
-    all:try reflexivity.
-    - destruct H.
-      symmetry.
-      auto.
-    - destruct H.
-      symmetry.
-      auto.
-    - destruct H, H0.
-      rewrite H, H0.
-      reflexivity.
-    - destruct H, H0.
-      rewrite H1, H2.
-      reflexivity.
+    - split.
+      all:reflexivity.
+    - split.
+      all: destruct H.
+      all: symmetry.
+      all: assumption.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      split.
+      1: rewrite p, q.
+      2: rewrite p', q'.
+      all: reflexivity.
     Qed.
 
     Instance Arrow: Category := {
@@ -791,7 +822,7 @@ Module Import Finite.
 
   Obligation 1.
   exists.
-  all: auto.
+  all: exists.
   Qed.
 
   Local Definition id {A}: hom A A.
