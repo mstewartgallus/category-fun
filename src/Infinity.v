@@ -106,6 +106,96 @@ End Bishop.
 
 Import BishopNotations.
 
+(*
+Single sorted definition of a Category.
+
+I just used the word Path because using the word category twice is confusing.
+*)
+Module Path.
+  #[universes(cumulative)]
+  Class Path := {
+    path: Type ;
+
+    s: path -> path ;
+    t: path -> path ;
+
+    glue f g: s f = t g -> path ;
+
+    s_s x: s (s x) = s x ;
+    t_s x: t (s x) = s x ;
+    s_t x: s (t x) = t x ;
+    t_t x: t (t x) = t x ;
+
+    s_glue x y p: s (glue x y p) = s y ;
+    t_glue x y p: t (glue x y p) = t x ;
+
+    glue_s x p: glue x (s x) p = x;
+    glue_t x p: glue (t x) x p = x;
+
+    glue_assoc f g h q p r s:
+      glue f (glue g h q) p = glue (glue f g r) h s ;
+  }.
+
+  Module Import PathNotations.
+    Coercion path: Path >-> Sortclass.
+
+    Notation "f ∘ g" := (glue f g _).
+  End PathNotations.
+End Path.
+
+Module Deloop.
+  Import Path.
+  Import PathNotations.
+
+  Section deloop.
+    Context `{Path}.
+
+    Definition object := {x | s x = x }.
+    Definition hom (x y: object) := {f | s f = x /\ t f = y}.
+
+    Definition id {A}: hom A A := A.
+
+    Obligation 1.
+    Proof.
+      destruct A.
+      cbn.
+      split.
+      auto.
+      rewrite <- e.
+      rewrite t_s.
+      auto.
+    Qed.
+
+    Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
+
+    Obligation 1.
+    Proof.
+      destruct A, B, C.
+      destruct f, g.
+      cbn in *.
+      destruct a, a0.
+      rewrite H3.
+      rewrite H0.
+      auto.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      rewrite s_glue.
+      rewrite t_glue.
+      split.
+      - destruct g.
+        cbn.
+        destruct a.
+        auto.
+      - destruct f.
+        cbn.
+        destruct a.
+        auto.
+    Qed.
+  End deloop.
+End Deloop.
+
 Module Import Category.
   #[universes(cumulative)]
   Class Category := {
