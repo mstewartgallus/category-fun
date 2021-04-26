@@ -1147,24 +1147,40 @@ Module Suspension.
     Variable K: Category.
 
     #[local]
-    Definition hom (A B:Cylinder K) :=
-      match (A, B) with
-      | ((x, false), (y, true)) => x ~> y
-      | ((x, s), (y, t)) => (s = t /\ x = y) /~ {| equiv _ _ := True |}
+    Definition hom (A B: Cylinder K) :=
+      match (snd A, snd B) with
+      | (false, true) => fst A ~> fst B
+      | (true, true) => (fst A = fst B) /~ {| equiv _ _ := True |}
+      | (false, false) => (fst A = fst B) /~ {| equiv _ _ := True |}
+      | _ => Bishops.False
       end.
 
     Obligation 1.
-    exists.
-    all:exists.
+    Proof.
+      exists.
+      all:exists.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      exists.
+      all:exists.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      destruct b, b0, H, H0.
+      all: repeat split.
+      all: intro.
+      all: discriminate.
     Qed.
 
     #[local]
-    Definition id {A}: hom A A.
+    Definition id {A: Cylinder K}: hom A A.
     Proof.
       destruct A as [A I], I.
       all:cbn.
-      all:split.
-      all:exists.
+      all:reflexivity.
     Defined.
 
     #[local]
@@ -1173,22 +1189,14 @@ Module Suspension.
       intros f g.
       destruct A as [A AI], B as [B BI], C as [C CI].
       destruct AI, BI, CI.
-      all:cbn in *.
-      all:intros.
-      all:try destruct f.
-      all:try destruct g.
-      all:try split.
-      all:auto.
-      all: try rewrite H2, H0.
-      all: try reflexivity.
-      all: try discriminate.
-      - rewrite H0 in g.
-        apply g.
-      - rewrite <- H0 in f.
-        apply f.
-     Defined.
+      all: cbn in *.
+      all: try contradiction.
+      all: try destruct f.
+      all: try destruct g.
+      all: auto.
+    Defined.
 
-     Instance Suspension: Category := {
+    Instance Suspension: Category := {
       object := Cylinder K ;
       hom := hom ;
       id := @id ;
@@ -1197,41 +1205,44 @@ Module Suspension.
 
     Obligation 1.
     Proof.
-      destruct b, b2, b1, b0.
+      destruct b, b0, b1, b2.
+      all: cbn in *.
+      all: try apply I.
+      all: try contradiction.
       all: try destruct f.
       all: try destruct g.
       all: try destruct h.
-      all: cbn in *.
-      all: auto.
-      all: try discriminate.
-      all: unfold eq_rect, eq_rect_r, eq_ind_r, eq_sym, eq_ind_r,eq_ind;cbn.
-      all:destruct e.
-      all:destruct e0.
-      all:destruct e2.
-      - reflexivity.
-      - reflexivity.
-      - reflexivity.
+      all: reflexivity.
     Qed.
 
     Obligation 2.
     Proof.
-      destruct b0, b.
-      all:cbn in *.
-      all:try reflexivity.
-      all:exists.
+      destruct b, b0.
+      all: cbn in *.
+      all: try contradiction.
+      all: try apply I.
+      all: reflexivity.
     Qed.
 
     Obligation 3.
     Proof.
-      destruct b0, b.
+      destruct b, b0.
       all:cbn in *.
-      all:try reflexivity.
-      all:exists.
+      all: try reflexivity.
+      contradiction.
     Qed.
 
     Obligation 4.
     Proof.
-      admit.
+      destruct b, b0, b1.
+      all: cbn in *.
+      all: try apply I.
+      all: try contradiction.
+      - destruct f'.
+        rewrite <- H0.
+        admit.
+      - destruct g'.
+        admit.
     Admitted.
   End suspension.
 End Suspension.
