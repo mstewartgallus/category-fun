@@ -948,6 +948,7 @@ Module Coproduct.
   Solve All Obligations with reflexivity.
 End Coproduct.
 Module Product.
+  #[local]
   Close Scope nat.
 
   Section products.
@@ -1045,9 +1046,95 @@ Module Product.
   Qed.
 End Product.
 
-Definition Cylinder K := Product.product K Interval.
+Module Import Cylinder.
+  #[local]
+  Close Scope nat.
 
- Module Arrow.
+  Section cylinder.
+    Variable K: Category.
+
+    #[local]
+    Definition hom (A B: K * bool) :=
+      match (snd A, snd B) with
+      | (false, true) => fst A ~> fst B
+      | (true, true) => fst A ~> fst B
+      | (false, false) => fst A ~> fst B
+      | _ => Bishops.False
+      end.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - discriminate.
+      - split.
+        all: discriminate.
+    Qed.
+
+    #[local]
+    Definition id {A}: hom A A.
+    Proof.
+      destruct A as [A I], I.
+      all: cbn.
+      all: apply id.
+    Defined.
+
+    #[local]
+    Definition compose {A B C}: hom B C -> hom A B -> hom A C.
+    Proof.
+      intros f g.
+      destruct A as [A AI], B as [B BI], C as [C CI].
+      destruct AI, BI, CI.
+      all: cbn in *.
+      all: try contradiction.
+      all: try destruct f.
+      all: try destruct g.
+      all: apply (f ∘ g).
+    Defined.
+
+    (* Basically the cograph of the hom functor *)
+    Instance Cylinder: Category := {
+      object := K * bool ;
+      hom := hom ;
+      id := @id ;
+      compose := @compose ;
+    }.
+
+    Obligation 1.
+    Proof.
+      destruct b, b0, b1, b2.
+      all: cbn in *.
+      all: try contradiction.
+      all: apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      destruct b, b0.
+      all: cbn in *.
+      all: try contradiction.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      destruct b, b0.
+      all: cbn in *.
+      all: try contradiction.
+      all: apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      destruct b, b0, b1.
+      all: cbn in *.
+      all: try contradiction.
+      all: apply compose_compat.
+      all: auto.
+    Qed.
+  End cylinder.
+End Cylinder.
+
+Module Arrow.
   Section arrows.
     Variables K: Category.
 
@@ -1140,47 +1227,37 @@ Definition Cylinder K := Product.product K Interval.
 End Arrow.
 
 Module Suspension.
+  #[local]
   Close Scope nat.
-  Import Product.
 
   Section suspension.
     Variable K: Category.
 
     #[local]
-    Definition hom (A B: Cylinder K) :=
+     Definition hom (A B: Cylinder K) :=
       match (snd A, snd B) with
       | (false, true) => fst A ~> fst B
-      | (true, true) => (fst A = fst B) /~ {| equiv _ _ := True |}
-      | (false, false) => (fst A = fst B) /~ {| equiv _ _ := True |}
+
+      | (true, true) => fst A <~> fst B
+      | (false, false) => fst A <~> fst B
+
       | _ => Bishops.False
       end.
 
     Obligation 1.
     Proof.
       exists.
-      all:exists.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      exists.
-      all:exists.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      destruct b, b0, H, H0.
-      all: repeat split.
-      all: intro.
-      all: discriminate.
+      all:try split.
+      all:intro.
+      all:discriminate.
     Qed.
 
     #[local]
     Definition id {A: Cylinder K}: hom A A.
     Proof.
       destruct A as [A I], I.
-      all:cbn.
-      all:reflexivity.
+      all: cbn.
+      all: exists id id; apply compose_id_right.
     Defined.
 
     #[local]
@@ -1191,9 +1268,10 @@ Module Suspension.
       destruct AI, BI, CI.
       all: cbn in *.
       all: try contradiction.
-      all: try destruct f.
-      all: try destruct g.
-      all: auto.
+      - apply (compose (Category := Isomorphism _) f g).
+      - apply (to _ _ _ f ∘ g).
+      - apply (f ∘ to _ _ _ g).
+      - apply (compose (Category := Isomorphism _) f g).
     Defined.
 
     Instance Suspension: Category := {
@@ -1207,11 +1285,13 @@ Module Suspension.
     Proof.
       destruct b, b0, b1, b2.
       all: cbn in *.
-      all: try apply I.
+      all: try split.
       all: try contradiction.
       all: try destruct f.
       all: try destruct g.
       all: try destruct h.
+      all: cbn in *.
+      all: rewrite compose_assoc.
       all: reflexivity.
     Qed.
 
@@ -1219,35 +1299,40 @@ Module Suspension.
     Proof.
       destruct b, b0.
       all: cbn in *.
+      all: try split.
       all: try contradiction.
-      all: try apply I.
+      all: try rewrite compose_id_right.
+      all: try rewrite compose_id_left.
       all: reflexivity.
     Qed.
 
     Obligation 3.
     Proof.
       destruct b, b0.
-      all:cbn in *.
-      all: try reflexivity.
-      contradiction.
+      all: cbn in *.
+      all: try split.
+      all: try contradiction.
+      all: try rewrite compose_id_right.
+      all: try rewrite compose_id_left.
+      all: reflexivity.
     Qed.
 
     Obligation 4.
     Proof.
       destruct b, b0, b1.
       all: cbn in *.
-      all: try apply I.
+      all: try destruct H.
+      all: try destruct H0.
+      all: try split.
       all: try contradiction.
-      - destruct f'.
-        rewrite <- H0.
-        admit.
-      - destruct g'.
-        admit.
-    Admitted.
+      all: apply compose_compat.
+      all: auto.
+    Qed.
   End suspension.
 End Suspension.
 
 Module Loop.
+  #[local]
   Close Scope nat.
   Import Arrow.
 
@@ -1476,7 +1561,6 @@ Module Limit.
     contradiction.
   Qed.
 End Limit.
-
 
 Module Monoidal.
   Import Isomorphism.
