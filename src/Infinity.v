@@ -1389,6 +1389,154 @@ Module Loop.
   End loop.
 End Loop.
 
+Module Import Opposite.
+  Section opposite.
+    Context `(K:Category).
+
+    Instance op: Category := {
+      object := @object K ;
+      hom A B := hom B A ;
+      id _ := id ;
+      compose _ _ _ f g := g ∘ f ;
+    }.
+
+    Obligation 1.
+    Proof.
+      symmetry.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End opposite.
+End Opposite.
+
+Module Import Profunctor.
+  #[local]
+   Close Scope nat.
+
+  Import TruncateNotations.
+
+  #[local]
+  Definition bifunctor (C D: Category) := Functor (Product.product C D) Bishop.
+  #[local]
+  Definition profunctor (C D: Category) := bifunctor (op C) D.
+
+  Section compose.
+    Context {A B C: Category}.
+    Variable f: profunctor B C.
+    Variable g: profunctor A B.
+
+    Record procompose (s: A) (t: C) := {
+      mid: B ;
+      pre: g (s, mid) ;
+      post: f (mid, t)
+    }.
+
+    (* FIXME *)
+    #[local]
+    Definition eq {s t} (f g: procompose s t) := f = g.
+      (* | mid _ _ f <~> mid _ _ g | /\ pre _ _ f == pre _ _ g /\ post _ _ f == post _ _ g. *)
+
+    #[local]
+     Definition compose: profunctor A C := {|
+      fobj x := procompose (fst x) (snd x) /~ {| equiv := eq |} ;
+      map X Y m x :=
+        let g' := g ! ((fst m, id): Product.product (op _) _ (fst _, mid _ _ x) (fst _, mid _ _ x)) in
+        let f' := f ! ((id, snd m): Product.product (op _) C (mid _ _ x, snd X) (mid _ _ x, snd Y)) in
+        {| mid := mid _ _ x ;
+           post := f' (post _ _ x) ;
+           pre := g' (pre _ _ x) ;
+        |}
+    |}.
+
+    Obligation 1.
+    Proof.
+      rewrite H.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    admit.
+    Admitted.
+
+    Obligation 3.
+    admit.
+    Admitted.
+
+    Obligation 4.
+    admit.
+    Admitted.
+  End compose.
+
+  Instance Profunctor: Category := {
+    object := Category ;
+    hom := profunctor ;
+
+    id A := {|
+        fobj x := A (fst x) (snd x) ;
+        map _ _ f x := fst f ∘ x ∘ snd f
+     |} ;
+    compose := @compose
+  }.
+
+  Obligation 1.
+  Proof.
+    cbn in *.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    cbn in *.
+    repeat rewrite compose_assoc.
+    reflexivity.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    rewrite compose_id_left, compose_id_right.
+    reflexivity.
+  Qed.
+
+  Obligation 4.
+  Proof.
+    cbn in *.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+
+  Obligation 5.
+  admit.
+  Admitted.
+
+  Obligation 6.
+  admit.
+  Admitted.
+
+  Obligation 7.
+  admit.
+  Admitted.
+
+  Obligation 8.
+  admit.
+  Admitted.
+End Profunctor.
+
 Module Import Finite.
  (* Definie finite totally ordered sets *)
   #[local]
@@ -1446,40 +1594,6 @@ Module Import Finite.
   Definition walk {C}: source C ~> target C := any_gt_0 C.
 End Finite.
 
-Module Import Opposite.
-  Section opposite.
-    Context `(K:Category).
-
-    Instance op: Category := {
-      object := @object K ;
-      hom A B := hom B A ;
-      id _ := id ;
-      compose _ _ _ f g := g ∘ f ;
-    }.
-
-    Obligation 1.
-    Proof.
-      symmetry.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-  End opposite.
-End Opposite.
 
 Module Diagrams.
   Section diagrams.
