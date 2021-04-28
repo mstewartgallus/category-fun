@@ -752,6 +752,95 @@ Module Import Props.
   }.
 End Props.
 
+Module Import Cograph.
+  #[local]
+  Close Scope nat.
+
+  Section cograph.
+    Context {K L: Category}.
+    Variable F: Functor K L.
+
+    #[local]
+    Definition hom (A B: K + L) :=
+      match (A, B) with
+      | (inl A0, inl B0) => A0 ~> B0
+      | (inr A1, inr B1) => A1 ~> B1
+      | (inl A0, inr B1) => F A0 ~> B1
+      | _ => Bishops.False
+      end.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - discriminate.
+      - split.
+        all: discriminate.
+    Qed.
+
+    #[local]
+     Definition id {A}: hom A A := match A with
+                                   | inl _ => id
+                                   | inr _ => id
+                                   end.
+
+    #[local]
+    Definition compose {X Y Z} (f: hom Y Z) (g: hom X Y): hom X Z.
+    Proof.
+      destruct X as [X|X], Y as [Y|Y], Z as [Z|Z].
+      all: try contradiction.
+      - apply (f ∘ g).
+      - apply (f ∘ map g).
+      - apply (f ∘ g).
+      - apply (f ∘ g).
+    Defined.
+
+    Instance Cograph: Category := {
+      object := K + L ;
+      hom := hom ;
+      id := @id ;
+      compose := @compose ;
+    }.
+
+    Obligation 1.
+    Proof.
+      destruct A, B, C, D.
+      all: try contradiction.
+      all: try apply compose_assoc.
+      cbn.
+      rewrite <- compose_assoc.
+      rewrite <- map_composes.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      destruct A, B.
+      all: try contradiction.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      destruct A, B.
+      all: try contradiction.
+      all: try apply compose_id_right.
+      cbn in *.
+      rewrite map_id.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      destruct A, B, C.
+      all: try contradiction.
+      all: apply compose_compat.
+      all: auto.
+      rewrite H0.
+      reflexivity.
+    Qed.
+  End cograph.
+End Cograph.
+
 Module Import Interval.
   Unset Program Mode.
 
