@@ -1319,90 +1319,59 @@ Module Suspension.
   #[local]
   Close Scope nat.
 
+  Class Suspender (K:Category) := {
+    Suspender_Category :> Category ;
+    cyl: Functor (Cylinder K) Suspender_Category ;
+    shrink {A B}: cyl (A, true) <~> cyl (B, true) ;
+  }.
+
   Section suspension.
     Variable K: Category.
 
     #[local]
-     Definition hom (A B: Cylinder K) := Cylinder K A B /~ {| equiv x y := (snd A = snd B) ∨ x == y|}.
+     Definition hom (A B: Cylinder K): Bishop :=
+      (∀ (S: Suspender K), Suspender_Category (cyl A) (cyl B)) /~
+    {| equiv x y := ∀ s, x s == y s |}.
 
     Obligation 1.
     Proof.
       exists.
-      all: destruct b, b0.
-      all:auto.
-      all:right.
-      all:try reflexivity.
-      all:destruct H.
-      all:try discriminate.
+      all:intro;intros.
+      - reflexivity.
       - symmetry.
         auto.
-      - symmetry.
-        auto.
-      - destruct H0.
-        all: try discriminate.
-        rewrite H, H0.
-        reflexivity.
-      - destruct H0.
-        all: try discriminate.
-        rewrite H, H0.
+      - rewrite (H s), (H0 s).
         reflexivity.
     Qed.
-
-    #[local]
-     Definition id {A: Cylinder K}: hom A A := id.
-
-    #[local]
-    Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
 
     Instance Suspension: Category := {
       object := Cylinder K ;
       hom := hom ;
-      id := @id ;
-      compose := @compose ;
+
+      id _ _ := id ;
+      compose _ _ _ f g _ := f _ ∘ g _;
     }.
 
     Obligation 1.
     Proof.
-      destruct b, b0, b1, b2.
-      all: cbn in *.
-      all: try contradiction.
-      all: auto.
-      all: right.
-      all: apply compose_assoc.
+      apply compose_assoc.
     Qed.
 
     Obligation 2.
     Proof.
-      destruct b, b0.
-      all: cbn in *.
-      all: try contradiction.
-      all: auto.
-      right.
       apply compose_id_left.
     Qed.
 
     Obligation 3.
     Proof.
-      destruct b, b0.
-      all: cbn in *.
-      all: auto.
-      all: try contradiction.
-      right.
       apply compose_id_right.
-      all: reflexivity.
     Qed.
 
     Obligation 4.
     Proof.
-      destruct b, b0, b1.
-      all: cbn in *.
-      all: auto.
-      all: try contradiction.
-      all: right.
-      all: destruct H, H0.
-      all: try discriminate.
-      admit.
-    Admitted.
+      rewrite (H s), (H0 s).
+      reflexivity.
+    Qed.
   End suspension.
 End Suspension.
 
