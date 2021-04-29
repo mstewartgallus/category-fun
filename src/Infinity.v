@@ -1319,21 +1319,14 @@ Module Suspension.
   #[local]
   Close Scope nat.
 
-  Class Suspender (K:Category) (S: Category) := {
-    cyl: Functor (Cylinder K) S ;
-    shrink {A B X}: cyl (A, X) <~> cyl (B, X) ;
-  }.
-
   Section suspension.
     Variable K: Category.
 
     #[local]
-     Definition object := ∀ S (H: Suspender K S), S.
-
-    #[local]
-     Definition hom (A B: object): Bishop :=
-      (∀ S (H: Suspender K S), S (A S H) (B S H)) /~
-    {| equiv x y := ∀ s H, x s H == y s H |}.
+     Definition hom (A B: Cylinder K): Bishop :=
+      (∀ S (cyl: Functor (Cylinder K) S) (shrink: ∀ A B X, cyl (A, X) <~> cyl (B, X)),
+          S (cyl A) (cyl B)) /~
+    {| equiv x y := ∀ s cyl shrink, x s cyl shrink == y s cyl shrink |}.
 
     Obligation 1.
     Proof.
@@ -1347,11 +1340,11 @@ Module Suspension.
     Qed.
 
     Instance Suspension: Category := {
-      object := object ;
+      object := Cylinder K ;
       hom := hom ;
 
-      id _ _ _ := id ;
-      compose _ _ _ f g _ _ := f _ _ ∘ g _ _;
+      id _ _ _ _ := id ;
+      compose _ _ _ f g s cyl shrink := f s cyl shrink ∘ g s cyl shrink;
     }.
 
     Obligation 1.
@@ -1376,11 +1369,10 @@ Module Suspension.
     Qed.
   End suspension.
 
-  #[local]
-   Definition cyl' {K}: Functor (Cylinder K) (Suspension K) := {|
-    fobj x _ _ := cyl x ;
-    map _ _ f _ _ := map f ;
-   |}.
+  Definition cyl {K:Category}: Functor (Cylinder K) (Suspension K) := {|
+    fobj x := x ;
+    map _ _ f _ _ _ := map f ;
+  |}.
 
   Obligation 1.
   Proof.
@@ -1400,11 +1392,10 @@ Module Suspension.
     reflexivity.
   Qed.
 
-  #[local]
-   Definition shrink' {K:Category} {A B: K} {X}: Isomorphism (Suspension K) (cyl' (A, X)) (cyl' (B, X)) := {|
-    to _ _ := to _ _ _ shrink ;
-    from _ _ := from _ _ _ shrink ;
-|}.
+  Definition shrink {K:Category} {A B: K} {X}: Isomorphism (Suspension K) (A, X) (B, X) := {|
+    to s cyl shrink := to _ _ _ (shrink A B X) ;
+    from s cyl shrink := from _ _ _ (shrink A B X) ;
+   |}.
 
   Obligation 1.
   Proof.
@@ -1416,12 +1407,8 @@ Module Suspension.
     apply from_to.
   Qed.
 
-  Instance Suspension_Suspender K: Suspender K (Suspension K) := {
-    cyl := @cyl' _ ;
-    shrink := @shrink' _ ;
-  }.
-
 End Suspension.
+
 
 Module Loop.
   #[local]
