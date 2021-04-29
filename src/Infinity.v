@@ -1315,6 +1315,43 @@ Module Arrow.
   End arrows.
 End Arrow.
 
+(* Squash a category to a point kind of? This feels evil as a definition *)
+Module Import Squash.
+  #[local]
+  Close Scope nat.
+
+  Section squash.
+    Variable K: Category.
+
+    #[local]
+     Definition hom (A B: K) := (A = B) /~ {| equiv _ _ := True |}.
+
+    Obligation 1.
+    exists.
+    all: exists.
+    Qed.
+
+    #[local]
+     Definition id {A}: hom A A := eq_refl.
+
+    #[local]
+     Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
+      match f with
+      | eq_refl =>
+        match g with
+        | eq_refl => eq_refl
+        end
+      end.
+
+    Instance Squash: Category := {
+      object := K ;
+      hom := hom ;
+      id := @id ;
+      compose := @compose ;
+    }.
+  End squash.
+End Squash.
+
 Module Suspension.
   #[local]
   Close Scope nat.
@@ -1327,40 +1364,41 @@ Module Suspension.
       match (snd A, snd B) with
       | (false, true) => fst A ~> fst B
 
-      | (true, true) => fst A <~> fst B
-      | (false, false) => fst A <~> fst B
+      | (true, true) => Squash K (fst A) (fst B)
+      | (false, false) => Squash K (fst A) (fst B)
 
       | _ => Bishops.False
       end.
 
     Obligation 1.
     Proof.
-      exists.
-      all:try split.
+      all:repeat split.
       all:intro.
       all:discriminate.
     Qed.
 
     #[local]
-    Definition id {A: Cylinder K}: hom A A.
+     Definition id {A: Cylinder K}: hom A A.
     Proof.
       destruct A as [A I], I.
-      all: cbn.
-      all: exists id id; apply compose_id_right.
+      all: apply id.
     Defined.
 
     #[local]
     Definition compose {A B C}: hom B C -> hom A B -> hom A C.
     Proof.
-      intros f g.
       destruct A as [A AI], B as [B BI], C as [C CI].
       destruct AI, BI, CI.
-      all: cbn in *.
       all: try contradiction.
-      - apply (compose (Category := Isomorphism _) f g).
-      - apply (to _ _ _ f ∘ g).
-      - apply (f ∘ to _ _ _ g).
-      - apply (compose (Category := Isomorphism _) f g).
+      all: intros f g.
+      - apply (f ∘ g).
+      - cbn in *.
+        rewrite <- f.
+        apply g.
+      - cbn in *.
+        rewrite g.
+        apply f.
+      - apply (f ∘ g).
     Defined.
 
     Instance Suspension: Category := {
@@ -1380,7 +1418,6 @@ Module Suspension.
       all: try destruct g.
       all: try destruct h.
       all: cbn in *.
-      all: rewrite compose_assoc.
       all: reflexivity.
     Qed.
 
@@ -1388,11 +1425,9 @@ Module Suspension.
     Proof.
       destruct b, b0.
       all: cbn in *.
-      all: try split.
+      all: try apply I.
       all: try contradiction.
-      all: try rewrite compose_id_right.
-      all: try rewrite compose_id_left.
-      all: reflexivity.
+      reflexivity.
     Qed.
 
     Obligation 3.
@@ -1401,8 +1436,6 @@ Module Suspension.
       all: cbn in *.
       all: try split.
       all: try contradiction.
-      all: try rewrite compose_id_right.
-      all: try rewrite compose_id_left.
       all: reflexivity.
     Qed.
 
@@ -1412,11 +1445,10 @@ Module Suspension.
       all: cbn in *.
       all: try destruct H.
       all: try destruct H0.
-      all: try split.
+      all: try apply I.
       all: try contradiction.
-      all: apply compose_compat.
-      all: auto.
-    Qed.
+      admit.
+    Admitted.
   End suspension.
 End Suspension.
 
