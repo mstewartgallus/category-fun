@@ -1315,43 +1315,6 @@ Module Arrow.
   End arrows.
 End Arrow.
 
-(* Squash a category to a point kind of? This feels evil as a definition *)
-Module Import Squash.
-  #[local]
-  Close Scope nat.
-
-  Section squash.
-    Variable K: Category.
-
-    #[local]
-     Definition hom (A B: K) := (A = B) /~ {| equiv _ _ := True |}.
-
-    Obligation 1.
-    exists.
-    all: exists.
-    Qed.
-
-    #[local]
-     Definition id {A}: hom A A := eq_refl.
-
-    #[local]
-     Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C :=
-      match f with
-      | eq_refl =>
-        match g with
-        | eq_refl => eq_refl
-        end
-      end.
-
-    Instance Squash: Category := {
-      object := K ;
-      hom := hom ;
-      id := @id ;
-      compose := @compose ;
-    }.
-  End squash.
-End Squash.
-
 Module Suspension.
   #[local]
   Close Scope nat.
@@ -1360,46 +1323,36 @@ Module Suspension.
     Variable K: Category.
 
     #[local]
-     Definition hom (A B: Cylinder K) :=
-      match (snd A, snd B) with
-      | (false, true) => fst A ~> fst B
-
-      | (true, true) => Squash K (fst A) (fst B)
-      | (false, false) => Squash K (fst A) (fst B)
-
-      | _ => Bishops.False
-      end.
+     Definition hom (A B: Cylinder K) := Cylinder K A B /~ {| equiv x y := (snd A = snd B) ∨ x == y|}.
 
     Obligation 1.
     Proof.
-      all:repeat split.
-      all:intro.
-      all:discriminate.
+      exists.
+      all: destruct b, b0.
+      all:auto.
+      all:right.
+      all:try reflexivity.
+      all:destruct H.
+      all:try discriminate.
+      - symmetry.
+        auto.
+      - symmetry.
+        auto.
+      - destruct H0.
+        all: try discriminate.
+        rewrite H, H0.
+        reflexivity.
+      - destruct H0.
+        all: try discriminate.
+        rewrite H, H0.
+        reflexivity.
     Qed.
 
     #[local]
-     Definition id {A: Cylinder K}: hom A A.
-    Proof.
-      destruct A as [A I], I.
-      all: apply id.
-    Defined.
+     Definition id {A: Cylinder K}: hom A A := id.
 
     #[local]
-    Definition compose {A B C}: hom B C -> hom A B -> hom A C.
-    Proof.
-      destruct A as [A AI], B as [B BI], C as [C CI].
-      destruct AI, BI, CI.
-      all: try contradiction.
-      all: intros f g.
-      - apply (f ∘ g).
-      - cbn in *.
-        rewrite <- f.
-        apply g.
-      - cbn in *.
-        rewrite g.
-        apply f.
-      - apply (f ∘ g).
-    Defined.
+    Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
 
     Instance Suspension: Category := {
       object := Cylinder K ;
@@ -1412,30 +1365,30 @@ Module Suspension.
     Proof.
       destruct b, b0, b1, b2.
       all: cbn in *.
-      all: try split.
       all: try contradiction.
-      all: try destruct f.
-      all: try destruct g.
-      all: try destruct h.
-      all: cbn in *.
-      all: reflexivity.
+      all: auto.
+      all: right.
+      all: apply compose_assoc.
     Qed.
 
     Obligation 2.
     Proof.
       destruct b, b0.
       all: cbn in *.
-      all: try apply I.
       all: try contradiction.
-      reflexivity.
+      all: auto.
+      right.
+      apply compose_id_left.
     Qed.
 
     Obligation 3.
     Proof.
       destruct b, b0.
       all: cbn in *.
-      all: try split.
+      all: auto.
       all: try contradiction.
+      right.
+      apply compose_id_right.
       all: reflexivity.
     Qed.
 
@@ -1443,10 +1396,11 @@ Module Suspension.
     Proof.
       destruct b, b0, b1.
       all: cbn in *.
-      all: try destruct H.
-      all: try destruct H0.
-      all: try apply I.
+      all: auto.
       all: try contradiction.
+      all: right.
+      all: destruct H, H0.
+      all: try discriminate.
       admit.
     Admitted.
   End suspension.
