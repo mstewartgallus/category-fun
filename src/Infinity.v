@@ -5,6 +5,7 @@ Unset Printing Primitive Projection Parameters.
 Require Import Coq.Unicode.Utf8.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
+Require Import Coq.Arith.PeanoNat.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -49,7 +50,7 @@ Module Import Bishop.
     Bishop_Setoid:> Setoid type ;
   }.
 
-  Module Import BishopNotations.
+  Module Export BishopNotations.
     Coercion type: Bishop >-> Sortclass.
     Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}.
   End BishopNotations.
@@ -79,122 +80,7 @@ Module Import Bishop.
     cbn.
     auto.
   Qed.
-
-  (* FIXME use for stuff *)
-  Local Definition prod (A B: Bishop) := (A * B) /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
-
-  Obligation 1.
-  exists.
-  all:unfold Reflexive, Symmetric, Transitive;cbn.
-  all:intros; split.
-  all:try reflexivity.
-  - symmetry.
-    destruct H.
-    auto.
-  - symmetry.
-    destruct H.
-    auto.
-  - symmetry.
-    destruct H, H0.
-    rewrite H, H0.
-    reflexivity.
-  - destruct H, H0.
-    rewrite H1, H2.
-    reflexivity.
-  Qed.
 End Bishop.
-
-Import BishopNotations.
-
-(*
-Single sorted definition of a Category.
-
-I just used the word Path because using the word category twice is confusing.
-*)
-Module Path.
-  #[universes(cumulative)]
-  Class Path := {
-    path: Type ;
-
-    s: path -> path ;
-    t: path -> path ;
-
-    glue f g: s f = t g -> path ;
-
-    s_s x: s (s x) = s x ;
-    t_s x: t (s x) = s x ;
-    s_t x: s (t x) = t x ;
-    t_t x: t (t x) = t x ;
-
-    s_glue x y p: s (glue x y p) = s y ;
-    t_glue x y p: t (glue x y p) = t x ;
-
-    glue_s x p: glue x (s x) p = x;
-    glue_t x p: glue (t x) x p = x;
-
-    glue_assoc f g h q p r s:
-      glue f (glue g h q) p = glue (glue f g r) h s ;
-  }.
-
-  Module Import PathNotations.
-    Coercion path: Path >-> Sortclass.
-
-    Notation "f ∘ g" := (glue f g _).
-  End PathNotations.
-End Path.
-
-Module Deloop.
-  Import Path.
-  Import PathNotations.
-
-  Section deloop.
-    Context `{Path}.
-
-    Definition object := {x | s x = x }.
-    Definition hom (x y: object) := {f | s f = x /\ t f = y}.
-
-    Definition id {A}: hom A A := A.
-
-    Obligation 1.
-    Proof.
-      destruct A.
-      cbn.
-      split.
-      auto.
-      rewrite <- e.
-      rewrite t_s.
-      auto.
-    Qed.
-
-    Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C := f ∘ g.
-
-    Obligation 1.
-    Proof.
-      destruct A, B, C.
-      destruct f, g.
-      cbn in *.
-      destruct a, a0.
-      rewrite H3.
-      rewrite H0.
-      auto.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      rewrite s_glue.
-      rewrite t_glue.
-      split.
-      - destruct g.
-        cbn.
-        destruct a.
-        auto.
-      - destruct f.
-        cbn.
-        destruct a.
-        auto.
-    Qed.
-  End deloop.
-End Deloop.
 
 Module Import Category.
   #[universes(cumulative)]
@@ -225,7 +111,7 @@ Module Import Category.
     apply q.
   Qed.
 
-  Module Import CategoryNotations.
+  Module Export CategoryNotations.
     Coercion object: Category >-> Sortclass.
     Coercion hom: Category >-> Funclass.
 
@@ -233,12 +119,6 @@ Module Import Category.
     Notation "A ~> B" := (hom A B).
   End CategoryNotations.
 End Category.
-
-Import CategoryNotations.
-
-Create HintDb category discriminated.
-(* Hint Rewrite compose_id_left: category. *)
-(* Hint Rewrite compose_id_right: category. *)
 
 Module Import Sets.
   Instance Bishop: Category := {
@@ -263,27 +143,6 @@ Module Import Sets.
 
   Solve All Obligations with cbn; reflexivity.
 End Sets.
-
-Import BishopNotations.
-
-Module Bishops.
-  Definition True: Bishop := True /~ {| equiv _ _ := True |}.
-  Definition False: Bishop := False /~ {| equiv A := match A with end |}.
-
-  Obligation 1 of True.
-  Proof.
-    exists.
-    all:exists.
-  Qed.
-
-  Obligation 1 of False.
-  Proof.
-    exists.
-    all:unfold Reflexive, Symmetric, Transitive; cbn.
-    all:intros.
-    all:contradiction.
-  Qed.
-End Bishops.
 
 Module Import Isomorphism.
   Section isos.
@@ -409,17 +268,13 @@ Module Import Isomorphism.
     apply to_from.
   Qed.
 
-  Module Import IsomorphismNotations.
+  Module Export IsomorphismNotations.
     Notation "A 'ᵀ'" := (transpose A).
     Notation "A <~> B" := (Isomorphism _ A B).
   End IsomorphismNotations.
 End Isomorphism.
 
-Import IsomorphismNotations.
-
 Module Import Functor.
-  Import TruncateNotations.
-
   #[universes(cumulative)]
   Class functor (C D: Category) := {
     fobj: C → D ;
@@ -431,7 +286,7 @@ Module Import Functor.
     map_compat {A B} (f f': C A B): f == f' → map f == map f' ;
   }.
 
-  Module Import FunctorNotations.
+  Module Export FunctorNotations.
     Coercion fobj: functor >-> Funclass.
     Notation "F ! X" := (map (functor := F) X).
   End FunctorNotations.
@@ -444,25 +299,54 @@ Module Import Functor.
     assumption.
   Qed.
 
-  Definition Functor (A B: Category): Bishop :=
-    functor A B /~ {| equiv f g := ∀ x, | f x <~> g x | |}.
+      #[local]
+    Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
-  Obligation 1.
-  Proof.
+    Obligation 1.
+    Proof.
     exists.
-    all: unfold Reflexive, Symmetric, Transitive.
+    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom; cbn.
     - intros.
-      exists.
-      apply (@id (Isomorphism _)).
+      reflexivity.
     - intros ? ? p t.
-      destruct (p t) as [p'].
-      exists.
-      apply (p' ᵀ).
+      symmetry.
+      apply (p t).
     - intros ? ? ? p q t.
-      destruct (p t) as [p'], (q t) as [q'].
-      exists.
-      apply (@compose (Isomorphism _) _ _ _ q' p').
-  Qed.
+      rewrite (p t), (q t).
+      reflexivity.
+    Qed.
+
+    Instance Functor K L: Category := {
+      object := functor K L ;
+      hom := hom ;
+      id _ _ := id ;
+      compose _ _ _ f g _ := f _ ∘ g _ ;
+    }.
+
+    Obligation 1.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      apply compose_compat.
+      all:auto.
+    Qed.
+End Functor.
+
+Module Import Cat.
+  Import TruncateNotations.
 
   #[local]
   Definition to_iso {A B: Category} (f: Functor A B): Functor (Isomorphism A) (Isomorphism B) := {|
@@ -511,36 +395,47 @@ Module Import Functor.
 
   Instance Cat: Category := {
     object := Category ;
-    hom := Functor ;
+    hom A B := (Functor A B) /~ {| equiv f g := ∀ x, | f x <~> g x | |};
     id _ := {| fobj x := x ; map _ _ f := f |} ;
     compose _ _ _ F G := {| fobj x := F (G x) ; map _ _ x := F ! (G ! x) |} ;
   }.
 
+  Obligation 1.
+  Proof.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive.
+    - intros.
+      exists.
+      apply (@id (Isomorphism _)).
+    - intros ? ? p t.
+      destruct (p t) as [p'].
+      exists.
+      apply (p' ᵀ).
+    - intros ? ? ? p q t.
+      destruct (p t) as [p'], (q t) as [q'].
+      exists.
+      apply (@compose (Isomorphism _) _ _ _ q' p').
+  Qed.
+
   Solve Obligations with try reflexivity.
 
-  Obligation 4.
+  Obligation 5.
   Proof.
     rewrite map_composes, map_composes.
     reflexivity.
   Qed.
 
-  Obligation 5.
+  Obligation 6.
   Proof.
     rewrite map_id, map_id.
     reflexivity.
   Qed.
 
-  Obligation 6.
+  Obligation 7.
   Proof.
     apply map_compat.
     + apply map_compat.
       * assumption.
-  Qed.
-
-  Obligation 7.
-  Proof.
-    exists.
-    apply (@id (Isomorphism _)).
   Qed.
 
   Obligation 8.
@@ -557,6 +452,12 @@ Module Import Functor.
 
   Obligation 10.
   Proof.
+    exists.
+    apply (@id (Isomorphism _)).
+  Qed.
+
+  Obligation 11.
+  Proof.
     destruct (H0 x) as [q'].
     destruct (H (g' x)) as [p'].
     set (f_iso := to_iso f).
@@ -566,83 +467,7 @@ Module Import Functor.
     - apply to_from.
     - apply from_to.
   Qed.
-End Functor.
-
-Import FunctorNotations.
-
-Module Import NaturalTransformation.
-   Section functor.
-    Variables K L : Category.
-
-    #[local]
-    Definition hom (A B: Functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
-
-    Obligation 1.
-    Proof.
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive, compose, id, hom; cbn.
-    - intros.
-      reflexivity.
-    - intros ? ? p t.
-      symmetry.
-      apply (p t).
-    - intros ? ? ? p q t.
-      rewrite (p t), (q t).
-      reflexivity.
-    Qed.
-
-    Instance NaturalTransformation: Category := {
-      object := Functor K L ;
-      hom := hom ;
-      id _ _ := id ;
-      compose _ _ _ f g _ := f _ ∘ g _ ;
-    }.
-
-    Obligation 1.
-    Proof.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      apply compose_compat.
-      all:auto.
-    Qed.
-  End functor.
-End NaturalTransformation.
-
-Instance Preset: Category := {
-  object := Type ;
-  hom A B := (A → B) /~ {| equiv f g := ∀ x, f x = g x |} ;
-  id _ x := x ;
-  compose _ _ _ f g x := f (g x) ;
-}.
-
-Obligation 1.
-Proof.
-  exists.
-  all:unfold Reflexive, Symmetric, Transitive;cbn.
-  all:auto.
-  intros ? ? ? p q ?.
-  rewrite (p _), (q _).
-  reflexivity.
-Qed.
-
-Obligation 5.
-Proof.
-  rewrite (H _), (H0 _).
-  reflexivity.
-Qed.
+End Cat.
 
 Module Import Over.
   Section over.
@@ -726,6 +551,162 @@ End Over.
 
 Import OverNotations.
 
+Module Import Finite.
+ (* Define finite totally ordered sets *)
+  #[local]
+  Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all: exists.
+  Qed.
+
+  #[local]
+  Definition id {A}: hom A A := le_n A.
+
+  #[local]
+   Definition compose {A B C}: hom B C → hom A B → hom A C.
+  Proof.
+    cbn.
+    intros f g.
+    rewrite g, f.
+    reflexivity.
+  Defined.
+
+  #[local]
+   Instance le: Category := {
+    object := nat ;
+    hom := hom ;
+    id := @id ;
+    compose := @compose ;
+  }.
+
+  Definition finite (N:nat) := le/N.
+
+  Module Export FiniteNotations.
+    (* FIXME Isolate notations *)
+    Notation "[ N ]" := (finite N).
+  End FiniteNotations.
+
+  #[local]
+  Definition any_gt_0 C: 0 ≤ C.
+  Proof.
+    induction C.
+    - auto.
+    - auto.
+  Qed.
+
+  Definition source C: [C] := {| dom := 0 |}.
+  Definition target C: [C] := {| dom := C |}.
+
+  Obligation 1 of source.
+  Proof.
+    apply any_gt_0.
+  Qed.
+
+  Definition walk {C}: source C ~> target C := any_gt_0 C.
+End Finite.
+
+Module Import Product.
+  #[local]
+  Close Scope nat.
+
+  Section products.
+    Variable C D: Category.
+
+    Definition hom (A B: C * D): Bishop :=
+      prod (fst A ~> fst B) (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
+
+    Obligation 1.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
+    all: intros; auto.
+    - split.
+      all: reflexivity.
+    - destruct H.
+      split.
+      all: symmetry.
+      all: auto.
+    - destruct H, H0.
+      split.
+      + rewrite H, H0.
+        reflexivity.
+      + rewrite H1, H2.
+        reflexivity.
+    Qed.
+
+    Instance Product: Category := {
+      object := C * D ;
+      hom := hom ;
+      id _ := (id, id) ;
+      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
+    }.
+
+    Obligation 1.
+    Proof.
+      split.
+      all: apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      split.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      split.
+      all: apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    split.
+    + rewrite H, H0.
+      reflexivity.
+    + rewrite H1, H2.
+      reflexivity.
+    Qed.
+  End products.
+
+  Definition fst {A B}: (Product A B:Cat) ~> A := {|
+    fobj := fst ;
+    map _ _ := fst
+  |}.
+
+  Definition snd {A B}: (Product A B:Cat) ~> B := {|
+    fobj := snd ;
+    map _ _ := snd
+  |}.
+
+  Solve All Obligations with reflexivity.
+
+  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (Product A B:Cat) := {|
+    fobj x := (f x, g x) ;
+    map _ _ x := (f ! x, g ! x)
+  |}.
+
+  Obligation 1.
+  Proof.
+    split.
+    all: apply map_composes.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    split.
+    all: apply map_id.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    split.
+    all: rewrite H.
+    all: reflexivity.
+  Qed.
+End Product.
+
 Instance Empty: Category := {
   object := False ;
   hom A := match A with end ;
@@ -735,173 +716,291 @@ Instance Empty: Category := {
 
 Solve All Obligations with contradiction.
 
-Instance Trivial: Category := {
-  object := True ;
-  hom _ _ := Bishops.True ;
+Instance Trivial: Category := [0].
+
+Instance Interval: Category := {
+  object := bool ;
+  hom _ _ := True /~ {| equiv _ _ := True |} ;
+
   id _ := I ;
-  compose _ _ _ _ _ := I ;
+  compose _ _ _ _ _  := I ;
 }.
 
-Module Import Props.
-  Definition ProofIrrelevance (S: Bishop) := ∀ x y: S, x == y.
+Obligation 1.
+Proof.
+  exists.
+  all: exists.
+Qed.
 
-  #[universes(cumulative)]
-  Class MereProp := {
-    Prop_Bishop: Bishop ;
-    Prop_Irrelevant: ProofIrrelevance Prop_Bishop ;
-  }.
-End Props.
+Instance Cylinder K: Category := Product K Interval.
 
-Module Import Cograph.
+Instance Boolean: Category := {
+  object := bool ;
+  hom A B := (A = B) /~ {| equiv _ _ := True |} ;
+
+  id A := eq_refl ;
+  compose _ _ _ f g :=
+    let eq_refl := f in
+    let eq_refl := g in
+    eq_refl
+}.
+
+Obligation 1.
+Proof.
+  exists.
+  all:exists.
+Qed.
+
+Module Import Suspension.
   #[local]
   Close Scope nat.
 
-  Section cograph.
-    Context {K L: Category}.
-    Variable F: Functor K L.
+  Section suspension.
+    Variable K: Category.
 
     #[local]
-    Definition hom (A B: K + L) :=
-      match (A, B) with
-      | (inl A0, inl B0) => A0 ~> B0
-      | (inr A1, inr B1) => A1 ~> B1
-      | (inl A0, inr B1) => F A0 ~> B1
-      | _ => Bishops.False
-      end.
+     Definition hom (A B: Cylinder K): Bishop :=
+      (∀ S (cyl: Functor (Cylinder K) S) (shrink: ∀ A B X, cyl (A, X) <~> cyl (B, X)),
+          S (cyl A) (cyl B)) /~
+    {| equiv x y := ∀ s cyl shrink, x s cyl shrink == y s cyl shrink |}.
 
     Obligation 1.
     Proof.
       exists.
-      - discriminate.
-      - split.
-        all: discriminate.
+      all:intro;intros.
+      - reflexivity.
+      - symmetry.
+        auto.
+      - rewrite (H s _), (H0 s _).
+        reflexivity.
     Qed.
 
-    #[local]
-     Definition id {A}: hom A A := match A with
-                                   | inl _ => id
-                                   | inr _ => id
-                                   end.
-
-    #[local]
-    Definition compose {X Y Z} (f: hom Y Z) (g: hom X Y): hom X Z.
-    Proof.
-      destruct X as [X|X], Y as [Y|Y], Z as [Z|Z].
-      all: try contradiction.
-      - apply (f ∘ g).
-      - apply (f ∘ map g).
-      - apply (f ∘ g).
-      - apply (f ∘ g).
-    Defined.
-
-    Instance Cograph: Category := {
-      object := K + L ;
+    Instance Suspension: Category := {
+      object := Cylinder K ;
       hom := hom ;
-      id := @id ;
-      compose := @compose ;
+
+      id _ _ _ _ := id ;
+      compose _ _ _ f g s cyl shrink := f s cyl shrink ∘ g s cyl shrink;
     }.
 
     Obligation 1.
     Proof.
-      destruct A, B, C, D.
-      all: try contradiction.
-      all: try apply compose_assoc.
-      cbn.
-      rewrite <- compose_assoc.
-      rewrite <- map_composes.
-      reflexivity.
+      apply compose_assoc.
     Qed.
 
     Obligation 2.
     Proof.
-      destruct A, B.
-      all: try contradiction.
-      all: apply compose_id_left.
+      apply compose_id_left.
     Qed.
 
     Obligation 3.
     Proof.
-      destruct A, B.
-      all: try contradiction.
-      all: try apply compose_id_right.
-      cbn in *.
-      rewrite map_id.
       apply compose_id_right.
     Qed.
 
     Obligation 4.
     Proof.
-      destruct A, B, C.
-      all: try contradiction.
-      all: apply compose_compat.
-      all: auto.
-      rewrite H0.
+      rewrite (H s), (H0 s).
       reflexivity.
     Qed.
-  End cograph.
-End Cograph.
+  End suspension.
 
-Module Import Interval.
-  Unset Program Mode.
-
-  #[local]
-  Definition hom (A B:bool) := match (A, B) with
-                         | (true, true) => Bishops.True
-                         | (false, false) => Bishops.True
-                         | (false, true) => Bishops.True
-                         | (_, _) => Bishops.False
-                         end.
-
-  #[local]
-  Definition id {A}: hom A A.
-  destruct A.
-    all:cbn.
-    all:exists.
-  Defined.
-
-  #[local]
-  Definition compose {A B C}: hom B C → hom A B → hom A C.
-    destruct A, B, C.
-    all:cbn.
-    all:try contradiction.
-    all:exists.
-  Defined.
-
-  Program Instance Interval: Category := {
-    object := bool ;
-    hom := hom ;
-    id := @id ;
-    compose := @compose ;
-  }.
+  Definition cyl {K:Category}: Functor (Cylinder K) (Suspension K) := {|
+    fobj x := x ;
+    map _ _ f _ _ _ := map f ;
+  |}.
 
   Obligation 1.
   Proof.
-    destruct A, B, C, D.
-    all:try contradiction.
-    all:exists.
+    rewrite map_composes.
+    reflexivity.
   Qed.
 
   Obligation 2.
   Proof.
-    destruct A, B.
-    all:try contradiction.
-    all:exists.
+    rewrite map_id.
+    reflexivity.
   Qed.
 
   Obligation 3.
   Proof.
-    destruct A, B.
-    all:try contradiction.
-    all:exists.
+    cbn in *.
+    apply map_compat.
+    cbn.
+    split.
+    auto.
+    exists.
   Qed.
 
-  Obligation 4.
+  Definition shrink {K:Category} {A B: K} {X}: Isomorphism (Suspension K) (A, X) (B, X) := {|
+    to s cyl shrink := to _ _ _ (shrink A B X) ;
+    from s cyl shrink := from _ _ _ (shrink A B X) ;
+   |}.
+
+  Obligation 1.
   Proof.
-    destruct A, B, C.
-    all:try contradiction.
-    all:exists.
+    apply to_from.
   Qed.
-End Interval.
+
+  Obligation 2.
+  Proof.
+    apply from_to.
+  Qed.
+End Suspension.
+
+Instance Circle: Category := Suspension Boolean.
+Instance Loop K: Category := Functor Circle K.
+
+Instance Preset: Category := {
+  object := Type ;
+  hom A B := (A → B) /~ {| equiv f g := ∀ x, f x = g x |} ;
+  id _ x := x ;
+  compose _ _ _ f g x := f (g x) ;
+}.
+
+Obligation 1.
+Proof.
+  exists.
+  all:unfold Reflexive, Symmetric, Transitive;cbn.
+  all:auto.
+  intros ? ? ? p q ?.
+  rewrite (p _), (q _).
+  reflexivity.
+Qed.
+
+Obligation 5.
+Proof.
+  rewrite (H _), (H0 _).
+  reflexivity.
+Qed.
+
+Module Arrow.
+  Section arrows.
+    Variables K: Category.
+
+    Record arrow := {
+      source: K ;
+      target: K ;
+      proj: source ~> target ;
+    }.
+
+    Record arr (A B: arrow) := {
+      source_arr: source A ~> source B ;
+      target_arr: target A ~> target B ;
+      commutes: target_arr ∘ proj A == proj B ∘ source_arr ;
+    }.
+
+    #[local]
+    Definition hom A B := arr A B /~ {| equiv f g := (target_arr _ _ f == target_arr _ _ g) ∧ (source_arr _ _ f == source_arr _ _ g) |}.
+
+    Obligation 1 of hom.
+    exists.
+    all:unfold Reflexive, Symmetric, Transitive; cbn.
+    - split.
+      all:reflexivity.
+    - split.
+      all: destruct H.
+      all: symmetry.
+      all: assumption.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      split.
+      1: rewrite p, q.
+      2: rewrite p', q'.
+      all: reflexivity.
+    Qed.
+
+    Instance Arrow: Category := {
+      object := arrow ;
+      hom := hom ;
+      id _ := {| source_arr := id ; target_arr := id |} ;
+      compose _ _ _ f g := {| target_arr := target_arr _ _ f ∘ target_arr _ _ g ;
+                              source_arr := source_arr _ _ f ∘ source_arr _ _ g |} ;
+    }.
+
+    Obligation 1.
+    Proof.
+      rewrite compose_id_left.
+      rewrite compose_id_right.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      rewrite <- compose_assoc.
+      rewrite (commutes _ _ g).
+      rewrite compose_assoc.
+      rewrite compose_assoc.
+      rewrite (commutes _ _ f).
+      reflexivity.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      split.
+      all: rewrite compose_assoc.
+      all: reflexivity.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      split.
+      all:rewrite compose_id_left.
+      all:reflexivity.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      split.
+      all:rewrite compose_id_right.
+      all:reflexivity.
+    Qed.
+
+    Obligation 6.
+    Proof.
+      split.
+      1: rewrite H, H0.
+      2: rewrite H1, H2.
+      all:reflexivity.
+    Qed.
+  End arrows.
+End Arrow.
+
+
+Module Import Opposite.
+  Section opposite.
+    Context `(K:Category).
+
+    Instance op: Category := {
+      object := @object K ;
+      hom A B := hom B A ;
+      id _ := id ;
+      compose _ _ _ f g := g ∘ f ;
+    }.
+
+    Obligation 1.
+    Proof.
+      symmetry.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End opposite.
+End Opposite.
 
 Module Coproduct.
   Close Scope nat.
@@ -1036,643 +1135,6 @@ Module Coproduct.
 
   Solve All Obligations with reflexivity.
 End Coproduct.
-Module Product.
-  #[local]
-  Close Scope nat.
-
-  Section products.
-    Variable C D: Category.
-
-    Definition hom (A B: C * D): Bishop :=
-      prod (fst A ~> fst B) (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
-
-    Obligation 1.
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive; cbn.
-    all: intros; auto.
-    - split.
-      all: reflexivity.
-    - destruct H.
-      split.
-      all: symmetry.
-      all: auto.
-    - destruct H, H0.
-      split.
-      + rewrite H, H0.
-        reflexivity.
-      + rewrite H1, H2.
-        reflexivity.
-    Qed.
-
-    Instance product: Category := {
-      object := C * D ;
-      hom := hom ;
-      id _ := (id, id) ;
-      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
-    }.
-
-    Obligation 1.
-    Proof.
-      split.
-      all: apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      split.
-      all: apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      split.
-      all: apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    split.
-    + rewrite H, H0.
-      reflexivity.
-    + rewrite H1, H2.
-      reflexivity.
-    Qed.
-  End products.
-
-  Definition fst {A B}: (product A B:Cat) ~> A := {|
-    fobj := fst ;
-    map _ _ := fst
-  |}.
-
-  Definition snd {A B}: (product A B:Cat) ~> B := {|
-    fobj := snd ;
-    map _ _ := snd
-  |}.
-
-  Solve All Obligations with reflexivity.
-
-  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (product A B:Cat) := {|
-    fobj x := (f x, g x) ;
-    map _ _ x := (f ! x, g ! x)
-  |}.
-
-  Obligation 1.
-  Proof.
-    split.
-    all: apply map_composes.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    split.
-    all: apply map_id.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    split.
-    all: rewrite H.
-    all: reflexivity.
-  Qed.
-End Product.
-
-Module Import Cylinder.
-  #[local]
-  Close Scope nat.
-
-  Section cylinder.
-    Variable K: Category.
-
-    #[local]
-    Definition hom (A B: K * bool) :=
-      match (snd A, snd B) with
-      | (false, true) => fst A ~> fst B
-      | (true, true) => fst A ~> fst B
-      | (false, false) => fst A ~> fst B
-      | _ => Bishops.False
-      end.
-
-    Obligation 1.
-    Proof.
-      exists.
-      - discriminate.
-      - split.
-        all: discriminate.
-    Qed.
-
-    #[local]
-    Definition id {A}: hom A A.
-    Proof.
-      destruct A as [A I], I.
-      all: cbn.
-      all: apply id.
-    Defined.
-
-    #[local]
-    Definition compose {A B C}: hom B C -> hom A B -> hom A C.
-    Proof.
-      intros f g.
-      destruct A as [A AI], B as [B BI], C as [C CI].
-      destruct AI, BI, CI.
-      all: cbn in *.
-      all: try contradiction.
-      all: try destruct f.
-      all: try destruct g.
-      all: apply (f ∘ g).
-    Defined.
-
-    (* Basically the cograph of the hom functor *)
-    Instance Cylinder: Category := {
-      object := K * bool ;
-      hom := hom ;
-      id := @id ;
-      compose := @compose ;
-    }.
-
-    Obligation 1.
-    Proof.
-      destruct b, b0, b1, b2.
-      all: cbn in *.
-      all: try contradiction.
-      all: apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      destruct b, b0.
-      all: cbn in *.
-      all: try contradiction.
-      all: apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      destruct b, b0.
-      all: cbn in *.
-      all: try contradiction.
-      all: apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      destruct b, b0, b1.
-      all: cbn in *.
-      all: try contradiction.
-      all: apply compose_compat.
-      all: auto.
-    Qed.
-  End cylinder.
-End Cylinder.
-
-Module Arrow.
-  Section arrows.
-    Variables K: Category.
-
-    Record arrow := {
-      source: K ;
-      target: K ;
-      proj: source ~> target ;
-    }.
-
-    Record arr (A B: arrow) := {
-      source_arr: source A ~> source B ;
-      target_arr: target A ~> target B ;
-      commutes: target_arr ∘ proj A == proj B ∘ source_arr ;
-    }.
-
-    #[local]
-    Definition hom A B := arr A B /~ {| equiv f g := (target_arr _ _ f == target_arr _ _ g) ∧ (source_arr _ _ f == source_arr _ _ g) |}.
-
-    Obligation 1 of hom.
-    exists.
-    all:unfold Reflexive, Symmetric, Transitive; cbn.
-    - split.
-      all:reflexivity.
-    - split.
-      all: destruct H.
-      all: symmetry.
-      all: assumption.
-    - intros ? ? ? p q.
-      destruct p as [p p'], q as [q q'].
-      split.
-      1: rewrite p, q.
-      2: rewrite p', q'.
-      all: reflexivity.
-    Qed.
-
-    Instance Arrow: Category := {
-      object := arrow ;
-      hom := hom ;
-      id _ := {| source_arr := id ; target_arr := id |} ;
-      compose _ _ _ f g := {| target_arr := target_arr _ _ f ∘ target_arr _ _ g ;
-                              source_arr := source_arr _ _ f ∘ source_arr _ _ g |} ;
-    }.
-
-    Obligation 1.
-    Proof.
-      rewrite compose_id_left.
-      rewrite compose_id_right.
-      reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      rewrite <- compose_assoc.
-      rewrite (commutes _ _ g).
-      rewrite compose_assoc.
-      rewrite compose_assoc.
-      rewrite (commutes _ _ f).
-      reflexivity.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      split.
-      all: rewrite compose_assoc.
-      all: reflexivity.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      split.
-      all:rewrite compose_id_left.
-      all:reflexivity.
-    Qed.
-
-    Obligation 5.
-    Proof.
-      split.
-      all:rewrite compose_id_right.
-      all:reflexivity.
-    Qed.
-
-    Obligation 6.
-    Proof.
-      split.
-      1: rewrite H, H0.
-      2: rewrite H1, H2.
-      all:reflexivity.
-    Qed.
-  End arrows.
-End Arrow.
-
-Module Suspension.
-  #[local]
-  Close Scope nat.
-
-  Section suspension.
-    Variable K: Category.
-
-    #[local]
-     Definition hom (A B: Cylinder K): Bishop :=
-      (∀ S (cyl: Functor (Cylinder K) S) (shrink: ∀ A B X, cyl (A, X) <~> cyl (B, X)),
-          S (cyl A) (cyl B)) /~
-    {| equiv x y := ∀ s cyl shrink, x s cyl shrink == y s cyl shrink |}.
-
-    Obligation 1.
-    Proof.
-      exists.
-      all:intro;intros.
-      - reflexivity.
-      - symmetry.
-        auto.
-      - rewrite (H s _), (H0 s _).
-        reflexivity.
-    Qed.
-
-    Instance Suspension: Category := {
-      object := Cylinder K ;
-      hom := hom ;
-
-      id _ _ _ _ := id ;
-      compose _ _ _ f g s cyl shrink := f s cyl shrink ∘ g s cyl shrink;
-    }.
-
-    Obligation 1.
-    Proof.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      rewrite (H s), (H0 s).
-      reflexivity.
-    Qed.
-  End suspension.
-
-  Definition cyl {K:Category}: Functor (Cylinder K) (Suspension K) := {|
-    fobj x := x ;
-    map _ _ f _ _ _ := map f ;
-  |}.
-
-  Obligation 1.
-  Proof.
-    rewrite map_composes.
-    reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    rewrite map_id.
-    reflexivity.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Definition shrink {K:Category} {A B: K} {X}: Isomorphism (Suspension K) (A, X) (B, X) := {|
-    to s cyl shrink := to _ _ _ (shrink A B X) ;
-    from s cyl shrink := from _ _ _ (shrink A B X) ;
-   |}.
-
-  Obligation 1.
-  Proof.
-    apply to_from.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    apply from_to.
-  Qed.
-
-End Suspension.
-
-
-Module Loop.
-  #[local]
-  Close Scope nat.
-  Import Arrow.
-
-  Section loop.
-    Variable K: Category.
-
-    (* FIXME use core/isomorphism ? *)
-    Record loop := {
-      base: K ;
-      arr: base ~> base ;
-    }.
-
-    (* Not sure is right *)
-    #[local]
-    Definition hom (A B: loop) := ({| proj := arr A |}:Arrow K) ~> {| proj := arr B |}.
-
-    Instance Loop: Category := {
-      object := loop ;
-      hom := hom ;
-      id _ := id ;
-      compose _ _ _ f g := f ∘ g ;
-    }.
-
-    Obligation 1.
-    Proof.
-      cbn.
-      split.
-      1: rewrite compose_assoc.
-      2: rewrite <- compose_assoc.
-      all: reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      cbn.
-      split.
-      all: apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      cbn.
-      split.
-      all: apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      cbn.
-      split.
-      all: apply compose_compat.
-      all:auto.
-    Qed.
-  End loop.
-End Loop.
-
-Module Import Opposite.
-  Section opposite.
-    Context `(K:Category).
-
-    Instance op: Category := {
-      object := @object K ;
-      hom A B := hom B A ;
-      id _ := id ;
-      compose _ _ _ f g := g ∘ f ;
-    }.
-
-    Obligation 1.
-    Proof.
-      symmetry.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-  End opposite.
-End Opposite.
-
-Module Import Profunctor.
-  #[local]
-   Close Scope nat.
-
-  Import TruncateNotations.
-
-  #[local]
-  Definition bifunctor (C D: Category) := Functor (Product.product C D) Bishop.
-  #[local]
-  Definition profunctor (C D: Category) := bifunctor (op C) D.
-
-  Section compose.
-    Context {A B C: Category}.
-    Variable f: profunctor B C.
-    Variable g: profunctor A B.
-
-    Record procompose (s: A) (t: C) := {
-      mid: B ;
-      pre: g (s, mid) ;
-      post: f (mid, t)
-    }.
-
-    (* FIXME *)
-    #[local]
-    Definition eq {s t} (f g: procompose s t) := f = g.
-      (* | mid _ _ f <~> mid _ _ g | /\ pre _ _ f == pre _ _ g /\ post _ _ f == post _ _ g. *)
-
-    #[local]
-     Definition compose: profunctor A C := {|
-      fobj x := procompose (fst x) (snd x) /~ {| equiv := eq |} ;
-      map X Y m x :=
-        let g' := g ! ((fst m, id): Product.product (op _) _ (fst _, mid _ _ x) (fst _, mid _ _ x)) in
-        let f' := f ! ((id, snd m): Product.product (op _) C (mid _ _ x, snd X) (mid _ _ x, snd Y)) in
-        {| mid := mid _ _ x ;
-           post := f' (post _ _ x) ;
-           pre := g' (pre _ _ x) ;
-        |}
-    |}.
-
-    Obligation 1.
-    Proof.
-      rewrite H.
-      reflexivity.
-    Qed.
-
-    Obligation 2.
-    admit.
-    Admitted.
-
-    Obligation 3.
-    admit.
-    Admitted.
-
-    Obligation 4.
-    admit.
-    Admitted.
-  End compose.
-
-  Instance Profunctor: Category := {
-    object := Category ;
-    hom := profunctor ;
-
-    id A := {|
-        fobj x := A (fst x) (snd x) ;
-        map _ _ f x := fst f ∘ x ∘ snd f
-     |} ;
-    compose := @compose
-  }.
-
-  Obligation 1.
-  Proof.
-    cbn in *.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    cbn in *.
-    repeat rewrite compose_assoc.
-    reflexivity.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    rewrite compose_id_left, compose_id_right.
-    reflexivity.
-  Qed.
-
-  Obligation 4.
-  Proof.
-    cbn in *.
-    rewrite H, H0.
-    reflexivity.
-  Qed.
-
-  Obligation 5.
-  admit.
-  Admitted.
-
-  Obligation 6.
-  admit.
-  Admitted.
-
-  Obligation 7.
-  admit.
-  Admitted.
-
-  Obligation 8.
-  admit.
-  Admitted.
-End Profunctor.
-
-Module Import Finite.
- (* Definie finite totally ordered sets *)
-  #[local]
-  Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
-
-  Obligation 1.
-  exists.
-  all: exists.
-  Qed.
-
-  Local Definition id {A}: hom A A.
-  cbn.
-  auto.
-  Defined.
-
-  #[local]
-  Definition compose {A B C}: hom B C → hom A B → hom A C.
-  cbn.
-  intros f g.
-  rewrite g, f.
-  reflexivity.
-  Defined.
-
-  #[local]
-  Instance le: Category := {
-    object := nat ;
-    hom := hom ;
-    id := @id ;
-    compose := @compose ;
-  }.
-
-  Definition finite (N:nat) := le/N.
-
-  Module Import FiniteNotations.
-    (* FIXME Isolate notations *)
-    Notation "[ N ]" := (finite N).
-  End FiniteNotations.
-
-  #[local]
-  Definition any_gt_0 C: 0 ≤ C.
-  Proof.
-    induction C.
-    - auto.
-    - auto.
-  Qed.
-
-  Definition source C: [C] := {| dom := 0 |}.
-  Definition target C: [C] := {| dom := C |}.
-
-  Obligation 1 of source.
-  Proof.
-    apply any_gt_0.
-  Qed.
-
-  Definition walk {C}: source C ~> target C := any_gt_0 C.
-End Finite.
-
 
 Module Diagrams.
   Section diagrams.
