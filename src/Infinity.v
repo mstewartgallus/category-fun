@@ -6,6 +6,7 @@ Require Import Coq.Unicode.Utf8.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Arith.PeanoNat.
+Require Import Psatz.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -299,11 +300,11 @@ Module Import Functor.
     assumption.
   Qed.
 
-      #[local]
-    Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
+  #[local]
+   Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
-    Obligation 1.
-    Proof.
+  Obligation 1.
+  Proof.
     exists.
     all: unfold Reflexive, Symmetric, Transitive, compose, id, hom; cbn.
     - intros.
@@ -314,35 +315,35 @@ Module Import Functor.
     - intros ? ? ? p q t.
       rewrite (p t), (q t).
       reflexivity.
-    Qed.
+  Qed.
 
-    Instance Functor K L: Category := {
-      object := functor K L ;
-      hom := hom ;
-      id _ _ := id ;
-      compose _ _ _ f g _ := f _ ∘ g _ ;
-    }.
+  Instance Functor K L: Category := {
+    object := functor K L ;
+    hom := hom ;
+    id _ _ := id ;
+    compose _ _ _ f g _ := f _ ∘ g _ ;
+  }.
 
-    Obligation 1.
-    Proof.
-      apply compose_assoc.
-    Qed.
+  Obligation 1.
+  Proof.
+    apply compose_assoc.
+  Qed.
 
-    Obligation 2.
-    Proof.
-      apply compose_id_left.
-    Qed.
+  Obligation 2.
+  Proof.
+    apply compose_id_left.
+  Qed.
 
-    Obligation 3.
-    Proof.
-      apply compose_id_right.
-    Qed.
+  Obligation 3.
+  Proof.
+    apply compose_id_right.
+  Qed.
 
-    Obligation 4.
-    Proof.
-      apply compose_compat.
-      all:auto.
-    Qed.
+  Obligation 4.
+  Proof.
+    apply compose_compat.
+    all:auto.
+  Qed.
 End Functor.
 
 Module Import Cat.
@@ -544,12 +545,10 @@ Module Import Over.
   Definition Σ {C:Category} {c} (f: Over C c) (g: Over C (dom _ _ f)): Over C c :=
     {| proj := proj _ _ f ∘ proj _ _ g |}.
 
-  Module OverNotations.
+  Module Export OverNotations.
     Notation "C / c" := (Over.Over C c).
   End OverNotations.
 End Over.
-
-Import OverNotations.
 
 Module Import Finite.
  (* Define finite totally ordered sets *)
@@ -750,6 +749,144 @@ Proof.
   exists.
   all:exists.
 Qed.
+
+Module Import Circle.
+  #[local]
+   Close Scope nat.
+
+  #[local]
+   Definition hom (A B: True): Bishop :=
+    (∀ (S:Category) (base:S) (loop: base <~> base),
+        S base base) /~
+                     {| equiv x y := ∀ s base loop, x s base loop == y s base loop |}.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all:intro;intros.
+    - reflexivity.
+    - symmetry.
+      auto.
+    - rewrite (H s _), (H0 s _).
+      reflexivity.
+  Qed.
+
+  Instance Circle: Category := {
+    object := True ;
+    hom := hom ;
+
+    id _ _ _ _ := id ;
+    compose _ _ _ f g s base loop := f s base loop ∘ g s base loop;
+  }.
+
+  Obligation 1.
+  Proof.
+    apply compose_assoc.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    apply compose_id_left.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    apply compose_id_right.
+  Qed.
+
+  Obligation 4.
+  Proof.
+    rewrite (H s), (H0 s).
+    reflexivity.
+  Qed.
+
+  Definition base: Circle := I.
+
+  Definition loop: base <~> base := {|
+    to _ _ loop := to _ _ _ loop ;
+    from _ _ loop := from _ _ _ loop ;
+  |}.
+
+  Obligation 1.
+  Proof.
+    apply to_from.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    apply from_to.
+  Qed.
+End Circle.
+
+Module Integers.
+  Definition zero: base ~> base := id.
+  Definition one: base ~> base := to _ _ _ loop.
+  Definition neg_one: base ~> base := from _ _ _ loop.
+
+  Instance Z: Category := {
+    object := unit ;
+    hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
+    id _ := (0, 0) ;
+    compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
+                         }.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all:intro;intros;lia.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    lia.
+  Qed.
+
+  Obligation 5.
+  Proof.
+    lia.
+  Qed.
+
+  Fixpoint neg (n: nat): base ~> base :=
+    match n with
+    | 0 => id
+    | S n => neg_one ∘ neg n
+    end.
+
+  Fixpoint pos (n: nat): base ~> base :=
+    match n with
+    | 0 => id
+    | S n => one ∘ pos n
+    end.
+
+  Definition to_circle (mn: (tt:Z) ~> tt): base ~> base := pos (fst mn) ∘ neg (snd mn).
+  Definition from_circle (f: base ~> base): (tt:Z) ~> tt :=
+    f Z tt {|
+        Isomorphism.to := (1, 0) ;
+        Isomorphism.from := (0, 1) ;
+        to_from := eq_refl;
+        from_to := eq_refl |}.
+
+  Theorem from_to x: from_circle (to_circle x) == x.
+  Proof.
+    destruct x as [m n].
+    induction m.
+    - induction n.
+      + reflexivity.
+      + cbn in *.
+        lia.
+    - induction n.
+      + cbn in *.
+        lia.
+      + cbn in *.
+        lia.
+  Qed.
+
+  Theorem to_from x: to_circle (from_circle x) == x.
+  Proof.
+    admit.
+  Admitted.
+End Integers.
+
 Module Coproduct.
   Close Scope nat.
 
@@ -1078,82 +1215,6 @@ Module Import Suspension.
   Qed.
 End Suspension.
 
-Instance Circle: Category := Coequalizer Trivial Trivial (id: (_:Cat)~>_) (id: (_:Cat)~>_).
-
-Definition base: Circle := {| dom := 0; proj := le_n 0 |}.
-
-Definition zero: base ~> base := id.
-
-Definition one: base ~> base.
-  cbn.
-  intros ? ? shrink.
-  apply (to _ _ _ (shrink _)).
-Defined.
-
-Definition negone: base ~> base.
-  cbn.
-  intros ? ? shrink.
-  apply (from _ _ _ (shrink _)).
-Defined.
-
-Instance Z: Category := {
-  object := unit ;
-  hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = snd y + fst x |} ;
-  id _ := (0, 0) ;
-  compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
-}.
-
-Obligation 1.
-Proof.
-  admit.
-Admitted.
-
-Obligation 2.
-Proof.
-  admit.
-Admitted.
-
-Obligation 3.
-Proof.
-  admit.
-Admitted.
-
-Obligation 4.
-Proof.
-  admit.
-Admitted.
-
-Obligation 5.
-Proof.
-  admit.
-Admitted.
-
-Definition cyl: (Trivial:Cat) ~> Z := {|
-  fobj _ := tt ;
-  map _ _ _ := id ;
-|}.
-
-Fixpoint neg (n: nat): base ~> base :=
-  match n with
-  | 0 => zero
-  | S n => negone ∘ neg n
-  end.
-
-Fixpoint pos (n: nat): base ~> base :=
-  match n with
-  | 0 => zero
-  | S n => one ∘ pos n
-  end.
-
-Definition to (mn: (tt:Z) ~> tt): base ~> base := pos (fst mn) ∘ neg (snd mn).
-Definition from (f: base ~> base): (tt:Z) ~> tt :=
-  f Z cyl (λ _, {|
-       Isomorphism.to := (1, 0) ;
-       Isomorphism.from := (0, 1) ;
-       to_from := eq_refl;
-       from_to := eq_refl |}).
-
-Compute from (to (12, 3)).
 
 Instance Preset: Category := {
   object := Type ;
