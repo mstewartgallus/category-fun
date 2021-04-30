@@ -608,7 +608,7 @@ Module Import Finite.
   Definition walk {C}: source C ~> target C := any_gt_0 C.
 End Finite.
 
-Module Import Product.
+Module Product.
   #[local]
   Close Scope nat.
 
@@ -732,7 +732,7 @@ Proof.
   all: exists.
 Qed.
 
-Instance Cylinder K: Category := Product K Interval.
+Instance Cylinder K: Category := Product.Product K Interval.
 
 Instance Boolean: Category := {
   object := bool ;
@@ -750,6 +750,236 @@ Proof.
   exists.
   all:exists.
 Qed.
+Module Coproduct.
+  Close Scope nat.
+
+  Section coproducts.
+    Variable C D: Category.
+
+    #[local]
+    Definition sum := C + D.
+
+    #[local]
+    Definition hom' (A B: sum): Type.
+    destruct A as [AL|AR], B as [BL|BR].
+    1: apply (AL ~> BL).
+    3: apply (AR ~> BR).
+    all: apply False.
+    Defined.
+
+    #[local]
+    Definition eq {A B} (f g: hom' A B): Prop.
+    destruct A as [AL|AR], B as [BL|BR].
+    1: apply (f == g).
+    3: apply (f == g).
+    all: apply False.
+    Defined.
+
+    #[local]
+    Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq |}.
+
+    Obligation 1.
+    all: destruct A as [AL|AR], B as [BL|BR].
+    all: unfold eq.
+    all: exists.
+    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
+    all: intros; auto.
+    all: try reflexivity.
+    - symmetry.
+      apply H.
+    - rewrite H, H0.
+      reflexivity.
+    - intros.
+      symmetry.
+      apply H.
+    - rewrite H, H0.
+      reflexivity.
+    Qed.
+
+    Definition Coproduct: Category.
+    eexists sum hom _ _.
+    Unshelve.
+    5: {
+      intros.
+      destruct A.
+      all: apply id.
+    }
+    5: {
+      cbn.
+      intros X Y Z.
+      destruct X, Y, Z.
+      all: cbn.
+      all: intros f g.
+      all: auto.
+      all: try contradiction.
+      all: apply (f ∘ g).
+    }
+    all: cbn.
+    all: unfold eq;cbn;auto.
+    - intros X Y Z W.
+      destruct X, Y, Z, W.
+      cbn.
+      all: auto.
+      all: try contradiction.
+      all: intros f g h.
+      all: apply compose_assoc.
+    - intros A B.
+      destruct A, B.
+      cbn.
+      all: auto.
+      all: intros.
+      all: apply compose_id_left.
+    - intros A B.
+      destruct A, B.
+      all: cbn.
+      all: auto.
+      all: intros.
+      all: apply compose_id_right.
+    - intros X Y Z.
+      destruct X, Y, Z.
+      all: cbn.
+      all: auto.
+      all: try contradiction.
+      + intros ? ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+      + intros ? ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Defined.
+  End coproducts.
+
+  Import Functor.
+
+  Definition fanin {A B C: Cat} (f: A ~> C) (g: B ~> C): (Coproduct A B:Cat) ~> C.
+  eexists (λ x, match x with | inl x' => f x' | inr x' => g x' end) _.
+  Unshelve.
+  4: {
+    cbn.
+    intros X Y.
+    destruct X, Y.
+    all: cbn.
+    all: try contradiction.
+    all: apply map.
+  }
+  all: cbn.
+  - intros X Y Z.
+    destruct X, Y, Z.
+    all: cbn.
+    all: try contradiction.
+    all: intros; apply map_composes.
+  - intros X.
+    destruct X.
+    all: apply map_id.
+  - intros X Y.
+    destruct X, Y.
+    cbn.
+    all: try contradiction.
+    all: apply map_compat.
+  Defined.
+
+  Definition inl {A B:Cat}: A ~> Coproduct A B := {| fobj := inl ; map _ _ x := x |}.
+  Definition inr {A B:Cat}: B ~> Coproduct A B := {| fobj := inr ; map _ _ x := x |}.
+
+  Solve All Obligations with reflexivity.
+End Coproduct.
+
+Module Import Coequalizer.
+  #[local]
+  Close Scope nat.
+
+  Section coeq.
+    Variables K L: Category.
+    Variables p q: (K:Cat) ~> L.
+
+    #[local]
+     Definition hom (A B: L): Bishop :=
+      (∀ S (F: Functor L S)
+         (shrink: ∀ x, F (p x) <~> F (q x)),
+          S (F A) (F B)) /~
+    {| equiv x y := ∀ s cyl shrink, x s cyl shrink == y s cyl shrink |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      all:intro;intros.
+      - reflexivity.
+      - symmetry.
+        auto.
+      - rewrite (H s _), (H0 s _).
+        reflexivity.
+    Qed.
+
+    Instance Coequalizer: Category := {
+      object := L ;
+      hom := hom ;
+
+      id _ _ _ _ := id ;
+      compose _ _ _ f g s cyl shrink := f s cyl shrink ∘ g s cyl shrink;
+    }.
+
+    Obligation 1.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      rewrite (H s), (H0 s).
+      reflexivity.
+    Qed.
+
+    Definition cyl: Functor L Coequalizer := {|
+      fobj x := x ;
+      map _ _ f _ _ _ := map f ;
+    |}.
+
+    Obligation 1.
+    Proof.
+      rewrite map_composes.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      rewrite map_id.
+      reflexivity.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      cbn in *.
+      apply map_compat.
+      cbn.
+      auto.
+    Qed.
+
+    Definition shrink {X: K}: Isomorphism Coequalizer (p X) (q X) := {|
+      to s cyl shrink := to _ _ _ (shrink X) ;
+      from s cyl shrink := from _ _ _ (shrink X) ;
+   |}.
+
+    Obligation 1.
+    Proof.
+      apply to_from.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply from_to.
+    Qed.
+  End coeq.
+End Coequalizer.
 
 Module Import Suspension.
   #[local]
@@ -848,8 +1078,82 @@ Module Import Suspension.
   Qed.
 End Suspension.
 
-Instance Circle: Category := Suspension Boolean.
-Instance Loop K: Category := Functor Circle K.
+Instance Circle: Category := Coequalizer Trivial Trivial (id: (_:Cat)~>_) (id: (_:Cat)~>_).
+
+Definition base: Circle := {| dom := 0; proj := le_n 0 |}.
+
+Definition zero: base ~> base := id.
+
+Definition one: base ~> base.
+  cbn.
+  intros ? ? shrink.
+  apply (to _ _ _ (shrink _)).
+Defined.
+
+Definition negone: base ~> base.
+  cbn.
+  intros ? ? shrink.
+  apply (from _ _ _ (shrink _)).
+Defined.
+
+Instance Z: Category := {
+  object := unit ;
+  hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = snd y + fst x |} ;
+  id _ := (0, 0) ;
+  compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
+}.
+
+Obligation 1.
+Proof.
+  admit.
+Admitted.
+
+Obligation 2.
+Proof.
+  admit.
+Admitted.
+
+Obligation 3.
+Proof.
+  admit.
+Admitted.
+
+Obligation 4.
+Proof.
+  admit.
+Admitted.
+
+Obligation 5.
+Proof.
+  admit.
+Admitted.
+
+Definition cyl: (Trivial:Cat) ~> Z := {|
+  fobj _ := tt ;
+  map _ _ _ := id ;
+|}.
+
+Fixpoint neg (n: nat): base ~> base :=
+  match n with
+  | 0 => zero
+  | S n => negone ∘ neg n
+  end.
+
+Fixpoint pos (n: nat): base ~> base :=
+  match n with
+  | 0 => zero
+  | S n => one ∘ pos n
+  end.
+
+Definition to (mn: (tt:Z) ~> tt): base ~> base := pos (fst mn) ∘ neg (snd mn).
+Definition from (f: base ~> base): (tt:Z) ~> tt :=
+  f Z cyl (λ _, {|
+       Isomorphism.to := (1, 0) ;
+       Isomorphism.from := (0, 1) ;
+       to_from := eq_refl;
+       from_to := eq_refl |}).
+
+Compute from (to (12, 3)).
 
 Instance Preset: Category := {
   object := Type ;
@@ -1001,140 +1305,6 @@ Module Import Opposite.
     Qed.
   End opposite.
 End Opposite.
-
-Module Coproduct.
-  Close Scope nat.
-
-  Section coproducts.
-    Variable C D: Category.
-
-    #[local]
-    Definition sum := C + D.
-
-    #[local]
-    Definition hom' (A B: sum): Type.
-    destruct A as [AL|AR], B as [BL|BR].
-    1: apply (AL ~> BL).
-    3: apply (AR ~> BR).
-    all: apply False.
-    Defined.
-
-    #[local]
-    Definition eq {A B} (f g: hom' A B): Prop.
-    destruct A as [AL|AR], B as [BL|BR].
-    1: apply (f == g).
-    3: apply (f == g).
-    all: apply False.
-    Defined.
-
-    #[local]
-    Definition hom (A B: sum): Bishop := hom' A B /~ {| equiv := eq |}.
-
-    Obligation 1.
-    all: destruct A as [AL|AR], B as [BL|BR].
-    all: unfold eq.
-    all: exists.
-    all: unfold Reflexive, Symmetric, Transitive, eq; cbn.
-    all: intros; auto.
-    all: try reflexivity.
-    - symmetry.
-      apply H.
-    - rewrite H, H0.
-      reflexivity.
-    - intros.
-      symmetry.
-      apply H.
-    - rewrite H, H0.
-      reflexivity.
-    Qed.
-
-    Definition coproduct: Category.
-    eexists sum hom _ _.
-    Unshelve.
-    5: {
-      intros.
-      destruct A.
-      all: apply id.
-    }
-    5: {
-      cbn.
-      intros X Y Z.
-      destruct X, Y, Z.
-      all: cbn.
-      all: intros f g.
-      all: auto.
-      all: try contradiction.
-      all: apply (f ∘ g).
-    }
-    all: cbn.
-    all: unfold eq;cbn;auto.
-    - intros X Y Z W.
-      destruct X, Y, Z, W.
-      cbn.
-      all: auto.
-      all: try contradiction.
-      all: intros f g h.
-      all: apply compose_assoc.
-    - intros A B.
-      destruct A, B.
-      cbn.
-      all: auto.
-      all: intros.
-      all: apply compose_id_left.
-    - intros A B.
-      destruct A, B.
-      all: cbn.
-      all: auto.
-      all: intros.
-      all: apply compose_id_right.
-    - intros X Y Z.
-      destruct X, Y, Z.
-      all: cbn.
-      all: auto.
-      all: try contradiction.
-      + intros ? ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-      + intros ? ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-    Defined.
-  End coproducts.
-
-  Import Functor.
-
-  Definition fanin {A B C: Cat} (f: A ~> C) (g: B ~> C): (coproduct A B:Cat) ~> C.
-  eexists (λ x, match x with | inl x' => f x' | inr x' => g x' end) _.
-  Unshelve.
-  4: {
-    cbn.
-    intros X Y.
-    destruct X, Y.
-    all: cbn.
-    all: try contradiction.
-    all: apply map.
-  }
-  all: cbn.
-  - intros X Y Z.
-    destruct X, Y, Z.
-    all: cbn.
-    all: try contradiction.
-    all: intros; apply map_composes.
-  - intros X.
-    destruct X.
-    all: apply map_id.
-  - intros X Y.
-    destruct X, Y.
-    cbn.
-    all: try contradiction.
-    all: apply map_compat.
-  Defined.
-
-  Definition inl {A B:Cat}: A ~> coproduct A B := {| fobj := inl ; map _ _ x := x |}.
-  Definition inr {A B:Cat}: B ~> coproduct A B := {| fobj := inr ; map _ _ x := x |}.
-
-  Solve All Obligations with reflexivity.
-End Coproduct.
 
 Module Diagrams.
   Section diagrams.
