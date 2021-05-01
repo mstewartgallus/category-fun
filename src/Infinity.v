@@ -275,6 +275,173 @@ Module Import Isomorphism.
   End IsomorphismNotations.
 End Isomorphism.
 
+Module Circle.
+  #[local]
+   Close Scope nat.
+
+  (* Annoyingly a slightly byzantine definition is required to get some
+  sort of induction *)
+  Inductive circle := zero | compose (_ _ :circle) | clockwise | counterclockwise.
+
+  Section inductive.
+     Variables (S:Category) (pt:S) (loop: pt <~> pt).
+
+     #[local]
+      Fixpoint foldme (c: circle): S pt pt :=
+       match c with
+       | zero => id
+       | compose f g => foldme f ∘ foldme g
+       | clockwise => to _ _ _ loop
+       | counterclockwise => from _ _ _ loop
+       end.
+  End inductive.
+
+  (* Probably a simpler equality story *)
+  #[local]
+   Definition hom (A B: True): Bishop := circle /~
+                     {| equiv x y := ∀ s base loop, foldme s base loop x == foldme s base loop y |}.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all:intro;intros.
+    - reflexivity.
+    - symmetry.
+      auto.
+    - rewrite (H s _), (H0 s _).
+      reflexivity.
+  Qed.
+
+  Instance Circle: Category := {
+    object := True ;
+    hom := hom ;
+
+    id _ := zero ;
+    compose _ _ _ := compose ;
+  }.
+
+  Obligation 1.
+  Proof.
+    apply compose_assoc.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    apply compose_id_left.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    apply compose_id_right.
+  Qed.
+
+  Obligation 4.
+  Proof.
+    rewrite (H s), (H0 s).
+    reflexivity.
+  Qed.
+
+  Definition base: Circle := I.
+
+  Definition loop: base <~> base := {|
+    to := clockwise ;
+    from := counterclockwise ;
+  |}.
+
+  Obligation 1.
+  Proof.
+    apply to_from.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    apply from_to.
+  Qed.
+
+  Definition Circle_ind (c: Circle base base) (S : Category) (pt: S) (loop: pt <~> pt): pt ~> pt :=
+    foldme S pt loop c.
+End Circle.
+
+Module Integers.
+  Import Circle.
+
+  Definition zero: base ~> base := id.
+  Definition one: base ~> base := to _ _ _ loop.
+  Definition neg_one: base ~> base := from _ _ _ loop.
+
+  Instance Z: Category := {
+    object := unit ;
+    hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
+    id _ := (0, 0) ;
+    compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
+  }.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all:intro;intros;lia.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    lia.
+  Qed.
+
+  Obligation 5.
+  Proof.
+    lia.
+  Qed.
+
+  Fixpoint neg (n: nat): base ~> base :=
+    match n with
+    | 0 => id
+    | S n => neg_one ∘ neg n
+    end.
+
+  Fixpoint pos (n: nat): base ~> base :=
+    match n with
+    | 0 => id
+    | S n => one ∘ pos n
+    end.
+
+  Definition to_circle (mn: (tt:Z) ~> tt): base ~> base := pos (fst mn) ∘ neg (snd mn).
+  Definition from_circle (f: base ~> base): (tt:Z) ~> tt :=
+    Circle_ind f Z tt {|
+        Isomorphism.to := (1, 0) ;
+        Isomorphism.from := (0, 1) ;
+        to_from := eq_refl;
+        from_to := eq_refl |}.
+
+  Theorem from_to x: from_circle (to_circle x) == x.
+  Proof.
+    destruct x as [m n].
+    induction m.
+    - induction n.
+      + reflexivity.
+      + cbn in *.
+        lia.
+    - induction n.
+      + cbn in *.
+        lia.
+      + cbn in *.
+        lia.
+  Qed.
+
+  Theorem to_from x: to_circle (from_circle x) == x.
+  Proof.
+    induction x.
+    - cbn.
+      intros.
+      apply compose_id_left.
+    - intros s base loop.
+      replace (Circle.foldme s base loop (compose x1 x2)) with (Circle.foldme s base loop x1 ∘ Circle.foldme s base loop x2).
+      2: reflexivity.
+      rewrite <- (IHx1 s base loop).
+      rewrite <- (IHx2 s base loop).
+      admit.
+  Admitted.
+End Integers.
+
 Module Import Functor.
   #[universes(cumulative)]
   Class functor (C D: Category) := {
@@ -732,160 +899,6 @@ Proof.
 Qed.
 
 Instance Cylinder K: Category := Product.Product K Interval.
-
-Instance Boolean: Category := {
-  object := bool ;
-  hom A B := (A = B) /~ {| equiv _ _ := True |} ;
-
-  id A := eq_refl ;
-  compose _ _ _ f g :=
-    let eq_refl := f in
-    let eq_refl := g in
-    eq_refl
-}.
-
-Obligation 1.
-Proof.
-  exists.
-  all:exists.
-Qed.
-
-Module Import Circle.
-  #[local]
-   Close Scope nat.
-
-  #[local]
-   Definition hom (A B: True): Bishop :=
-    (∀ (S:Category) (base:S) (loop: base <~> base),
-        S base base) /~
-                     {| equiv x y := ∀ s base loop, x s base loop == y s base loop |}.
-
-  Obligation 1.
-  Proof.
-    exists.
-    all:intro;intros.
-    - reflexivity.
-    - symmetry.
-      auto.
-    - rewrite (H s _), (H0 s _).
-      reflexivity.
-  Qed.
-
-  Instance Circle: Category := {
-    object := True ;
-    hom := hom ;
-
-    id _ _ _ _ := id ;
-    compose _ _ _ f g s base loop := f s base loop ∘ g s base loop;
-  }.
-
-  Obligation 1.
-  Proof.
-    apply compose_assoc.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    apply compose_id_left.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    apply compose_id_right.
-  Qed.
-
-  Obligation 4.
-  Proof.
-    rewrite (H s), (H0 s).
-    reflexivity.
-  Qed.
-
-  Definition base: Circle := I.
-
-  Definition loop: base <~> base := {|
-    to _ _ loop := to _ _ _ loop ;
-    from _ _ loop := from _ _ _ loop ;
-  |}.
-
-  Obligation 1.
-  Proof.
-    apply to_from.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    apply from_to.
-  Qed.
-End Circle.
-
-Module Integers.
-  Definition zero: base ~> base := id.
-  Definition one: base ~> base := to _ _ _ loop.
-  Definition neg_one: base ~> base := from _ _ _ loop.
-
-  Instance Z: Category := {
-    object := unit ;
-    hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
-    id _ := (0, 0) ;
-    compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
-                         }.
-
-  Obligation 1.
-  Proof.
-    exists.
-    all:intro;intros;lia.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    lia.
-  Qed.
-
-  Obligation 5.
-  Proof.
-    lia.
-  Qed.
-
-  Fixpoint neg (n: nat): base ~> base :=
-    match n with
-    | 0 => id
-    | S n => neg_one ∘ neg n
-    end.
-
-  Fixpoint pos (n: nat): base ~> base :=
-    match n with
-    | 0 => id
-    | S n => one ∘ pos n
-    end.
-
-  Definition to_circle (mn: (tt:Z) ~> tt): base ~> base := pos (fst mn) ∘ neg (snd mn).
-  Definition from_circle (f: base ~> base): (tt:Z) ~> tt :=
-    f Z tt {|
-        Isomorphism.to := (1, 0) ;
-        Isomorphism.from := (0, 1) ;
-        to_from := eq_refl;
-        from_to := eq_refl |}.
-
-  Theorem from_to x: from_circle (to_circle x) == x.
-  Proof.
-    destruct x as [m n].
-    induction m.
-    - induction n.
-      + reflexivity.
-      + cbn in *.
-        lia.
-    - induction n.
-      + cbn in *.
-        lia.
-      + cbn in *.
-        lia.
-  Qed.
-
-  Theorem to_from x: to_circle (from_circle x) == x.
-  Proof.
-    admit.
-  Admitted.
-End Integers.
 
 Module Coproduct.
   Close Scope nat.
