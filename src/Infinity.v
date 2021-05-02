@@ -1109,27 +1109,81 @@ Module Import Product.
 
     Definition Π: ((Cat/D):Cat) ~> (Cat/C) := {|
       fobj := Product ;
+      map _ _ f := {|
+            fobj (x:Functor Trivial _) := const (@fobj _ _ f (x I)) ;
+            map _ _ g _ := f ! (g I)
+          |}
     |}.
 
     Obligation 1.
     Proof.
-      admit.
-    Admitted.
+      cbn in *.
+      rewrite map_composes.
+      reflexivity.
+    Qed.
 
     Obligation 2.
     Proof.
-      admit.
-    Admitted.
+      cbn in *.
+      apply map_id.
+    Qed.
 
     Obligation 3.
     Proof.
-      admit.
-    Admitted.
+      cbn in *.
+      apply map_compat.
+      apply (H1 I).
+    Qed.
 
     Obligation 4.
     Proof.
-      admit.
-    Admitted.
+      cbn in *.
+      destruct (H (x I)) as [H'].
+      exists.
+      exists (F ! (to _ _ _ H')) (F ! (from _ _ _ H')).
+      all: rewrite map_composes.
+      1: rewrite to_from.
+      2: rewrite from_to.
+      all: rewrite map_id.
+      all: reflexivity.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      cbn in *.
+      destruct (H (x I)).
+      exists.
+      exists (λ _, id) (λ _, id).
+      all: cbn in *.
+      all: intros.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 6.
+    Proof.
+      exists.
+      exists (λ _, x ! I) (λ _, x ! I).
+      all: cbn.
+      all: intros.
+      all: rewrite map_composes.
+      all: cbn.
+      all: rewrite map_id.
+      all: reflexivity.
+    Qed.
+
+    Obligation 7.
+    Proof.
+      all: cbn in *.
+      destruct (H0 (x I)), (H (x I)).
+      exists.
+      exists (λ _, to _ _ _ X0) (λ _, from _ _ _ X0).
+      all: cbn in *.
+      all: intros.
+      1: rewrite to_from.
+      2: rewrite from_to.
+      all: reflexivity.
+    Qed.
+
   End product.
 End Product.
 
@@ -1161,6 +1215,7 @@ End InductiveCat.
 Module Const.
   Section const.
     Variable C: Category.
+
 
     Definition ConstF: Functor Cat Cat := {|
       fobj _ := C:Cat ;
