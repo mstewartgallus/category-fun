@@ -1085,6 +1085,26 @@ Proof.
   all: apply compose_id_left.
 Qed.
 
+Definition const {C A:Category} (x: A): Functor C A := {|
+  fobj _ := x ;
+  map _ _ _ := id ;
+|}.
+
+Obligation 1.
+Proof.
+  apply compose_id_left.
+Qed.
+
+Obligation 2.
+Proof.
+  reflexivity.
+Qed.
+
+Obligation 3.
+Proof.
+  reflexivity.
+Qed.
+
 Module Import Product.
   Section product.
     Context {C D: Category}.
