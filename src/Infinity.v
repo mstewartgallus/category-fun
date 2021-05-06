@@ -146,22 +146,27 @@ Module Import Sets.
 End Sets.
 
 Module Import Isomorphism.
+  #[universes(cumulative)]
+   Record iso [K: Category] (A B: K) := {
+    to: K A B ;
+    from: K B A ;
+    to_from: to ∘ from == id ;
+    from_to: from ∘ to == id ;
+  }.
+
+  Arguments to [K A B] _.
+  Arguments from [K A B] _.
+  Arguments to_from [K A B] _.
+  Arguments from_to [K A B] _.
+
   Section isos.
     Context `(K:Category).
 
     Section iso.
       Variable A B: K.
 
-      #[universes(cumulative)]
-      Record iso := {
-        to: K A B ;
-        from: K B A ;
-        to_from: to ∘ from == id ;
-        from_to: from ∘ to == id ;
-      }.
-
       #[local]
-      Definition hom := iso /~ {| equiv f g := to f == to g ∧ from f == from g |}.
+      Definition hom := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
 
       Obligation 1.
       Proof.
@@ -190,8 +195,8 @@ Module Import Isomorphism.
       id _ :=  {| to := id ; from := id |} ;
       compose _ _ _ f g :=
         {|
-          to := to _ _ f ∘ to _ _ g ;
-          from := from _ _ g ∘ from _ _ f
+          to := to f ∘ to g ;
+          from := from g ∘ from f
         |} ;
     }.
 
@@ -208,7 +213,7 @@ Module Import Isomorphism.
     Obligation 3.
     Proof.
       rewrite <- compose_assoc.
-      rewrite -> (compose_assoc (to _ _ g)).
+      rewrite -> (compose_assoc (to g)).
       rewrite to_from.
       rewrite compose_id_left.
       rewrite to_from.
@@ -218,7 +223,7 @@ Module Import Isomorphism.
     Obligation 4.
     Proof.
       rewrite <- compose_assoc.
-      rewrite -> (compose_assoc (from _ _ f)).
+      rewrite -> (compose_assoc (from f)).
       rewrite from_to.
       rewrite compose_id_left.
       rewrite from_to.
@@ -257,7 +262,7 @@ Module Import Isomorphism.
   End isos.
 
   Definition transpose {C:Category} {A B: C} (f: Isomorphism _ A B): Isomorphism _ B A :=
-    {| to := from _ _ _ f ; from := to _ _ _ f |}.
+    {| to := from f ; from := to f |}.
 
   Obligation 1.
   Proof.
@@ -353,8 +358,8 @@ Module Import Cat.
   Definition to_iso {A B: Category} (f: functor A B): functor (Isomorphism A) (Isomorphism B) := {|
     fobj x := f x ;
     map _ _ p :=
-      {| to := f ! (to _ _ _ p) ;
-         from := f ! (from _ _ _ p) |}
+      {| to := f ! (to p) ;
+         from := f ! (from p) |}
   |}.
 
   Obligation 1.
@@ -464,7 +469,7 @@ Module Import Cat.
     set (f_iso := to_iso f).
     set (pq := compose (Category := Isomorphism _) p' (f_iso ! q') : f (g x) <~> f' (g' x)).
     exists.
-    exists (to _ _ _ pq) (from _ _ _ pq).
+    exists (to pq) (from pq).
     - apply to_from.
     - apply from_to.
   Qed.
@@ -473,10 +478,13 @@ End Cat.
 Module Import Algebra.
   Module Import Algebra.
     #[universes(cumulative)]
-    Record Algebra {C:Category} (F: functor C C) := {
+    Record Algebra [C:Category] (F: functor C C) := {
       elem: C ;
       assoc: F elem ~> elem
     }.
+
+    Arguments elem [C F] _.
+    Arguments assoc [C F] _.
   End Algebra.
 
   Section algebra.
@@ -485,7 +493,7 @@ Module Import Algebra.
 
     #[local]
      Definition hom (A B: Algebra F) :=
-      {m: elem _ A ~> elem _ B | m ∘ assoc _ A == assoc _ B ∘ F ! m }
+      {m: elem A ~> elem B | m ∘ assoc A == assoc B ∘ F ! m }
         /~
         {| equiv x y := proj1_sig x == proj1_sig y |}.
 
@@ -552,38 +560,36 @@ Module Import Algebra.
 End Algebra.
 
 Module Import Over.
+  #[universes(cumulative)]
+   Record bundle [C: Category] (c: C) := {
+    dom: object ;
+    proj: dom ~> c ;
+   }.
+
+  Arguments dom [C] [c] _.
+  Arguments proj [C] [c] _.
+
   Section over.
-    Context `(Category).
-    Variable c: object.
+    Variables (C: Category) (c: C).
 
-    #[universes(cumulative)]
-    Record bundle := {
-      dom: object ;
-      proj: dom ~> c ;
-    }.
+    #[local]
+     Definition hom (A B: bundle c) :=
+      {f| proj B ∘ f == proj A } /~ {| equiv f g := proj1_sig f == proj1_sig g |}.
 
-    Section over.
-      Variable A B: bundle.
-
-      #[local]
-      Definition hom A B :=
-        {f| proj B ∘ f == proj A } /~ {| equiv f g := proj1_sig f == proj1_sig g |}.
-
-      Obligation 1.
-      Proof using Type.
-        exists.
-        all: unfold Reflexive, Symmetric, Transitive.
-        - reflexivity.
-        - symmetry.
-          assumption.
-        - intros ? ? ? p q.
-          rewrite p, q.
-          reflexivity.
-      Qed.
-    End over.
+    Obligation 1.
+    Proof using Type.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      - reflexivity.
+      - symmetry.
+        assumption.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
 
     Instance Over: Category := {
-      object := bundle ;
+      object := bundle c ;
       hom := hom ;
       id _ := id ;
       compose _ _ _ f g := f ∘ g ;
@@ -597,7 +603,7 @@ Module Import Over.
     Obligation 2.
     Proof.
       rewrite compose_assoc.
-      rewrite H1, H0.
+      rewrite H0, H.
       reflexivity.
     Qed.
 
@@ -618,7 +624,7 @@ Module Import Over.
 
     Obligation 6.
     Proof.
-      rewrite H0, H1.
+      rewrite H, H0.
       reflexivity.
     Qed.
   End over.
@@ -628,7 +634,7 @@ Module Import Over.
   End OverNotations.
 
   Definition Σ {C:Category} {c d} (f: d ~> c): ((C/d):Cat) ~> (C/c) := {|
-    fobj g :=  {| proj := f ∘ proj _ _ g |} ;
+    fobj g :=  {| proj := f ∘ proj g |} ;
     map _ _ g := g
   |}.
 
@@ -651,20 +657,24 @@ Module Import Over.
 End Over.
 
 Module Import Pullback.
+  Record pullback [A B C: Category] (F: Functor A C) (G: Functor B C) := {
+    source: A ;
+    target: B ;
+    assoc: F source ~> G target
+  }.
+
+  Arguments source [A B C F G] _.
+  Arguments target [A B C F G] _.
+  Arguments assoc [A B C F G] _.
+
   Section pullback.
     Context {A B C: Category}.
     Variable F: Functor A C.
     Variable G: Functor B C.
 
-    Record pullback := {
-      source: A ;
-      target: B ;
-      assoc: F source ~> G target
-    }.
-
-    (* I think just a comma category will do well enough? *)
+    (* Basically a comma category *)
     #[local]
-     Definition hom (A B: pullback) := {
+     Definition hom (A B: pullback F G) := {
       xs: (source A ~> source B) * (target A ~> target B) |
                                         (G ! (snd xs)) ∘ assoc A  == assoc B ∘ (F ! (fst xs)) }
     /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
@@ -682,7 +692,7 @@ Module Import Pullback.
     Qed.
 
     Instance Pullback: Category := {
-      object := pullback ;
+      object := pullback F G ;
       hom := hom ;
 
       id _ := (id, id) ;
@@ -755,14 +765,14 @@ Module Import Pullback.
 
     #[local]
     Definition base' (G: Cat/Y): Cat/X := {|
-      dom := Pullback F (proj _ _ G) ;
-      proj := p1 F (proj _ _ G)
+      dom := Pullback F (proj G) ;
+      proj := p1 F (proj G)
     |}.
 
     #[local]
     Definition base_map {A B: Cat} (H: A ~> B) (G:B ~> Y):
       Functor (Pullback F (G ∘ H)) (Pullback F G) := {|
-      fobj x := {| assoc := assoc _ _ x |} ;
+      fobj x := {| assoc := assoc x |} ;
       map _ _ f := (fst f, H ! (snd f))
     |}.
 
@@ -807,10 +817,14 @@ Module Import Pushout.
       p2: G weld ~> B ;
     }.
 
+    Arguments weld [A B] _.
+    Arguments p1 [A B] _.
+    Arguments p2 [A B] _.
+
     Inductive eq {A B} (x y: join A B): Prop :=
-      eq_intro (eq_weld: weld _ _ x <~> weld _ _ y)
-      (_:p1 _ _ x == (F ! (from _ _ _ eq_weld)) ∘ p1 _ _ y)
-      (_:p2 _ _ x == p2 _ _ y ∘ (G ! (to _ _ _ eq_weld)))
+      eq_intro (eq_weld: weld x <~> weld y)
+      (_:p1 x == (F ! (from eq_weld)) ∘ p1 y)
+      (_:p2 x == p2 y ∘ (G ! (to eq_weld)))
     .
 
      (* A sort of cocomma category/basically a cograph *)
@@ -896,8 +910,8 @@ Module Import Pushout.
       all: cbn in *.
       all: try contradiction.
       - apply (f ∘ g).
-      - apply {| p1 := p1 _ _ f ∘ g ; p2 := p2 _ _ f |}.
-      - apply {| p1 := p1 _ _ g ; p2 := f ∘ p2 _ _ g |}.
+      - apply {| p1 := p1 f ∘ g ; p2 := p2 f |}.
+      - apply {| p1 := p1 g ; p2 := f ∘ p2 g |}.
       - apply (f ∘ g).
     Defined.
 
@@ -1067,7 +1081,7 @@ Proof.
 Qed.
 
 Definition trivial_from: ((Cat/Trivial):Cat) ~> Cat := {|
-  fobj x := dom _ _ x ;
+  fobj x := dom x ;
   map _ _ x := x ;
 |}.
 
@@ -1105,16 +1119,16 @@ Proof.
   reflexivity.
 Qed.
 
-Module Import Product.
+Module Import DepProduct.
   Section product.
     Context {C D: Category}.
     Variable F: Functor D C.
 
     (* This seems highly wrong to me. *)
     Definition Product (g: Cat/D): Cat/C.
-      exists (Functor Trivial (dom _ _ g)).
-      exists (λ x: Functor Trivial (dom _ _ g), F (proj _ _ g (x I)))
-             (λ _ _ f, (F ! ((proj _ _ g) ! (f _)))).
+      exists (Functor Trivial (dom g)).
+      exists (λ x: Functor Trivial (dom g), F (proj g (x I)))
+             (λ _ _ f, (F ! ((proj g) ! (f _)))).
       - intros.
         repeat rewrite map_composes.
         reflexivity.
@@ -1160,7 +1174,7 @@ Module Import Product.
       cbn in *.
       destruct (H (x I)) as [H'].
       exists.
-      exists (F ! (to _ _ _ H')) (F ! (from _ _ _ H')).
+      exists (F ! (to H')) (F ! (from H')).
       all: rewrite map_composes.
       1: rewrite to_from.
       2: rewrite from_to.
@@ -1196,7 +1210,7 @@ Module Import Product.
       all: cbn in *.
       destruct (H0 (x I)), (H (x I)).
       exists.
-      exists (λ _, to _ _ _ X0) (λ _, from _ _ _ X0).
+      exists (λ _, to X0) (λ _, from X0).
       all: cbn in *.
       all: intros.
       1: rewrite to_from.
@@ -1205,32 +1219,7 @@ Module Import Product.
     Qed.
 
   End product.
-End Product.
-
-(* The full dependent endofunctor algebra C/W -> C/W is a bit heavy *)
-Module Import InductiveCat.
-  #[local]
-   Definition polynomial {X W Y Z:Cat} (f: X ~> W) (g: X ~> Y) (h: Y ~> Z) :=
-    Σ h ∘ Π g ∘ base f.
-
-  Section inductive_cat.
-    Context {X W Y:Category}.
-    Variable F: Functor X Trivial.
-    Variable G: Functor X Y.
-    Variable H: Functor Y Trivial.
-
-    #[local]
-     Definition PolyF': ((Cat/Trivial):Cat) ~> (Cat/Trivial) := polynomial F G H .
-    #[local]
-     Definition PolyF: Functor Cat Cat := trivial_from ∘ PolyF' ∘ trivial_to.
-
-    Definition InductiveCat: Algebra PolyF.
-      admit.
-    Admitted.
-    Check assoc _ _ InductiveCat.
-  End inductive_cat.
-End InductiveCat.
-
+End DepProduct.
 
 Module Const.
   Section const.
@@ -1269,8 +1258,8 @@ Module Const.
       apply id.
     Defined.
 
-    Definition const_roll := Algebra.assoc _ Const.
-    Definition const_ind A: Const ~> A := Algebra.assoc _ A.
+    Definition const_roll := Algebra.assoc Const.
+    Definition const_ind A: Const ~> A := Algebra.assoc A.
 
     Obligation 1.
     Proof.
@@ -1473,8 +1462,8 @@ Module Integers.
   Import Circle.
 
   Definition zero: base ~> base := id.
-  Definition one: base ~> base := to _ _ _ loop.
-  Definition neg_one: base ~> base := from _ _ _ loop.
+  Definition one: base ~> base := to loop.
+  Definition neg_one: base ~> base := from loop.
 
   Instance Z: Category := {
     object := unit ;
@@ -1513,7 +1502,7 @@ Module Integers.
 
   Definition to_circle (mn: (tt:Z) ~> tt): base ~> base := pos (fst mn) ∘ neg (snd mn).
   Definition from_circle (f: base ~> base): Z tt tt :=
-    to _ _ _ (Circle_fold Z tt {|
+    to (Circle_fold Z tt {|
         Isomorphism.to := (1, 0) ;
         Isomorphism.from := (0, 1) ;
         to_from := eq_refl;
@@ -1695,8 +1684,6 @@ Instance Empty: Category := {
 }.
 
 Solve All Obligations with contradiction.
-
-Instance Trivial: Category := [0].
 
 Instance Interval: Category := {
   object := bool ;
@@ -1929,8 +1916,8 @@ Module Import Coequalizer.
     Qed.
 
     Definition shrink {X: K}: Isomorphism Coequalizer (p X) (q X) := {|
-      to s cyl shrink := to _ _ _ (shrink X) ;
-      from s cyl shrink := from _ _ _ (shrink X) ;
+      to s cyl shrink := to (shrink X) ;
+      from s cyl shrink := from (shrink X) ;
    |}.
 
     Obligation 1.
@@ -2027,8 +2014,8 @@ Module Import Suspension.
   Qed.
 
   Definition shrink {K:Category} {A B: K} {X}: Isomorphism (Suspension K) (A, X) (B, X) := {|
-    to s cyl shrink := to _ _ _ (shrink A B X) ;
-    from s cyl shrink := from _ _ _ (shrink A B X) ;
+    to s cyl shrink := to (shrink A B X) ;
+    from s cyl shrink := from (shrink A B X) ;
    |}.
 
   Obligation 1.
@@ -2045,23 +2032,31 @@ End Suspension.
 
 
 Module Arrow.
+  Record arrow (K: Category) := {
+    source: K ;
+    target: K ;
+    proj: source ~> target ;
+  }.
+
+  Arguments source [K] _.
+  Arguments target [K] _.
+  Arguments proj [K] _.
+
+  Record arr [K] (A B: arrow K) := {
+    source_arr: source A ~> source B ;
+    target_arr: target A ~> target B ;
+    commutes: target_arr ∘ proj A == proj B ∘ source_arr ;
+  }.
+
+  Arguments source_arr [K A B] _.
+  Arguments target_arr [K A B] _.
+  Arguments commutes [K A B] _.
+
   Section arrows.
     Variables K: Category.
 
-    Record arrow := {
-      source: K ;
-      target: K ;
-      proj: source ~> target ;
-    }.
-
-    Record arr (A B: arrow) := {
-      source_arr: source A ~> source B ;
-      target_arr: target A ~> target B ;
-      commutes: target_arr ∘ proj A == proj B ∘ source_arr ;
-    }.
-
     #[local]
-    Definition hom A B := arr A B /~ {| equiv f g := (target_arr _ _ f == target_arr _ _ g) ∧ (source_arr _ _ f == source_arr _ _ g) |}.
+    Definition hom A B := arr A B /~ {| equiv f g := (target_arr f == target_arr g) ∧ (source_arr f == source_arr g) |}.
 
     Obligation 1 of hom.
     exists.
@@ -2081,11 +2076,11 @@ Module Arrow.
     Qed.
 
     Instance Arrow: Category := {
-      object := arrow ;
+      object := arrow K ;
       hom := hom ;
       id _ := {| source_arr := id ; target_arr := id |} ;
-      compose _ _ _ f g := {| target_arr := target_arr _ _ f ∘ target_arr _ _ g ;
-                              source_arr := source_arr _ _ f ∘ source_arr _ _ g |} ;
+      compose _ _ _ f g := {| target_arr := target_arr f ∘ target_arr g ;
+                              source_arr := source_arr f ∘ source_arr g |} ;
     }.
 
     Obligation 1.
@@ -2098,10 +2093,10 @@ Module Arrow.
     Obligation 2.
     Proof.
       rewrite <- compose_assoc.
-      rewrite (commutes _ _ g).
+      rewrite (commutes g).
       rewrite compose_assoc.
       rewrite compose_assoc.
-      rewrite (commutes _ _ f).
+      rewrite (commutes f).
       reflexivity.
     Qed.
 
@@ -2194,42 +2189,6 @@ Module Diagrams.
     Qed.
 
     Solve Obligations with reflexivity.
-
-    Definition Fn {A B: C} (f: A ~> B): (op Interval:Cat) ~> C.
-    eexists.
-    Unshelve.
-    4: {
-      intro x.
-      apply (if x then A else B).
-    }
-    4: {
-      cbn.
-      intros.
-      destruct A0, B0.
-      1,4: apply id.
-      - apply f.
-      - contradiction.
-    }
-    - intros X Y Z.
-      cbn.
-      destruct X, Y, Z.
-      all:cbn.
-      all:intros.
-      all:try contradiction.
-      + apply compose_id_left.
-      + apply compose_id_right.
-      + apply compose_id_left.
-      + apply compose_id_left.
-    - intros X.
-      destruct X.
-      all: reflexivity.
-    - intros X Y.
-      destruct X, Y.
-      cbn.
-      all: try contradiction.
-      all: intros.
-      all: reflexivity.
-    Defined.
   End diagrams.
 End Diagrams.
 
