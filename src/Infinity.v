@@ -32,6 +32,7 @@ Module Import Utils.
 
   Variant truncate A: Prop :=
   | truncate_intro (_: ident A): truncate A.
+  Arguments truncate_intro [A] _.
 
   Module TruncateNotations.
     Notation "| A |" := (truncate A).
@@ -91,19 +92,19 @@ Module Import Category.
     where "A ~> B" := (hom A B) ;
 
     id {A}: hom A A ;
-    compose {A B C}: hom B C -> hom A B -> hom A C
+    compose [A B C]: hom B C -> hom A B -> hom A C
     where "f ∘ g" := (compose f g) ;
 
-    compose_assoc {A B C D} (f: hom C D) (g: hom B C) (h: hom A B):
+    compose_assoc [A B C D] (f: hom C D) (g: hom B C) (h: hom A B):
       (f ∘ (g ∘ h)) == ((f ∘ g) ∘ h );
-    compose_id_left {A B} (f: hom A B): (id ∘ f) == f ;
-    compose_id_right {A B} (f: hom A B): (f ∘ id) == f ;
+    compose_id_left [A B] (f: hom A B): (id ∘ f) == f ;
+    compose_id_right [A B] (f: hom A B): (f ∘ id) == f ;
 
-    compose_compat {A B C} (f f': hom B C) (g g': hom A B):
+    compose_compat [A B C] (f f': hom B C) (g g': hom A B):
       f == f' → g == g' → f ∘ g == f' ∘ g' ;
   }.
 
-  Add Parametric Morphism (K: Category) (A B C: @object K) : (@compose _ A B C)
+  Add Parametric Morphism [K: Category] (A B C: @object K) : (@compose _ A B C)
       with signature equiv ==> equiv ==> equiv as compose_mor.
   Proof.
     intros ? ? p ? ? q.
@@ -159,109 +160,101 @@ Module Import Isomorphism.
   Arguments to_from [K A B] _.
   Arguments from_to [K A B] _.
 
-  Section isos.
-    Context `(K:Category).
+  #[local]
+  Definition hom [K: Category] (A B: K) := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
 
-    Section iso.
-      Variable A B: K.
-
-      #[local]
-      Definition hom := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
-
-      Obligation 1.
-      Proof.
-        exists.
-        - split.
-          all: reflexivity.
-        - intros ? ? p.
-          destruct p.
-          split.
-          all: symmetry.
-          all: auto.
-        - intros ? ? ? p q.
-          destruct p as [p1 p2].
-          destruct q as [q1 q2].
-          split.
-          + rewrite p1, q1.
-            reflexivity.
-          + rewrite p2, q2.
-            reflexivity.
-      Qed.
-    End iso.
-
-    Instance Isomorphism: Category := {
-      object := object ;
-      hom := hom ;
-      id _ :=  {| to := id ; from := id |} ;
-      compose _ _ _ f g :=
-        {|
-          to := to f ∘ to g ;
-          from := from g ∘ from f
-        |} ;
-    }.
-
-    Obligation 1.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      rewrite <- compose_assoc.
-      rewrite -> (compose_assoc (to g)).
-      rewrite to_from.
-      rewrite compose_id_left.
-      rewrite to_from.
-      reflexivity.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      rewrite <- compose_assoc.
-      rewrite -> (compose_assoc (from f)).
-      rewrite from_to.
-      rewrite compose_id_left.
-      rewrite from_to.
-      reflexivity.
-    Qed.
-
-    Obligation 5.
-    Proof.
+  Obligation 1.
+  Proof.
+    exists.
+    - split.
+      all: reflexivity.
+    - intros ? ? p.
+      destruct p.
       split.
-      2: symmetry.
-      all: apply compose_assoc.
-    Qed.
-
-    Obligation 6.
-    Proof.
+      all: symmetry.
+      all: auto.
+    - intros ? ? ? p q.
+      destruct p as [p1 p2].
+      destruct q as [q1 q2].
       split.
-      + apply compose_id_left.
-      + apply compose_id_right.
-    Qed.
+      + rewrite p1, q1.
+        reflexivity.
+      + rewrite p2, q2.
+        reflexivity.
+  Qed.
 
-    Obligation 7.
-    Proof.
-      split.
-      + apply compose_id_right.
-      + apply compose_id_left.
-    Qed.
+  Instance Isomorphism (K: Category): Category := {
+    object := K ;
+    hom := @hom K ;
+    id _ :=  {| to := id ; from := id |} ;
+    compose _ _ _ f g :=
+      {|
+        to := to f ∘ to g ;
+        from := from g ∘ from f
+      |} ;
+  }.
 
-    Obligation 8.
-    Proof.
-      split.
-      + apply compose_compat.
-        all:assumption.
-      + apply compose_compat.
-        all:assumption.
-    Qed.
-  End isos.
+  Obligation 1.
+  Proof.
+    apply compose_id_left.
+  Qed.
 
-  Definition transpose {C:Category} {A B: C} (f: Isomorphism _ A B): Isomorphism _ B A :=
+  Obligation 2.
+  Proof.
+    apply compose_id_right.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    rewrite <- compose_assoc.
+    rewrite -> (compose_assoc (to g)).
+    rewrite to_from.
+    rewrite compose_id_left.
+    rewrite to_from.
+    reflexivity.
+  Qed.
+
+  Obligation 4.
+  Proof.
+    rewrite <- compose_assoc.
+    rewrite -> (compose_assoc (from f)).
+    rewrite from_to.
+    rewrite compose_id_left.
+    rewrite from_to.
+    reflexivity.
+  Qed.
+
+  Obligation 5.
+  Proof.
+    split.
+    2: symmetry.
+    all: apply compose_assoc.
+  Qed.
+
+  Obligation 6.
+  Proof.
+    split.
+    + apply compose_id_left.
+    + apply compose_id_right.
+  Qed.
+
+  Obligation 7.
+  Proof.
+    split.
+    + apply compose_id_right.
+    + apply compose_id_left.
+  Qed.
+
+  Obligation 8.
+  Proof.
+    split.
+    + apply compose_compat.
+      all:assumption.
+    + apply compose_compat.
+      all:assumption.
+  Qed.
+
+  Definition transpose [K:Category] [A B: K] (f: Isomorphism _ A B): Isomorphism _ B A :=
     {| to := from f ; from := to f |}.
 
   Obligation 1.
@@ -294,9 +287,9 @@ Module Import Functor.
 
   Arguments fobj [C D] _.
   Arguments map [C D] _ [A B].
-  Arguments map_composes [C D] _.
-  Arguments map_id [C D] _.
-  Arguments map_compat [C D] _.
+  Arguments map_composes [C D] _ [X Y Z].
+  Arguments map_id [C D] _ {A}.
+  Arguments map_compat [C D] _ [A B].
 
   Module Export FunctorNotations.
     Coercion fobj: functor >-> Funclass.
@@ -312,7 +305,7 @@ Module Import Functor.
   Qed.
 
   #[local]
-   Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
+  Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
   Obligation 1.
   Proof.
@@ -639,7 +632,7 @@ Module Import Over.
     Notation "C / c" := (Over.Over C c).
   End OverNotations.
 
-  Definition Σ {C:Category} {c d} (f: d ~> c): ((C/d):Cat) ~> (C/c) := {|
+  Definition Σ [C:Category] [c d] (f: d ~> c): ((C/d):Cat) ~> (C/c) := {|
     fobj g :=  {| proj := f ∘ proj g |} ;
     map _ _ g := g
   |}.
@@ -674,7 +667,7 @@ Module Import Pullback.
   Arguments assoc [A B C F G] _.
 
   Section pullback.
-    Context {A B C: Category}.
+    Context [A B C: Category].
     Variable F: Functor A C.
     Variable G: Functor B C.
 
@@ -766,7 +759,7 @@ Module Import Pullback.
 
 
   Section basechange.
-    Context {X Y:Category}.
+    Context [X Y:Category].
     Variable F: Functor X Y.
 
     #[local]
@@ -805,7 +798,7 @@ Module Import Pullback.
         auto.
     Qed.
 
-    Definition base_map' {A B: Cat/Y} (H: A ~> B): base' A ~> base' B.
+    Definition base_map' [A B: Cat/Y] (H: A ~> B): base' A ~> base' B.
       admit.
     Admitted.
   End basechange.
@@ -813,7 +806,7 @@ End Pullback.
 
 Module Import Pushout.
   Section pushout.
-    Context {X Y Z: Category}.
+    Context [X Y Z: Category].
     Variable F: Functor Z X.
     Variable G: Functor Z Y.
 
@@ -1127,7 +1120,7 @@ Qed.
 
 Module Import DepProduct.
   Section product.
-    Context {C D: Category}.
+    Context [C D: Category].
     Variable F: Functor D C.
 
     (* This seems highly wrong to me. *)
