@@ -282,19 +282,25 @@ End Isomorphism.
 
 Module Import Functor.
   #[universes(cumulative)]
-  Class functor (C D: Category) := {
+  Record functor (C D: Category) := {
     fobj: C → D ;
-    map {A B}: C A B → D (fobj A) (fobj B) ;
+    map [A B]: C A B → D (fobj A) (fobj B) ;
 
-    map_composes {X Y Z} (f: C Y Z) (g: C X Y): map f ∘ map g == map (f ∘ g) ;
+    map_composes [X Y Z] (f: C Y Z) (g: C X Y): map f ∘ map g == map (f ∘ g) ;
 
     map_id {A}: map (@id _ A) == id ;
-    map_compat {A B} (f f': C A B): f == f' → map f == map f' ;
+    map_compat [A B] (f f': C A B): f == f' → map f == map f' ;
   }.
+
+  Arguments fobj [C D] _.
+  Arguments map [C D] _ [A B].
+  Arguments map_composes [C D] _.
+  Arguments map_id [C D] _.
+  Arguments map_compat [C D] _.
 
   Module Export FunctorNotations.
     Coercion fobj: functor >-> Funclass.
-    Notation "F ! X" := (map (functor := F) X).
+    Notation "F ! X" := (map F X).
   End FunctorNotations.
 
   Add Parametric Morphism (C D: Category) (A B: C) (F: functor C D) : (@map _ _ F A B)
@@ -1892,7 +1898,7 @@ Module Import Coequalizer.
 
     Definition cyl: Functor L Coequalizer := {|
       fobj x := x ;
-      map _ _ f _ _ _ := map f ;
+      map _ _ f _ _ _ := map _ f ;
     |}.
 
     Obligation 1.
@@ -1988,7 +1994,7 @@ Module Import Suspension.
 
   Definition cyl {K:Category}: Functor (Cylinder K) (Suspension K) := {|
     fobj x := x ;
-    map _ _ f _ _ _ := map f ;
+    map _ _ f _ _ _ := map _ f ;
   |}.
 
   Obligation 1.
