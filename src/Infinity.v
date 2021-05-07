@@ -2,6 +2,9 @@
 Set Primitive Projections.
 Unset Printing Primitive Projection Parameters.
 
+Set Universe Polymorphism.
+Set Program Mode.
+
 Require Import Coq.Unicode.Utf8.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
@@ -18,13 +21,8 @@ Reserved Notation "A ∘ B" (at level 30).
 Reserved Notation "A <~> B" (at level 80).
 Reserved Notation "F 'ᵀ'" (at level 1).
 
-Reserved Notation "F ! X" (at level 1).
-
 Reserved Notation "A ⊗ B" (at level 30).
 Reserved Notation "A ~~> B" (at level 80).
-
-Set Universe Polymorphism.
-Set Program Mode.
 
 (* FIXME get propositional truncation from elsewhere *)
 Module Import Utils.
@@ -160,8 +158,7 @@ Module Import Isomorphism.
   Arguments to_from [K A B] _.
   Arguments from_to [K A B] _.
 
-  #[local]
-  Definition hom [K: Category] (A B: K) := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
+  Let hom [K: Category] (A B: K) := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
 
   Obligation 1.
   Proof.
@@ -293,7 +290,6 @@ Module Import Functor.
 
   Module Export FunctorNotations.
     Coercion fobj: functor >-> Funclass.
-    Notation "F ! X" := (map F X).
   End FunctorNotations.
 
   Add Parametric Morphism (C D: Category) (A B: C) (F: functor C D) : (@map _ _ F A B)
@@ -304,8 +300,7 @@ Module Import Functor.
     assumption.
   Qed.
 
-  #[local]
-  Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
+  Let hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
   Obligation 1.
   Proof.
@@ -357,8 +352,8 @@ Module Import Cat.
   Definition to_iso {A B: Category} (f: functor A B): functor (Isomorphism A) (Isomorphism B) := {|
     fobj x := f x ;
     map _ _ p :=
-      {| to := f ! (to p) ;
-         from := f ! (from p) |}
+      {| to := map f (to p) ;
+         from := map f (from p) |}
   |}.
 
   Obligation 1.
@@ -402,7 +397,7 @@ Module Import Cat.
     object := Category ;
     hom A B := (functor A B) /~ {| equiv f g := ∀ x, | f x <~> g x | |};
     id _ := {| fobj x := x ; map _ _ f := f |} ;
-    compose _ _ _ F G := {| fobj x := F (G x) ; map _ _ x := F ! (G ! x) |} ;
+    compose _ _ _ F G := {| fobj x := F (G x) ; map _ _ x := map F (map G x) |} ;
   }.
 
   Obligation 1.
@@ -466,7 +461,7 @@ Module Import Cat.
     destruct (H0 x) as [q'].
     destruct (H (g' x)) as [p'].
     set (f_iso := to_iso f).
-    set (pq := compose (Category := Isomorphism _) p' (f_iso ! q') : f (g x) <~> f' (g' x)).
+    set (pq := compose (Category := Isomorphism _) p' (map f_iso q') : f (g x) <~> f' (g' x)).
     exists.
     exists (to pq) (from pq).
     - apply to_from.
@@ -487,14 +482,14 @@ Module Import Algebra.
   End Algebra.
 
   Section algebra.
-    Context {C: Category}.
+    Context [C: Category].
     Variable F: functor C C.
 
     #[local]
      Definition hom (A B: Algebra F) :=
-      {m: elem A ~> elem B | m ∘ assoc A == assoc B ∘ F ! m }
+      {m: elem A ~> elem B | m ∘ assoc A == assoc B ∘ map F m }
         /~
-        {| equiv x y := proj1_sig x == proj1_sig y |}.
+        {| equiv x y := (x :>) == (y :>) |}.
 
     Obligation 1.
     Proof.
@@ -571,9 +566,8 @@ Module Import Over.
   Section over.
     Variables (C: Category) (c: C).
 
-    #[local]
-     Definition hom (A B: bundle c) :=
-      {f| proj B ∘ f == proj A } /~ {| equiv f g := proj1_sig f == proj1_sig g |}.
+    Let hom (A B: bundle c) :=
+      {f| proj B ∘ f == proj A } /~ {| equiv f g := (f :>) == (g :>) |}.
 
     Obligation 1.
     Proof using Type.
@@ -672,10 +666,9 @@ Module Import Pullback.
     Variable G: Functor B C.
 
     (* Basically a comma category *)
-    #[local]
-     Definition hom (A B: pullback F G) := {
+    Let hom (A B: pullback F G) := {
       xs: (source A ~> source B) * (target A ~> target B) |
-                                        (G ! (snd xs)) ∘ assoc A  == assoc B ∘ (F ! (fst xs)) }
+                                        (map G (snd xs)) ∘ assoc A  == assoc B ∘ (map F (fst xs)) }
     /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
 
     Obligation 1.
@@ -772,7 +765,7 @@ Module Import Pullback.
     Definition base_map {A B: Cat} (H: A ~> B) (G:B ~> Y):
       Functor (Pullback F (G ∘ H)) (Pullback F G) := {|
       fobj x := {| assoc := assoc x |} ;
-      map _ _ f := (fst f, H ! (snd f))
+      map _ _ f := (fst f, map H (snd f))
     |}.
 
     Obligation 2.
@@ -822,8 +815,8 @@ Module Import Pushout.
 
     Inductive eq {A B} (x y: join A B): Prop :=
       eq_intro (eq_weld: weld x <~> weld y)
-      (_:p1 x == (F ! (from eq_weld)) ∘ p1 y)
-      (_:p2 x == p2 y ∘ (G ! (to eq_weld)))
+      (_:p1 x == (map F (from eq_weld)) ∘ p1 y)
+      (_:p2 x == p2 y ∘ (map G (to eq_weld)))
     .
 
      (* A sort of cocomma category/basically a cograph *)
@@ -1127,7 +1120,7 @@ Module Import DepProduct.
     Definition Product (g: Cat/D): Cat/C.
       exists (Functor Trivial (dom g)).
       exists (λ x: Functor Trivial (dom g), F (proj g (x I)))
-             (λ _ _ f, (F ! ((proj g) ! (f _)))).
+             (λ _ _ f, (map F (map (proj g) (f _)))).
       - intros.
         repeat rewrite map_composes.
         reflexivity.
@@ -1144,7 +1137,7 @@ Module Import DepProduct.
       fobj := Product ;
       map _ _ f := {|
             fobj (x:Functor Trivial _) := const (@fobj _ _ f (x I)) ;
-            map _ _ g _ := f ! (g I)
+            map _ _ g _ := map f (g I)
           |}
     |}.
 
@@ -1173,7 +1166,7 @@ Module Import DepProduct.
       cbn in *.
       destruct (H (x I)) as [H'].
       exists.
-      exists (F ! (to H')) (F ! (from H')).
+      exists (map F (to H')) (map F (from H')).
       all: rewrite map_composes.
       1: rewrite to_from.
       2: rewrite from_to.
@@ -1195,7 +1188,7 @@ Module Import DepProduct.
     Obligation 6.
     Proof.
       exists.
-      exists (λ _, x ! I) (λ _, x ! I).
+      exists (λ _, map x I) (λ _, map x I).
       all: cbn.
       all: intros.
       all: rewrite map_composes.
@@ -1652,7 +1645,7 @@ Module Product.
 
   Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (Product A B:Cat) := {|
     fobj x := (f x, g x) ;
-    map _ _ x := (f ! x, g ! x)
+    map _ _ x := (map f x, map g x)
   |}.
 
   Obligation 1.
