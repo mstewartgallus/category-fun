@@ -6,6 +6,7 @@ Set Universe Polymorphism.
 Set Program Mode.
 
 Require Import Coq.Unicode.Utf8.
+Require Import Coq.derive.Derive.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Arith.PeanoNat.
@@ -754,7 +755,6 @@ Module Import Pullback.
   Section basechange.
     Context [X Y:Category].
     Variable F: Functor X Y.
-
     #[local]
     Definition base' (G: Cat/Y): Cat/X := {|
       dom := Pullback F (proj G) ;
@@ -762,38 +762,139 @@ Module Import Pullback.
     |}.
 
     #[local]
-    Definition base_map {A B: Cat} (H: A ~> B) (G:B ~> Y):
-      Functor (Pullback F (G ∘ H)) (Pullback F G) := {|
-      fobj x := {| assoc := assoc x |} ;
-      map _ _ f := (fst f, map H (snd f))
+    Definition base_map [A B: Cat/Y] (x: A ~> B): base' A ~> base' B := {|
+      fobj y := {| source := proj B y ; target := y |}: Pullback _ _ ;
+      map _ _ f := exist _ (map _ f, f) _
     |}.
+
+    Obligation 1.
+    Proof.
+      apply (id: (Y:Cat) ~> Y).
+    Defined.
 
     Obligation 2.
     Proof.
-    split.
-    - reflexivity.
-    - apply map_composes.
-    Qed.
+      apply B.
+    Defined.
 
     Obligation 3.
     Proof.
-      split.
-      - reflexivity.
-      - apply map_id.
-    Qed.
+      cbn.
+      apply id.
+    Defined.
 
     Obligation 4.
     Proof.
-      cbn in *.
-      split.
-      - auto.
-      - apply map_compat.
-        auto.
+      cbn.
+      rewrite compose_id_right, compose_id_left.
+      reflexivity.
     Qed.
 
-    Definition base_map' [A B: Cat/Y] (H: A ~> B): base' A ~> base' B.
+    Obligation 5.
+    Proof.
+      split.
+      - rewrite map_composes.
+        reflexivity.
+      - reflexivity.
+    Qed.
+
+    Obligation 6.
+    Proof.
+      rewrite map_id.
+      split.
+      all: reflexivity.
+    Qed.
+
+    Obligation 7.
+    Proof.
+      rewrite H.
+      split.
+      all: reflexivity.
+    Qed.
+
+    Obligation 8.
+    Proof.
       admit.
     Admitted.
+
+    Obligation 9.
+    Proof.
+      cbn.
+      
+        (* Obligation 2. *)
+    (* Proof. *)
+    (* split. *)
+    (* - reflexivity. *)
+    (* - apply map_composes. *)
+    (* Qed. *)
+
+    (* Obligation 3. *)
+    (* Proof. *)
+    (*   split. *)
+    (*   - reflexivity. *)
+    (*   - apply map_id. *)
+    (* Qed. *)
+
+    (* Obligation 4. *)
+    (* Proof. *)
+    (*   cbn in *. *)
+    (*   split. *)
+    (*   - auto. *)
+    (*   - apply map_compat. *)
+    (*     auto. *)
+    (* Qed. *)
+
+    Derive Base SuchThat (∀ x, x ~> Base (Σ (F:(X:Cat)~>Y) x)) As into.
+    Proof.
+      intros.
+      cbn in *.
+      eexists.
+      Unshelve.
+      2:apply (λ (G:Cat/_), {|
+          dom := (Pullback F (proj G):Cat) ;
+          proj := p1 F (proj G)
+        |}).
+      all: cbn in *.
+      2: {
+        refine {|
+            fobj y := {| source := proj x y ; target := y |}: Pullback _ _ ;
+            map _ _ f := exist _ (map _ f, f) _
+         |}.
+        Unshelve.
+        all: cbn in *.
+        4: apply id.
+        4: {
+          rewrite compose_id_right, compose_id_left.
+          reflexivity.
+        }
+        2: {
+          intros.
+          rewrite map_id.
+          split.
+          all: reflexivity.
+        }
+        2: {
+          intros.
+          rewrite H.
+          split.
+          all: reflexivity.
+        }
+        intros.
+        split.
+        rewrite map_composes.
+        reflexivity.
+        reflexivity.
+      }
+      all: cbn in *.
+      intros.
+      exists.
+      exists id id.
+      all: apply compose_id_left.
+      Show Proof.
+    Defined.
+    
+
+
   End basechange.
 End Pullback.
 
