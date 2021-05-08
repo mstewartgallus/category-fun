@@ -159,7 +159,8 @@ Module Import Isomorphism.
   Arguments to_from [K A B] _.
   Arguments from_to [K A B] _.
 
-  Let hom [K: Category] (A B: K) := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
+  #[local]
+  Definition hom [K: Category] (A B: K) := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |}.
 
   Obligation 1.
   Proof.
@@ -301,7 +302,8 @@ Module Import Functor.
     assumption.
   Qed.
 
-  Let hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
+  #[local]
+  Definition hom {K L} (A B: functor K L) := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |}.
 
   Obligation 1.
   Proof.
@@ -650,6 +652,146 @@ Module Import Over.
   Qed.
 End Over.
 
+Module Import Topology.
+  Class Space := {
+    cat: Category;
+    space: cat ;
+  }.
+
+  Coercion space: Space >-> object.
+
+  Definition monic [C: Category] [A B: C] (f: C A B) := ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y.
+
+  #[local]
+  Definition subset (X: Space) := {x: @cat X/X | monic (proj x) }.
+
+  Instance Subset (X: Space): Category := {
+    object := subset X ;
+    hom A B := (A :>) ~> (B :>) ;
+    id _ := id ;
+    compose _ _ _ f g := f ∘ g ;
+  }.
+
+  Obligation 1.
+  Proof.
+    apply compose_assoc.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    apply compose_id_left.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    apply compose_id_right.
+  Qed.
+
+  Obligation 4.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+End Topology.
+Module Product.
+  #[local]
+  Close Scope nat.
+
+  Section products.
+    Variable C D: Category.
+
+    Definition hom (A B: C * D): Bishop :=
+      prod (fst A ~> fst B) (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
+
+    Obligation 1.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
+    all: intros; auto.
+    - split.
+      all: reflexivity.
+    - destruct H.
+      split.
+      all: symmetry.
+      all: auto.
+    - destruct H, H0.
+      split.
+      + rewrite H, H0.
+        reflexivity.
+      + rewrite H1, H2.
+        reflexivity.
+    Qed.
+
+    Instance Product: Category := {
+      object := C * D ;
+      hom := hom ;
+      id _ := (id, id) ;
+      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
+    }.
+
+    Obligation 1.
+    Proof.
+      split.
+      all: apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      split.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      split.
+      all: apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    split.
+    + rewrite H, H0.
+      reflexivity.
+    + rewrite H1, H2.
+      reflexivity.
+    Qed.
+  End products.
+
+  Definition fst {A B}: (Product A B:Cat) ~> A := {|
+    fobj := fst ;
+    map _ _ := fst
+  |}.
+
+  Definition snd {A B}: (Product A B:Cat) ~> B := {|
+    fobj := snd ;
+    map _ _ := snd
+  |}.
+
+  Solve All Obligations with reflexivity.
+
+  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (Product A B:Cat) := {|
+    fobj x := (f x, g x) ;
+    map _ _ x := (map f x, map g x)
+  |}.
+
+  Obligation 1.
+  Proof.
+    split.
+    all: apply map_composes.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    split.
+    all: apply map_id.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    split.
+    all: rewrite H.
+    all: reflexivity.
+  Qed.
+End Product.
+
 Module Import Pullback.
   Record pullback [A B C: Category] (F: Functor A C) (G: Functor B C) := {
     source: A ;
@@ -669,7 +811,7 @@ Module Import Pullback.
     (* Basically a comma category *)
     Let hom (A B: pullback F G) := {
       xs: (source A ~> source B) * (target A ~> target B) |
-                                        (map G (snd xs)) ∘ assoc A  == assoc B ∘ (map F (fst xs)) }
+                                        (map G (snd xs)) ∘ assoc A == assoc B ∘ (map F (fst xs)) }
     /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
 
     Obligation 1.
@@ -751,150 +893,180 @@ Module Import Pullback.
     Solve All Obligations with reflexivity.
   End pullback.
 
+  #[local]
+   Definition base' [X] (F: Cat/X) (G:Cat/X): Cat/X :=
+    {|
+    dom := Pullback (proj F) (proj G) ;
+    proj :=
+      {|
+        fobj (x: Pullback _ _) := proj F (source x) ;
+        map _ _ f := map (proj F) (fst f)
+      |}
+    |}.
+
+  Obligation 1.
+  Proof.
+    cbn.
+    rewrite map_composes.
+    reflexivity.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    rewrite map_id.
+    reflexivity.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    cbn in *.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  #[local]
+   Definition base_map' [X] [A B A' B': Cat/X] (f: A ~> B) (g: A' ~> B'): base' A A' ~> base' B B' := {|
+    fobj (x: Pullback (proj A) (proj A')) :=
+      {|
+        source := (proj1_sig f) (source x) ;
+        target := (proj1_sig g) (target x)
+      |}: Pullback (proj B) (proj B') ;
+    map _ _ x := (map f (fst x), map g (snd x)) ;
+  |}.
+
+  Obligation 1.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 2.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 3.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 4.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 5.
+  Proof.
+    admit.
+  Admitted.
+
+  Definition base {X}: Product.Product (Cat/X) (Cat/X) ~> (Cat/X) := {|
+    fobj x := base' (fst x) (snd x) ;
+    map _ _ f := base_map' (fst f) (snd f) ;
+  |}.
+
+  Obligation 1.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 2.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 3.
+  Proof.
+    admit.
+  Admitted.
 
   Section basechange.
     Context [X Y:Category].
     Variable F: Functor X Y.
+
     #[local]
-    Definition base' (G: Cat/Y): Cat/X := {|
+    Definition base (G: Cat/Y): Cat/X := {|
       dom := Pullback F (proj G) ;
       proj := p1 F (proj G)
     |}.
 
-    #[local]
-    Definition base_map [A B: Cat/Y] (x: A ~> B): base' A ~> base' B := {|
-      fobj y := {| source := proj B y ; target := y |}: Pullback _ _ ;
-      map _ _ f := exist _ (map _ f, f) _
-    |}.
+    Section map.
+      Context [A B: Cat/Y].
+      Variables (x: A ~> B).
+
+      #[local]
+       Definition base_map': dom (base' A) ~> dom (base' B) := {|
+        fobj (y: Pullback F (proj A)) :=
+          {|
+            source := p1 F (proj A) y ;
+            target := proj1_sig x (p2 F (proj A) y) ;
+            (* assoc := compose _ (assoc y) ; *)
+          |}: Pullback F (proj B) |}.
+
+      Obligation 1.
+      Proof.
+        Check map (p2 F (proj A)).
+        Check p1 F (proj A) y.
+
+        Check proj A.
+        Check (proj A (target y)).
+        Check (F (source y)).
+        destruct x.
+        cbn in *.
+        destruct A, B.
+        cbn in *.
+        admit.
+      Admitted.
+
+      Obligation 2.
+      Proof.
+        admit.
+      Admitted.
+
+      Obligation 3.
+      Proof.
+        admit.
+      Admitted.
+
+      Obligation 4.
+      Proof.
+        admit.
+      Admitted.
+
+      Obligation 5.
+      Proof.
+        admit.
+      Admitted.
+
+      #[local]
+       Definition base_map: base' A ~> base' B := base_map'.
+
+      Obligation 1.
+      Proof.
+        admit.
+      Admitted.
+    End map.
+
+    Definition base := {| fobj := base' ; map := base_map' |}.
 
     Obligation 1.
-    Proof.
-      apply (id: (Y:Cat) ~> Y).
-    Defined.
-
-    Obligation 2.
-    Proof.
-      apply B.
-    Defined.
-
-    Obligation 3.
-    Proof.
-      cbn.
-      apply id.
-    Defined.
-
-    Obligation 4.
-    Proof.
-      cbn.
-      rewrite compose_id_right, compose_id_left.
-      reflexivity.
-    Qed.
-
-    Obligation 5.
-    Proof.
-      split.
-      - rewrite map_composes.
-        reflexivity.
-      - reflexivity.
-    Qed.
-
-    Obligation 6.
-    Proof.
-      rewrite map_id.
-      split.
-      all: reflexivity.
-    Qed.
-
-    Obligation 7.
-    Proof.
-      rewrite H.
-      split.
-      all: reflexivity.
-    Qed.
-
-    Obligation 8.
     Proof.
       admit.
     Admitted.
 
-    Obligation 9.
+    Obligation 2.
     Proof.
-      cbn.
-      
-        (* Obligation 2. *)
-    (* Proof. *)
-    (* split. *)
-    (* - reflexivity. *)
-    (* - apply map_composes. *)
-    (* Qed. *)
+      admit.
+    Admitted.
 
-    (* Obligation 3. *)
-    (* Proof. *)
-    (*   split. *)
-    (*   - reflexivity. *)
-    (*   - apply map_id. *)
-    (* Qed. *)
-
-    (* Obligation 4. *)
-    (* Proof. *)
-    (*   cbn in *. *)
-    (*   split. *)
-    (*   - auto. *)
-    (*   - apply map_compat. *)
-    (*     auto. *)
-    (* Qed. *)
-
-    Derive Base SuchThat (∀ x, x ~> Base (Σ (F:(X:Cat)~>Y) x)) As into.
+    Obligation 3.
     Proof.
-      intros.
-      cbn in *.
-      eexists.
-      Unshelve.
-      2:apply (λ (G:Cat/_), {|
-          dom := (Pullback F (proj G):Cat) ;
-          proj := p1 F (proj G)
-        |}).
-      all: cbn in *.
-      2: {
-        refine {|
-            fobj y := {| source := proj x y ; target := y |}: Pullback _ _ ;
-            map _ _ f := exist _ (map _ f, f) _
-         |}.
-        Unshelve.
-        all: cbn in *.
-        4: apply id.
-        4: {
-          rewrite compose_id_right, compose_id_left.
-          reflexivity.
-        }
-        2: {
-          intros.
-          rewrite map_id.
-          split.
-          all: reflexivity.
-        }
-        2: {
-          intros.
-          rewrite H.
-          split.
-          all: reflexivity.
-        }
-        intros.
-        split.
-        rewrite map_composes.
-        reflexivity.
-        reflexivity.
-      }
-      all: cbn in *.
-      intros.
-      exists.
-      exists id id.
-      all: apply compose_id_left.
-      Show Proof.
-    Defined.
-    
+      admit.
+    Admitted.
 
-
+    Obligation 4.
+    Proof.
+      admit.
+    Admitted.
   End basechange.
 End Pullback.
 
@@ -1670,104 +1842,6 @@ Module Import Finite.
   Definition walk {C}: source C ~> target C := any_gt_0 C.
 End Finite.
 
-Module Product.
-  #[local]
-  Close Scope nat.
-
-  Section products.
-    Variable C D: Category.
-
-    Definition hom (A B: C * D): Bishop :=
-      prod (fst A ~> fst B) (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
-
-    Obligation 1.
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive; cbn.
-    all: intros; auto.
-    - split.
-      all: reflexivity.
-    - destruct H.
-      split.
-      all: symmetry.
-      all: auto.
-    - destruct H, H0.
-      split.
-      + rewrite H, H0.
-        reflexivity.
-      + rewrite H1, H2.
-        reflexivity.
-    Qed.
-
-    Instance Product: Category := {
-      object := C * D ;
-      hom := hom ;
-      id _ := (id, id) ;
-      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
-    }.
-
-    Obligation 1.
-    Proof.
-      split.
-      all: apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      split.
-      all: apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      split.
-      all: apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    split.
-    + rewrite H, H0.
-      reflexivity.
-    + rewrite H1, H2.
-      reflexivity.
-    Qed.
-  End products.
-
-  Definition fst {A B}: (Product A B:Cat) ~> A := {|
-    fobj := fst ;
-    map _ _ := fst
-  |}.
-
-  Definition snd {A B}: (Product A B:Cat) ~> B := {|
-    fobj := snd ;
-    map _ _ := snd
-  |}.
-
-  Solve All Obligations with reflexivity.
-
-  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (Product A B:Cat) := {|
-    fobj x := (f x, g x) ;
-    map _ _ x := (map f x, map g x)
-  |}.
-
-  Obligation 1.
-  Proof.
-    split.
-    all: apply map_composes.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    split.
-    all: apply map_id.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    split.
-    all: rewrite H.
-    all: reflexivity.
-  Qed.
-End Product.
 
 Instance Empty: Category := {
   object := False ;
