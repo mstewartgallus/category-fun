@@ -652,6 +652,73 @@ Module Import Over.
   Qed.
 End Over.
 
+Module Import Monomorphism.
+  Section monomorphism.
+    Variable C: Category.
+
+    #[local]
+    Definition monic [A B: C] (f: C A B) := ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y.
+
+    #[local]
+    Definition hom A B := {x: C A B | monic x} /~ {| equiv x y := (x :>) == (y :>) |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - intro.
+        reflexivity.
+      - intros ? ? ?.
+        symmetry.
+        auto.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Instance Monomorphism: Category := {
+      object := C ;
+      hom := hom ;
+      id := @id _ ;
+      compose := @compose _ ;
+    }.
+
+    Obligation 1.
+    Proof.
+      intros ? ? ?.
+      repeat rewrite compose_id_left.
+      auto.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      intros ? ? ? p.
+      repeat rewrite <- compose_assoc in p.
+      apply (H _ _ _ (H0 _ _ _ p)).
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 6.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End monomorphism.
+End Monomorphism.
+
 Module Import Topology.
   Class Space := {
     cat: Category;
@@ -660,39 +727,9 @@ Module Import Topology.
 
   Coercion space: Space >-> object.
 
-  Definition monic [C: Category] [A B: C] (f: C A B) := ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y.
-
-  #[local]
-  Definition subset (X: Space) := {x: @cat X/X | monic (proj x) }.
-
-  Instance Subset (X: Space): Category := {
-    object := subset X ;
-    hom A B := (A :>) ~> (B :>) ;
-    id _ := id ;
-    compose _ _ _ f g := f ∘ g ;
-  }.
-
-  Obligation 1.
-  Proof.
-    apply compose_assoc.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    apply compose_id_left.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    apply compose_id_right.
-  Qed.
-
-  Obligation 4.
-  Proof.
-    rewrite H, H0.
-    reflexivity.
-  Qed.
+  Instance Subset (X: Space) : Category := Monomorphism (@cat X)/ X.
 End Topology.
+
 Module Product.
   #[local]
   Close Scope nat.
