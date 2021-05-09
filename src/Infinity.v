@@ -747,18 +747,160 @@ Module Import Monomorphism.
   End monomorphism.
 End Monomorphism.
 
-Definition const [B:Category] (x: B) {A}: Functor A B := {|
-  fobj _ := x ;
-  map _ _ _ := id ;
-|}.
+Module Import Epimorphism.
+  Section epimorphism.
+    Variable C: Category.
 
-Obligation 1.
-Proof.
-  rewrite compose_id_right.
-  reflexivity.
-Qed.
+    #[local]
+    Definition epic [A B: C] (f: C A B) := ∀ (Z:C) (x y: C B Z), (x ∘ f == y ∘ f) → x == y.
 
-Solve All Obligations with reflexivity.
+    #[local]
+    Definition hom A B := {x: C A B | epic x} /~ {| equiv x y := (x :>) == (y :>) |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - intro.
+        reflexivity.
+      - intros ? ? ?.
+        symmetry.
+        auto.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Instance Epimorphism: Category := {
+      object := C ;
+      hom := hom ;
+      id := @id _ ;
+      compose := @compose _ ;
+    }.
+
+    Obligation 1.
+    Proof.
+      intros ? ? ?.
+      repeat rewrite compose_id_right.
+      auto.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      intros ? ? ? p.
+      repeat rewrite compose_assoc in p.
+      apply (H0 _ _ _ (H _ _ _ p)).
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 6.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End epimorphism.
+End Epimorphism.
+
+Module Import Epimono.
+  Section epimon.
+    Context [K: Category].
+    Context [A B: K].
+    Variable F: K A B.
+
+    Record zigzag := {
+      pull: K ;
+      epi: Epimorphism K A pull ;
+      mono: Monomorphism K pull B ;
+      commutes: proj1_sig mono ∘ proj1_sig epi == F
+    }.
+
+    #[local]
+    Definition hom (X Y: zigzag) := {f: K (pull X) (pull Y) |
+                                      proj1_sig (epi Y) == f ∘ proj1_sig (epi X) ∧
+                                      proj1_sig (mono Y) ∘ f == proj1_sig (mono X)} /~ {| equiv x y := (x :>) == (y :>) |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - intros ?.
+        reflexivity.
+      - intros ? ? ?.
+        symmetry.
+        auto.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    #[local]
+    Definition id {X}: hom X X := id.
+
+    Obligation 1.
+    Proof.
+      split.
+      - rewrite compose_id_left.
+        reflexivity.
+      - rewrite compose_id_right.
+        reflexivity.
+    Qed.
+
+    #[local]
+    Definition compose {X Y Z} (f: hom Y Z) (g: hom X Y): hom X Z := f ∘ g.
+
+    Obligation 1.
+    Proof.
+      split.
+      - rewrite <- compose_assoc.
+        rewrite e1, e.
+        reflexivity.
+      - rewrite compose_assoc.
+        rewrite e2, e0.
+        reflexivity.
+    Qed.
+
+    Instance Epimono: Category := {
+      object := zigzag ;
+      hom := hom ;
+      id := @id ;
+      compose := @compose ;
+    }.
+
+    Obligation 1.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End epimon.
+End Epimono.
+
 Module Product.
   #[local]
   Close Scope nat.
