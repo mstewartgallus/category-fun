@@ -669,6 +669,17 @@ Module Import Over.
   Qed.
 End Over.
 
+Module Import OverAlgebra.
+  Section over.
+    Variable C: Category.
+    Variable w: C.
+    Variable F: Functor (C/w) (C/w).
+
+    Definition OverAlgebra := Algebra F.
+    Definition over [x: C/w] (f: F x ~> x): OverAlgebra := {| Algebra.elem := x ; Algebra.assoc := f |}.
+  End over.
+End OverAlgebra.
+
 Module Import Monomorphism.
   Section monomorphism.
     Variable C: Category.
@@ -736,7 +747,7 @@ Module Import Monomorphism.
   End monomorphism.
 End Monomorphism.
 
-Definition bang [B:Category] A (x: B): Functor A B := {|
+Definition const [B:Category] (x: B) {A}: Functor A B := {|
   fobj _ := x ;
   map _ _ _ := id ;
 |}.
@@ -1002,6 +1013,39 @@ Module Import Pullback.
   |}.
 End Pullback.
 
+Module Import Trivial.
+  Instance Trivial: Category := {
+    object := True ;
+    hom _ _ := True /~ {| equiv _ _ := True |} ;
+    id _ := I ;
+    compose _ _ _ _ _ := I ;
+                               }.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all:exists.
+  Qed.
+
+  Definition bang A: Cat A Trivial := const I.
+End Trivial.
+
+Instance Discrete X: Category := {
+  object := X ;
+  hom A B := (A = B) /~ {| equiv _ _ := True |} ;
+
+  id _ := eq_refl ;
+  compose _ _ _ _ _  := eq_refl ;
+}.
+
+Obligation 1.
+Proof.
+  exists.
+  all: exists.
+Qed.
+
+Instance Bool: Category := Discrete bool.
+
 Module Import Span.
   Import TruncateNotations.
 
@@ -1071,10 +1115,21 @@ Module Import Span.
   Definition transpose [X Y: Span] (f: X ~> Y): Y ~> X := {|
     dom := dom f ;
     proj := Product.swap ∘ proj f ;
-  |}.
+   |}.
 
-  Definition trace [X: Span] (f: Span X X) := dom (f ∘ transpose f).
+  Instance trace [X] (f: Span X X): Category := Pullback (Product.snd ∘ proj f) (Product.fst ∘ proj f).
+
+  Definition trace_forget [X] (f: Span X X): Functor (trace f) (Product.Product (dom f) (dom f)) := forget (Product.snd ∘ proj f) (Product.fst ∘ proj f).
 End Span.
+
+Instance Empty: Category := {
+  object := False ;
+  hom x := match x with end ;
+  id x := match x with end ;
+  compose x := match x with end ;
+}.
+
+Solve All Obligations with contradiction.
 
 Module Import Topology.
   Class Space := {
@@ -1319,23 +1374,6 @@ Module Import Pushout.
   End pushout.
 End Pushout.
 
-Instance Trivial: Category := {
-  object := True ;
-  hom _ _ := True /~ {| equiv _ _ := True |} ;
-  id _ := I ;
-  compose _ _ _ _ _ := I ;
-}.
-
-Obligation 1.
-Proof.
-  exists.
-  all:exists.
-Qed.
-
-Definition bang A: Functor A Trivial := {|
-  fobj _ := I ;
-  map _ _ _ := I ;
-|}.
 
 Definition trivial_to: (Cat:Cat) ~> (Cat/Trivial) := {|
   fobj x := {| dom := x ; proj := bang _ |} ;
