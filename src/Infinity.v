@@ -11,8 +11,6 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Arith.PeanoNat.
 Require Import Psatz.
-Require Import Coq.Logic.ProofIrrelevance.
-Require Import Coq.Logic.FunctionalExtensionality.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -164,6 +162,20 @@ Module Import Sets.
 
   Solve All Obligations with cbn; reflexivity.
 End Sets.
+
+Instance Interval: Category := {
+  object := bool ;
+  hom _ _ := True /~ {| equiv _ _ := True |} ;
+
+  id _ := I ;
+  compose _ _ _ _ _ := I ;
+}.
+
+Obligation 1.
+Proof.
+  exists.
+  all: exists.
+Qed.
 
 Module Import Isomorphism.
   #[universes(cumulative)]
@@ -785,6 +797,7 @@ Module Import Monomorphism.
     Qed.
   End monomorphism.
 End Monomorphism.
+
 Module Product.
   #[local]
   Close Scope nat.
@@ -996,9 +1009,107 @@ Module Import Subobject.
   Instance Subobject C c: Category := Monomorphism C/c.
 End Subobject.
 
+
+Module Import Finite.
+ (* Define finite totally ordered sets *)
+  #[local]
+  Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all: exists.
+  Qed.
+
+  #[local]
+  Definition id {A}: hom A A := le_n A.
+
+  #[local]
+   Definition compose {A B C}: hom B C → hom A B → hom A C.
+  Proof.
+    cbn.
+    intros f g.
+    rewrite g, f.
+    reflexivity.
+  Defined.
+
+  #[local]
+   Instance le: Category := {
+    object := nat ;
+    hom := hom ;
+    id := @id ;
+    compose := @compose ;
+  }.
+
+  Definition finite (N:nat) := le/N.
+
+  Module Export FiniteNotations.
+    (* FIXME Isolate notations *)
+    Notation "[ N ]" := (finite N).
+  End FiniteNotations.
+
+  #[local]
+  Definition any_gt_0 C: 0 ≤ C.
+  Proof.
+    induction C.
+    - auto.
+    - auto.
+  Qed.
+
+  Definition source C: [C] := {| dom := 0 |}.
+  Definition target C: [C] := {| dom := C |}.
+
+  Obligation 1 of source.
+  Proof.
+    apply any_gt_0.
+  Qed.
+
+  Definition walk {C}: source C ~> target C := any_gt_0 C.
+End Finite.
+
+(* Define the simplex category *)
+Module Import Simplex.
+  Import FiniteNotations.
+
+  Instance Δ: Category := {
+    object := nat ;
+    hom A B := ([A]: Cat) ~> [B] ;
+    id _ := id ;
+    compose _ _ _ := @compose _ _ _ _ ;
+  }.
+
+  Obligation 1.
+  Proof.
+    exists.
+    apply (id (Category := Isomorphism _)).
+  Qed.
+
+  Obligation 2.
+  Proof.
+    exists.
+    apply (id (Category := Isomorphism _)).
+  Qed.
+
+  Obligation 3.
+  Proof.
+    exists.
+    apply (id (Category := Isomorphism _)).
+  Qed.
+
+  Obligation 4.
+  Proof.
+    destruct (H0 x) as [p].
+    destruct (H (g x)) as [q].
+    exists.
+    eapply (compose (Category := Isomorphism _) _ q).
+    Unshelve.
+    admit.
+  Admitted.
+End Simplex.
+
 Module Import Elements.
   Section elem.
-    Context [C: Category].
+    Variable C: Category.
     Variable P: Functor C Bishop.
 
     Record elem := {
@@ -1038,6 +1149,8 @@ Module Import Elements.
     Qed.
   End elem.
 End Elements.
+
+Instance CategoryOfSimplices: Functor (op Δ) Bishop → Category := Elements (op Δ).
 
 Module Import Trivial.
   Instance Trivial: Category := {
@@ -1207,7 +1320,6 @@ Module Import Epimono.
     Qed.
   End epimon.
 End Epimono.
-
 
 
 Module Import Pullback.
@@ -1875,63 +1987,6 @@ Module Ind.
   End ind_cat.
 End Ind.
 
-Module Import Finite.
- (* Define finite totally ordered sets *)
-  #[local]
-  Definition hom (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
-
-  Obligation 1.
-  Proof.
-    exists.
-    all: exists.
-  Qed.
-
-  #[local]
-  Definition id {A}: hom A A := le_n A.
-
-  #[local]
-   Definition compose {A B C}: hom B C → hom A B → hom A C.
-  Proof.
-    cbn.
-    intros f g.
-    rewrite g, f.
-    reflexivity.
-  Defined.
-
-  #[local]
-   Instance le: Category := {
-    object := nat ;
-    hom := hom ;
-    id := @id ;
-    compose := @compose ;
-  }.
-
-  Definition finite (N:nat) := le/N.
-
-  Module Export FiniteNotations.
-    (* FIXME Isolate notations *)
-    Notation "[ N ]" := (finite N).
-  End FiniteNotations.
-
-  #[local]
-  Definition any_gt_0 C: 0 ≤ C.
-  Proof.
-    induction C.
-    - auto.
-    - auto.
-  Qed.
-
-  Definition source C: [C] := {| dom := 0 |}.
-  Definition target C: [C] := {| dom := C |}.
-
-  Obligation 1 of source.
-  Proof.
-    apply any_gt_0.
-  Qed.
-
-  Definition walk {C}: source C ~> target C := any_gt_0 C.
-End Finite.
-
 Module Import Set'.
   Definition Set' := Monomorphism Cat/Trivial.
   Notation "'Set'" := Set'.
@@ -1940,20 +1995,6 @@ Module Import Set'.
 
   Definition unit: point ~> point := id.
 End Set'.
-
-Instance Interval: Category := {
-  object := bool ;
-  hom _ _ := True /~ {| equiv _ _ := True |} ;
-
-  id _ := I ;
-  compose _ _ _ _ _  := I ;
-}.
-
-Obligation 1.
-Proof.
-  exists.
-  all: exists.
-Qed.
 
 Instance Cylinder K: Category := Product.Product K Interval.
 
@@ -2478,45 +2519,6 @@ Module Enriched.
   End EnrichedNotations.
 End Enriched.
 
-(* Define the simplex category *)
-Module Import Simplex.
-  Import FiniteNotations.
-
-  Instance Δ: Category := {
-    object := nat ;
-    hom A B := ([A]: Cat) ~> [B] ;
-    id _ := id ;
-    compose _ _ _ f g := f ∘ g ;
-  }.
-
-  Obligation 1.
-  Proof.
-    exists.
-    apply (id (Category := Isomorphism _)).
-  Qed.
-
-  Obligation 2.
-  Proof.
-    exists.
-    apply (id (Category := Isomorphism _)).
-  Qed.
-
-  Obligation 3.
-  Proof.
-    exists.
-    apply (id (Category := Isomorphism _)).
-  Qed.
-
-  Obligation 4.
-  Proof.
-    destruct (H0 x) as [p].
-    destruct (H (g x)) as [q].
-    exists.
-    eapply (compose (Category := Isomorphism _) _ q).
-    Unshelve.
-    admit.
-  Admitted.
-End Simplex.
 
 Definition presheaf K: Category := NaturalTransformation (op K) Bishop.
 
