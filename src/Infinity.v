@@ -27,6 +27,8 @@ Reserved Notation "F 'ᵀ'" (at level 1).
 Reserved Notation "A ⊗ B" (at level 30).
 Reserved Notation "A ~~> B" (at level 80).
 
+Reserved Notation "'lim' A , P" (right associativity, at level 200).
+
 (* FIXME get propositional truncation from elsewhere *)
 Module Import Utils.
   Variant truncate A: Prop :=
@@ -679,11 +681,12 @@ Module Import Over.
   End over.
 
   Module Export OverNotations.
+    Notation "'lim' A , P" := {| dom := A ; proj := P |}.
     Notation "C / c" := (Over.Over C c).
   End OverNotations.
 
   Definition Σ [C:Category] [c d] (f: d ~> c): ((C/d):Cat) ~> (C/c) := {|
-    fobj g :=  {| proj := f ∘ proj g |} ;
+    fobj g := lim _, f ∘ proj g ;
     map _ _ g := g
   |}.
 
@@ -913,9 +916,9 @@ Module Import Span.
     Arguments p2 [A B] _.
 
     #[local]
-    Definition p1' [A B] (s: span A B): K/A := {| proj := p1 s |}.
+    Definition p1' [A B] (s: span A B): K/A := lim _, p1 s.
     #[local]
-    Definition p2' [A B] (s: span A B): K/B := {| proj := p2 s |}.
+    Definition p2' [A B] (s: span A B): K/B := lim _, p2 s.
 
     #[local]
      Definition hom A B := span A B /~ {| equiv x y :=
@@ -951,8 +954,8 @@ Module Import Span.
 
     #[local]
     Definition compose [A B C] (f: hom B C) (g: hom A B): hom A C :=
-      let f' := {| proj := p1 f |}: K/B in
-      let g' := {| proj := p2 g |}: K/B in
+      let f' := p1' f in
+      let g' := p2' g in
       let pb := prod (f', g') in
       {|
         pull := dom pb ;
@@ -991,8 +994,6 @@ End Span.
 
 Module Import Subobject.
   Instance Subobject C c: Category := Monomorphism C/c.
-
-  Definition lim [C:Category] [c: C] (X: C) (P: Monomorphism C X c): Subobject C c := {| dom := X ; proj := P |}.
 End Subobject.
 
 Module Import Elements.
@@ -1318,10 +1319,8 @@ Module Import Pullback.
   End pullback.
 
   #[local]
-   Definition base' [X] (F: Cat/X) (G:Cat/X): Cat/X := {|
-    dom := Pullback (proj F) (proj G) ;
-    proj := proj F ∘ Product.fst ∘ forget (proj F) (proj G)
-  |}.
+   Definition base' [X] (F: Cat/X) (G:Cat/X): Cat/X :=
+    lim (Pullback (proj F) (proj G)), proj F ∘ Product.fst ∘ forget (proj F) (proj G).
 End Pullback.
 
 
@@ -1364,21 +1363,15 @@ Module Import Span.
   Qed.
 
   #[local]
-   Definition id {A}: hom A A := {|
-    dom := A ;
-    proj := Product.dup ;
-   |}.
+   Definition id {A}: hom A A := lim A, Product.dup.
 
   #[local]
-   Definition compose [A B C] (f: hom B C) (g: hom A B): hom A C
-   := {|
-    dom := Pullback (Product.snd ∘ proj g) (Product.fst ∘ proj f);
-    proj :=
+   Definition compose [A B C] (f: hom B C) (g: hom A B): hom A C :=
+    lim (Pullback (Product.snd ∘ proj g) (Product.fst ∘ proj f)),
       Product.fanout
         (Product.fst ∘ proj g ∘ Product.fst)
         (Product.snd ∘ proj f ∘ Product.snd) ∘
-        Pullback.forget (Product.snd ∘ proj g) (Product.fst ∘ proj f)
-     |}.
+        Pullback.forget (Product.snd ∘ proj g) (Product.fst ∘ proj f).
 
   Instance Span: Category := {
     object := Cat ;
@@ -1407,10 +1400,7 @@ Module Import Span.
     admit.
   Admitted.
 
-  Definition transpose [X Y: Span] (f: X ~> Y): Y ~> X := {|
-    dom := dom f ;
-    proj := Product.swap ∘ proj f ;
-   |}.
+  Definition transpose [X Y: Span] (f: X ~> Y): Y ~> X := lim (dom f), Product.swap ∘ proj f.
 
   Instance trace [X] (f: Span X X): Category := Pullback (Product.snd ∘ proj f) (Product.fst ∘ proj f).
 
@@ -1425,18 +1415,6 @@ Instance Empty: Category := {
 }.
 
 Solve All Obligations with contradiction.
-
-Module Import Topology.
-  Class Space := {
-    cat: Category;
-    space: cat ;
-  }.
-
-  Coercion space: Space >-> object.
-
-  Instance Subset (X: Space) : Category := Monomorphism (@cat X)/ X.
-End Topology.
-
 
 Module Import Pushout.
   Section pushout.
@@ -1958,7 +1936,7 @@ Module Import Set'.
   Definition Set' := Monomorphism Cat/Trivial.
   Notation "'Set'" := Set'.
 
-  Definition point: Set := {| proj := id |}.
+  Definition point: Set := lim _, id.
 
   Definition unit: point ~> point := id.
 End Set'.
