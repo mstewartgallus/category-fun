@@ -163,41 +163,6 @@ Module Import Sets.
   Solve All Obligations with cbn; reflexivity.
 End Sets.
 
-Module Import Circle.
-  Module Export Undirected.
-    Instance Circle: Category := {
-      object := True ;
-      (* Represent a circle path as an integer *)
-      hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
-
-      id _ := (1, 1) ;
-      compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
-    }.
-
-    Obligation 1.
-    Proof.
-      exists.
-      all: unfold Reflexive, Symmetric, Transitive.
-      all: lia.
-    Qed.
-
-    Solve All Obligations with cbn; lia.
-
-    Definition point: Circle := I.
-  End Undirected.
-
-  Module Directed.
-    Instance Circle: Category := {
-      object := True ;
-      hom _ _ := nat /~ {| equiv := eq |}  ;
-
-      id _ := 0 ;
-      compose _ _ _ f g := f + g ;
-    }.
-
-    Solve All Obligations with cbn; lia.
-  End Directed.
-End Circle.
 
 Module Import Isomorphism.
   #[universes(cumulative)]
@@ -526,14 +491,179 @@ Module Import Cat.
   Qed.
 End Cat.
 
-Module Import Loop.
-  Import TruncateNotations.
+Module Import Circle.
+  Module Export Undirected.
+    Instance Circle: Category := {
+      object := True ;
+      (* Represent a circle path as an integer *)
+      hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
 
-  Instance Free: Category → Category := Functor Circle.
+      id _ := (1, 1) ;
+      compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
+    }.
 
-  Instance Based (C: Category) (c: C): Category := {
-    object := {F: Free C | F point = c } ;
-    hom A B := (A:>) ~> (B:>) ;
+    Obligation 1.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      all: lia.
+    Qed.
+
+    Solve All Obligations with cbn; lia.
+
+    Definition point: Circle := I.
+  End Undirected.
+
+  Module Directed.
+    Instance Circle: Category := {
+      object := True ;
+      hom _ _ := nat /~ {| equiv := eq |}  ;
+
+      id _ := 0 ;
+      compose _ _ _ f g := f + g ;
+    }.
+
+    Solve All Obligations with cbn; lia.
+  End Directed.
+End Circle.
+
+Module Import Trivial.
+  Instance Trivial: Category := {
+    object := True ;
+    hom _ _ := True /~ {| equiv _ _ := True |} ;
+    id _ := I ;
+    compose _ _ _ _ _ := I ;
+                               }.
+
+  Obligation 1.
+  Proof.
+    exists.
+    all:exists.
+  Qed.
+End Trivial.
+
+Module Product.
+  #[local]
+  Close Scope nat.
+
+  Section products.
+    Variable C D: Category.
+
+    Definition hom (A B: C * D): Bishop :=
+      (fst A ~> fst B) * (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
+
+    Obligation 1.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
+    all: intros; auto.
+    - split.
+      all: reflexivity.
+    - destruct H.
+      split.
+      all: symmetry.
+      all: auto.
+    - destruct H, H0.
+      split.
+      + rewrite H, H0.
+        reflexivity.
+      + rewrite H1, H2.
+        reflexivity.
+    Qed.
+
+    Instance Product: Category := {
+      object := C * D ;
+      hom := hom ;
+      id _ := (id, id) ;
+      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
+    }.
+
+    Obligation 1.
+    Proof.
+      split.
+      all: apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      split.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      split.
+      all: apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    split.
+    + rewrite H, H0.
+      reflexivity.
+    + rewrite H1, H2.
+      reflexivity.
+    Qed.
+  End products.
+
+  Definition fst {A B}: (Product A B:Cat) ~> A := {|
+    fobj := fst ;
+    map _ _ := fst
+  |}.
+
+  Definition snd {A B}: (Product A B:Cat) ~> B := {|
+    fobj := snd ;
+    map _ _ := snd
+  |}.
+
+  Solve All Obligations with reflexivity.
+
+  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (Product A B:Cat) := {|
+    fobj x := (f x, g x) ;
+    map _ _ x := (map f x, map g x)
+  |}.
+
+  Obligation 1.
+  Proof.
+    split.
+    all: apply map_composes.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    split.
+    all: apply map_id.
+  Qed.
+
+  Obligation 3.
+  Proof.
+    split.
+    all: rewrite H.
+    all: reflexivity.
+  Qed.
+
+   Definition swap {A B}: ((Product.Product A B):Cat) ~> (Product.Product B A) :=
+     fanout snd fst.
+
+   Definition dup {A}: (A:Cat) ~> Product.Product A A := fanout id id.
+End Product.
+
+Module Import Sphere.
+  #[local]
+  Fixpoint sphere (n: nat) :=
+    match n with
+    | 0 => Trivial
+    | S n' => Product.Product Circle (sphere n')
+    end.
+
+  #[local]
+   Fixpoint point n: sphere n :=
+    match n with
+    | 0 => I
+    | S n' => (I, point n')
+    end.
+
+  Instance Sphere n: Category := {
+    object := True ;
+    hom _ _ := sphere n (point n) (point n) ;
 
     id _ := id ;
     compose _ _ _ := @compose _ _ _ _ ;
@@ -541,8 +671,31 @@ Module Import Loop.
     compose_assoc _ _ _ _ := @compose_assoc _ _ _ _ _ ;
     compose_id_left _ _ _ := @compose_id_left _ _ _ _ ;
     compose_id_right _ _ _ := @compose_id_right _ _ _ _ ;
-    compose_compat _ _ _ _ := @compose_compat _ _ _ _ _ ;
+    compose_compat _ _ _ := @compose_compat _ _ _ _ ;
   }.
+End Sphere.
+
+Module Import Loop.
+  Import TruncateNotations.
+
+  Section loop.
+    Variable n: nat.
+
+    Instance Loop: Category → Category := Functor (Sphere n).
+
+    Instance Based (C: Category) (c: C): Category := {
+      object := {F: Loop C | F point = c } ;
+      hom A B := (A:>) ~> (B:>) ;
+
+      id _ := id ;
+      compose _ _ _ := @compose _ _ _ _ ;
+
+      compose_assoc _ _ _ _ := @compose_assoc _ _ _ _ _ ;
+      compose_id_left _ _ _ := @compose_id_left _ _ _ _ ;
+      compose_id_right _ _ _ := @compose_id_right _ _ _ _ ;
+      compose_compat _ _ _ _ := @compose_compat _ _ _ _ _ ;
+   }.
+  End loop.
 End Loop.
 
 Module Import Algebra.
@@ -839,110 +992,6 @@ Module Import Monomorphism.
   End monomorphism.
 End Monomorphism.
 
-Module Product.
-  #[local]
-  Close Scope nat.
-
-  Section products.
-    Variable C D: Category.
-
-    Definition hom (A B: C * D): Bishop :=
-      (fst A ~> fst B) * (snd A ~> snd B) /~ {| equiv f g := fst f == fst g ∧ snd f == snd g |}.
-
-    Obligation 1.
-    exists.
-    all: unfold Reflexive, Symmetric, Transitive; cbn.
-    all: intros; auto.
-    - split.
-      all: reflexivity.
-    - destruct H.
-      split.
-      all: symmetry.
-      all: auto.
-    - destruct H, H0.
-      split.
-      + rewrite H, H0.
-        reflexivity.
-      + rewrite H1, H2.
-        reflexivity.
-    Qed.
-
-    Instance Product: Category := {
-      object := C * D ;
-      hom := hom ;
-      id _ := (id, id) ;
-      compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g)
-    }.
-
-    Obligation 1.
-    Proof.
-      split.
-      all: apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      split.
-      all: apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      split.
-      all: apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    split.
-    + rewrite H, H0.
-      reflexivity.
-    + rewrite H1, H2.
-      reflexivity.
-    Qed.
-  End products.
-
-  Definition fst {A B}: (Product A B:Cat) ~> A := {|
-    fobj := fst ;
-    map _ _ := fst
-  |}.
-
-  Definition snd {A B}: (Product A B:Cat) ~> B := {|
-    fobj := snd ;
-    map _ _ := snd
-  |}.
-
-  Solve All Obligations with reflexivity.
-
-  Definition fanout {A B C: Cat} (f: C ~> A) (g: C ~> B): C ~> (Product A B:Cat) := {|
-    fobj x := (f x, g x) ;
-    map _ _ x := (map f x, map g x)
-  |}.
-
-  Obligation 1.
-  Proof.
-    split.
-    all: apply map_composes.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    split.
-    all: apply map_id.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    split.
-    all: rewrite H.
-    all: reflexivity.
-  Qed.
-
-   Definition swap {A B}: ((Product.Product A B):Cat) ~> (Product.Product B A) :=
-     fanout snd fst.
-
-   Definition dup {A}: (A:Cat) ~> Product.Product A A := fanout id id.
-End Product.
-
 
 Module Import Finite.
  (* Define finite totally ordered sets *)
@@ -1222,20 +1271,6 @@ End Elements.
 
 Instance CategoryOfSimplices: Functor (op Δ) Bishop → Category := Elements (op Δ).
 
-Module Import Trivial.
-  Instance Trivial: Category := {
-    object := True ;
-    hom _ _ := True /~ {| equiv _ _ := True |} ;
-    id _ := I ;
-    compose _ _ _ _ _ := I ;
-                               }.
-
-  Obligation 1.
-  Proof.
-    exists.
-    all:exists.
-  Qed.
-End Trivial.
 
 Module Import Epimorphism.
   Section epimorphism.
