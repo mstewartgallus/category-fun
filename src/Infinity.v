@@ -163,6 +163,40 @@ Module Import Sets.
   Solve All Obligations with cbn; reflexivity.
 End Sets.
 
+Module Import Circle.
+  Module Undirected.
+    Instance Circle: Category := {
+      object := True ;
+      (* Represent a circle path as an integer *)
+      hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
+
+      id _ := (1, 1) ;
+      compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
+    }.
+
+    Obligation 1.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      all: lia.
+    Qed.
+
+    Solve All Obligations with cbn; lia.
+  End Undirected.
+
+  Module Export Directed.
+    Instance Circle: Category := {
+      object := True ;
+      hom _ _ := nat /~ {| equiv := eq |}  ;
+
+      id _ := 0 ;
+      compose _ _ _ f g := f + g ;
+    }.
+
+    Solve All Obligations with cbn; lia.
+  End Directed.
+End Circle.
+
 Module Import Isomorphism.
   #[universes(cumulative)]
    Record iso [K: Category] (A B: K) := {
