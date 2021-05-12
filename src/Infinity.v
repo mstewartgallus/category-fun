@@ -164,7 +164,7 @@ Module Import Sets.
 End Sets.
 
 Module Import Circle.
-  Module Undirected.
+  Module Export Undirected.
     Instance Circle: Category := {
       object := True ;
       (* Represent a circle path as an integer *)
@@ -182,9 +182,11 @@ Module Import Circle.
     Qed.
 
     Solve All Obligations with cbn; lia.
+
+    Definition point: Circle := I.
   End Undirected.
 
-  Module Export Directed.
+  Module Directed.
     Instance Circle: Category := {
       object := True ;
       hom _ _ := nat /~ {| equiv := eq |}  ;
@@ -523,6 +525,25 @@ Module Import Cat.
     - apply from_to.
   Qed.
 End Cat.
+
+Module Import Loop.
+  Import TruncateNotations.
+
+  Instance Free: Category → Category := Functor Circle.
+
+  Instance Based (C: Category) (c: C): Category := {
+    object := {F: Free C | F point = c } ;
+    hom A B := (A:>) ~> (B:>) ;
+
+    id _ := id ;
+    compose _ _ _ := @compose _ _ _ _ ;
+
+    compose_assoc _ _ _ _ := @compose_assoc _ _ _ _ _ ;
+    compose_id_left _ _ _ := @compose_id_left _ _ _ _ ;
+    compose_id_right _ _ _ := @compose_id_right _ _ _ _ ;
+    compose_compat _ _ _ _ := @compose_compat _ _ _ _ _ ;
+  }.
+End Loop.
 
 Module Import Algebra.
   Module Import Algebra.
