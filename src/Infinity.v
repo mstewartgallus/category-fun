@@ -1008,64 +1008,11 @@ Module Import Simplex.
   Definition forget A B: Δ A B := const ((lim B, id): [B]).
 
   Instance Δ_Directed: Category := Monomorphism Δ.
+
+  Module Import SimplexNotations.
+    Notation "'Δ₊'" := Δ_Directed.
+  End SimplexNotations.
 End Simplex.
-
-Module Import SimplicialSubobject.
-  Section subobject.
-    Context [C: Category].
-    Variable c: C.
-
-    #[local]
-    Definition S := (∀ n, Product.Product C Δ/(c, n)).
-
-    #[local]
-     Definition hom (A B: S) :=
-      (∀ n, (Product.Product C Δ/(c, n)) (A n) (B n)) /~ {| equiv x y := ∀ t, x t == y t |}.
-
-    Obligation 1.
-    Proof.
-      admit.
-    Admitted.
-
-    #[local]
-     Definition id {A}: hom A A := λ _, id.
-
-    #[local]
-     Definition compose {A B C} (f: hom B C) (g: hom A B): hom A C
-      := λ t, f t ∘ g t.
-
-    Instance Simplicial: Category := {
-      object := S ;
-      hom := hom ;
-      id := @id ;
-      compose := @compose ;
-    }.
-
-    Obligation 1.
-    Proof.
-      admit.
-    Admitted.
-
-    Obligation 2.
-    Proof.
-      admit.
-    Admitted.
-
-    Obligation 3.
-    Proof.
-      admit.
-    Admitted.
-
-    Obligation 4.
-    Proof.
-      admit.
-    Admitted.
-
-    Definition foo: Simplicial.
-      intro x.
-      
-  End subobject.
-End SimplicialSubobject.
 
 Module Import Cartesian.
   Class Cartesian (C: Category) := {
