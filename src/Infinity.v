@@ -9,7 +9,7 @@ Require Import Coq.Unicode.Utf8.
 Require Import Coq.derive.Derive.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
-Require Import Coq.Arith.PeanoNat.
+Require Import Coq.ZArith.ZArith.
 Require Import Psatz.
 
 Reserved Notation "| A |" (at level 40).
@@ -493,13 +493,15 @@ End Cat.
 
 Module Import Circle.
   Module Export Undirected.
+    Local Open Scope Z_scope.
+
     Instance Circle: Category := {
       object := True ;
       (* Represent a circle path as an integer *)
-      hom _ _ := (nat * nat) /~ {| equiv x y := fst x + snd y = fst y + snd x |} ;
+      hom _ _ := Z /~ {| equiv x y := x = y |} ;
 
-      id _ := (1, 1) ;
-      compose _ _ _ f g := (fst f + fst g, snd f + snd g) ;
+      id _ := 0 ;
+      compose _ _ _ f g := f + g ;
     }.
 
     Obligation 1.
@@ -533,7 +535,7 @@ Module Import Trivial.
     hom _ _ := True /~ {| equiv _ _ := True |} ;
     id _ := I ;
     compose _ _ _ _ _ := I ;
-                               }.
+  }.
 
   Obligation 1.
   Proof.
@@ -646,24 +648,12 @@ Module Product.
    Definition dup {A}: (A:Cat) ~> Product.Product A A := fanout id id.
 End Product.
 
-Module Import Sphere.
-  #[local]
-  Fixpoint sphere (n: nat) :=
-    match n with
-    | 0 => Trivial
-    | S n' => Product.Product Circle (sphere n')
-    end.
+Module Import Loop.
+  Instance Loop: Category → Category := Functor Circle.
 
-  #[local]
-   Fixpoint point n: sphere n :=
-    match n with
-    | 0 => I
-    | S n' => (I, point n')
-    end.
-
-  Instance Sphere n: Category := {
-    object := True ;
-    hom _ _ := sphere n (point n) (point n) ;
+  Instance Based (C: Category) (c: C): Category := {
+    object := {F: Loop C | F point = c } ;
+    hom A B := (A:>) ~> (B:>) ;
 
     id _ := id ;
     compose _ _ _ := @compose _ _ _ _ ;
@@ -671,31 +661,8 @@ Module Import Sphere.
     compose_assoc _ _ _ _ := @compose_assoc _ _ _ _ _ ;
     compose_id_left _ _ _ := @compose_id_left _ _ _ _ ;
     compose_id_right _ _ _ := @compose_id_right _ _ _ _ ;
-    compose_compat _ _ _ := @compose_compat _ _ _ _ ;
+    compose_compat _ _ _ _ := @compose_compat _ _ _ _ _ ;
   }.
-End Sphere.
-
-Module Import Loop.
-  Import TruncateNotations.
-
-  Section loop.
-    Variable n: nat.
-
-    Instance Loop: Category → Category := Functor (Sphere n).
-
-    Instance Based (C: Category) (c: C): Category := {
-      object := {F: Loop C | F point = c } ;
-      hom A B := (A:>) ~> (B:>) ;
-
-      id _ := id ;
-      compose _ _ _ := @compose _ _ _ _ ;
-
-      compose_assoc _ _ _ _ := @compose_assoc _ _ _ _ _ ;
-      compose_id_left _ _ _ := @compose_id_left _ _ _ _ ;
-      compose_id_right _ _ _ := @compose_id_right _ _ _ _ ;
-      compose_compat _ _ _ _ := @compose_compat _ _ _ _ _ ;
-   }.
-  End loop.
 End Loop.
 
 Module Import Algebra.
@@ -914,16 +881,195 @@ Module Import Over.
   Qed.
 End Over.
 
-Module Import OverAlgebra.
-  Section over.
-    Variable C: Category.
-    Variable w: C.
-    Variable F: Functor (C/w) (C/w).
+Module Import Span.
+  Import TruncateNotations.
 
-    Definition OverAlgebra := Algebra F.
-    Definition over [x: C/w] (f: F x ~> x): OverAlgebra := {| Algebra.elem := x ; Algebra.assoc := f |}.
-  End over.
-End OverAlgebra.
+  #[local]
+   Definition hom (A B: Bishop):Bishop :=
+    (Bishop/((A * B)/~ {| equiv x y := fst x == fst y ∧ snd x == snd y |})) /~ {| equiv x y := | Isomorphism (_/_) x y | |}.
+
+  Obligation 1.
+  Proof.
+    exists.
+    - split.
+      all: reflexivity.
+    - intros ? ? p.
+      destruct p.
+      split.
+      all: symmetry.
+      all: auto.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      split.
+      + rewrite p, q.
+        reflexivity.
+      + rewrite p', q'.
+        reflexivity.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    exists.
+    - exists.
+      apply (id: Isomorphism _ _ _).
+    - intros ? ? p.
+      destruct p.
+      exists.
+      refine (_ ᵀ).
+      auto.
+    - intros ? ? ? p q.
+      destruct p as [p], q as [q].
+      exists.
+      apply ((q: Isomorphism _ _ _) ∘ p).
+  Qed.
+
+  #[local]
+   Definition id {A}: hom A A := lim _, λ x, (x, x).
+
+  #[local]
+   Definition compose [A B C] (f: hom B C) (g: hom A B): hom A C :=
+    lim ({ xy: dom f * dom g | fst (proj f (fst xy)) == snd (proj g (snd xy)) }/~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}),
+    λ xy, (fst (proj g (snd xy)), snd (proj f (fst xy))).
+
+  Obligation 1.
+  Proof.
+    exists.
+    - split.
+      all: reflexivity.
+    - intros ? ? p.
+      destruct p.
+      split.
+      all: symmetry.
+      all: auto.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      split.
+      + rewrite p, q.
+        reflexivity.
+      + rewrite p', q'.
+        reflexivity.
+  Qed.
+
+  Obligation 2.
+  Proof.
+    destruct f, g.
+    cbn in *.
+    destruct proj0, proj1.
+    cbn in *.
+    split.
+    - apply a0.
+      auto.
+    - apply a.
+      auto.
+  Qed.
+
+  Instance Span: Category := {
+    object := Bishop ;
+    hom := hom ;
+
+    id := @id ;
+    compose := @compose ;
+  }.
+
+  Obligation 1.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 2.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 3.
+  Proof.
+    admit.
+  Admitted.
+
+  Obligation 4.
+  Proof.
+    admit.
+  Admitted.
+
+  Definition transpose [A B] (f: Span A B): Span B A :=
+    lim _,
+    λ x,
+    (snd (proj f x), fst (proj f x)).
+
+  Obligation 1.
+  Proof.
+    destruct f.
+    cbn in *.
+    destruct proj0.
+    cbn in *.
+    destruct (a x y H).
+    split.
+    all: auto.
+  Qed.
+End Span.
+
+Module Import Orthogonal.
+  Section orthogonal.
+    Variable N: Bishop.
+
+    #[local]
+    Definition orthogonal (f: Span N N) := f ∘ transpose f == id.
+
+    Instance Orthogonal: Category := {
+      object := True ;
+      hom _ _ := {f | orthogonal f} /~ {| equiv x y := (x :>) == (y :>) |} ;
+
+      id _ := exist _ id _ ;
+      compose _ _ _ f g := (f :>) ∘ (g :>) ;
+    }.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - intros ?.
+        exists.
+        apply (id: Isomorphism _ _ _).
+      - intros ? ? p.
+        destruct p as [p].
+        exists.
+        apply (p ᵀ).
+      - intros ? ? ? p q.
+        destruct p as [p], q as [q].
+        exists.
+        apply ((q: Isomorphism _ _ _) ∘ p).
+    Qed.
+
+    Obligation 2.
+    Proof.
+      admit.
+    Admitted.
+
+    Obligation 3.
+    Proof.
+      admit.
+    Admitted.
+
+    Obligation 4.
+    Proof.
+      admit.
+    Admitted.
+
+    Obligation 5.
+    Proof.
+      admit.
+    Admitted.
+
+    Obligation 6.
+    Proof.
+      admit.
+    Admitted.
+
+    Obligation 7.
+    Proof.
+      admit.
+    Admitted.
+  End orthogonal.
+End Orthogonal.
 
 Module Import Monomorphism.
   Section monomorphism.
