@@ -26,6 +26,8 @@ Reserved Notation "A ⊗ B" (at level 30).
 Reserved Notation "A ~~> B" (at level 80).
 
 Reserved Notation "'lim' A , P" (right associativity, at level 200).
+Reserved Notation "'colim' x , P" (right associativity, at level 200, x ident).
+Reserved Notation "'colim' x : A , P" (right associativity, at level 200, x ident).
 
 (* FIXME get propositional truncation from elsewhere *)
 Module Import Utils.
@@ -161,8 +163,9 @@ Module Import Sets.
   Qed.
 
   Solve All Obligations with cbn; reflexivity.
-End Sets.
 
+  Definition simple (t:Type):Bishop := t /~ {| equiv := eq |}.
+End Sets.
 
 Module Import Isomorphism.
   #[universes(cumulative)]
@@ -491,17 +494,38 @@ Module Import Cat.
   Qed.
 End Cat.
 
+Module Pointed.
+  Class Category := {
+    Pointed_Category:> Category.Category ;
+    point: Pointed_Category ;
+  }.
+
+  Coercion Pointed_Category: Category >-> Category.Category.
+  Arguments point Category: clear implicits.
+
+  Record functor (C D: Category) := {
+    Pointed_Functor :> Functor C D ;
+    preserves_base: Pointed_Functor (point C) ~> point D ;
+  }.
+End Pointed.
+
 Module Import Circle.
+  Import Pointed.
+
   Module Export Undirected.
     Local Open Scope Z_scope.
 
     Instance Circle: Category := {
-      object := True ;
-      (* Represent a circle path as an integer *)
-      hom _ _ := Z /~ {| equiv x y := x = y |} ;
+      Pointed_Category := {|
+        object := True ;
+        (* Represent a circle path as an integer *)
+        hom _ _ := Z /~ {| equiv x y := x = y |} ;
 
-      id _ := 0 ;
-      compose _ _ _ f g := f + g ;
+        id _ := 0 ;
+        compose _ _ _ f g := f + g ;
+      |} ;
+
+      point := I ;
     }.
 
     Obligation 1.
@@ -512,17 +536,18 @@ Module Import Circle.
     Qed.
 
     Solve All Obligations with cbn; lia.
-
-    Definition point: Circle := I.
   End Undirected.
 
   Module Directed.
     Instance Circle: Category := {
-      object := True ;
-      hom _ _ := nat /~ {| equiv := eq |}  ;
+      Pointed_Category := {|
+        object := True ;
+        hom _ _ := nat /~ {| equiv := eq |}  ;
 
-      id _ := 0 ;
-      compose _ _ _ f g := f + g ;
+        id _ := 0 ;
+        compose _ _ _ f g := f + g ;
+      |} ;
+      point := I ;
     }.
 
     Solve All Obligations with cbn; lia.
@@ -543,6 +568,111 @@ Module Import Trivial.
     all:exists.
   Qed.
 End Trivial.
+
+Module Import Option.
+  #[local]
+   Close Scope nat.
+
+  Section option.
+    Variable K: Category.
+
+    #[local]
+     Definition True_set := True /~ {| equiv _ _ := True |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      all: exists.
+    Qed.
+
+    #[local]
+     Definition False_set := False /~ {| equiv x := match x with end |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      all: intro; contradiction.
+    Qed.
+
+    Unset Program Mode.
+    #[local]
+     Definition hom (A B: option K) :=
+      match (A, B) with
+      | (Some A', Some B') => A' ~> B'
+      | (None, None) => True_set
+      | _ => False_set
+      end.
+    Set Program Mode.
+
+    #[local]
+    Definition id {A: option K}: hom A A :=
+      match A with
+      | Some A' => @id K A'
+      | None => I
+      end.
+
+    #[local]
+     Definition compose [A B C: option K]: hom B C → hom A B → hom A C.
+    destruct B.
+    - destruct A.
+      all: cbn in *.
+      all: try contradiction.
+      destruct C.
+      all: try contradiction.
+      apply compose.
+    - destruct A.
+      all: cbn in *.
+      all: try contradiction.
+      destruct C.
+      all: try contradiction.
+      exists.
+    Defined.
+
+    Instance Option: Category := {
+      object := option K ;
+      hom := hom ;
+      id := @id ;
+      compose := @compose ;
+    }.
+
+    Obligation 1.
+    Proof.
+      destruct A, B, C, D.
+      all: try contradiction.
+      all: cbn in *.
+      - apply compose_assoc.
+      - exists.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      destruct A, B.
+      all: try contradiction.
+      all: cbn in *.
+      - apply compose_id_left.
+      - exists.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      destruct A, B.
+      all: try contradiction.
+      all: cbn in *.
+      - apply compose_id_right.
+      - exists.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      destruct A, B, C.
+      all: try contradiction.
+      all: cbn in *.
+      - rewrite H, H0.
+        reflexivity.
+      - exists.
+    Qed.
+  End option.
+End Option.
 
 Module Product.
   #[local]
@@ -648,6 +778,48 @@ Module Product.
    Definition dup {A}: (A:Cat) ~> Product.Product A A := fanout id id.
 End Product.
 
+Module Import Smash.
+  Import Pointed.
+  #[local]
+  Close Scope nat.
+
+  Section products.
+    Variable C D: Category.
+
+    (* No induction :( *)
+    #[local]
+     Definition object := ∀ X, {f: C → D → X | ∀ x y, f (point C) y = f x (point D) } → X.
+
+    #[local]
+    Definition to (x: C) (y: D): object := λ _ f, proj1_sig f x y.
+
+    Inductive hom: object → object → Type :=
+      | hom_intro [A A' B B']: A ~> B → A' ~> B' → hom (to A A') (to B B').
+
+    Inductive eq: ∀ [A B], hom A B → hom A B → Prop :=
+    | eq_intro [A A': C] [B B': D] [x x': A ~> A'] [y y': B ~> B']: x == x' → y == y' → eq (hom_intro x y) (hom_intro x' y')
+    .
+
+    #[local]
+     Definition id {A}: hom A A.
+    apply A.
+    eexists.
+    Unshelve.
+    2: {
+      intros x y.
+      Check (@hom_intro x y x y).
+
+    Instance Smash: Category := {
+      Pointed_Category :=
+        {|
+          Category.object := object ;
+          Category.hom A B := hom A B /~ {| equiv := @eq A B |} ;
+        |} ;
+      point := to (point C) (point D) ;
+    }.
+  End products.
+End Smash.
+
 Module Import Loop.
   Instance Loop: Category → Category := Functor Circle.
 
@@ -665,89 +837,6 @@ Module Import Loop.
   }.
 End Loop.
 
-Module Import Algebra.
-  Module Import Algebra.
-    #[universes(cumulative)]
-    Record Algebra [C:Category] (F: functor C C) := {
-      elem: C ;
-      assoc: F elem ~> elem
-    }.
-
-    Arguments elem [C F] _.
-    Arguments assoc [C F] _.
-  End Algebra.
-
-  Section algebra.
-    Context [C: Category].
-    Variable F: functor C C.
-
-    #[local]
-     Definition hom (A B: Algebra F) :=
-      {m: elem A ~> elem B | m ∘ assoc A == assoc B ∘ map F m }
-        /~
-        {| equiv x y := (x :>) == (y :>) |}.
-
-    Obligation 1.
-    Proof.
-      exists.
-      all: unfold Reflexive, Symmetric, Transitive.
-      - intros.
-        reflexivity.
-      - intros.
-        symmetry.
-        auto.
-      - intros ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-    Qed.
-
-    Instance Algebra: Category := {
-      object := Algebra F ;
-      hom := hom ;
-
-      id A := @id _ (elem A) ;
-      compose A B C := @compose _ (elem A) (elem B) (elem C) ;
-    }.
-
-    Obligation 1.
-    Proof.
-      rewrite map_id, compose_id_left, compose_id_right.
-      reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      rewrite <- map_composes.
-      rewrite compose_assoc.
-      rewrite <- H0.
-      rewrite <- compose_assoc.
-      rewrite H.
-      rewrite compose_assoc.
-      reflexivity.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 5.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 6.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-  End algebra.
-End Algebra.
 Module Import Opposite.
   Section opposite.
     Context `(K:Category).
@@ -881,163 +970,247 @@ Module Import Over.
   Qed.
 End Over.
 
-Module Import Span.
-  Import TruncateNotations.
-
-  #[local]
-   Definition hom (A B: Bishop):Bishop :=
-    (Bishop/((A * B)/~ {| equiv x y := fst x == fst y ∧ snd x == snd y |})) /~ {| equiv x y := | Isomorphism (_/_) x y | |}.
-
-  Obligation 1.
-  Proof.
-    exists.
-    - split.
-      all: reflexivity.
-    - intros ? ? p.
-      destruct p.
-      split.
-      all: symmetry.
-      all: auto.
-    - intros ? ? ? p q.
-      destruct p as [p p'], q as [q q'].
-      split.
-      + rewrite p, q.
-        reflexivity.
-      + rewrite p', q'.
-        reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    exists.
-    - exists.
-      apply (id: Isomorphism _ _ _).
-    - intros ? ? p.
-      destruct p.
-      exists.
-      refine (_ ᵀ).
-      auto.
-    - intros ? ? ? p q.
-      destruct p as [p], q as [q].
-      exists.
-      apply ((q: Isomorphism _ _ _) ∘ p).
-  Qed.
-
-  #[local]
-   Definition id {A}: hom A A := lim _, λ x, (x, x).
-
-  #[local]
-   Definition compose [A B C] (f: hom B C) (g: hom A B): hom A C :=
-    lim ({ xy: dom f * dom g | fst (proj f (fst xy)) == snd (proj g (snd xy)) }/~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}),
-    λ xy, (fst (proj g (snd xy)), snd (proj f (fst xy))).
-
-  Obligation 1.
-  Proof.
-    exists.
-    - split.
-      all: reflexivity.
-    - intros ? ? p.
-      destruct p.
-      split.
-      all: symmetry.
-      all: auto.
-    - intros ? ? ? p q.
-      destruct p as [p p'], q as [q q'].
-      split.
-      + rewrite p, q.
-        reflexivity.
-      + rewrite p', q'.
-        reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    destruct f, g.
-    cbn in *.
-    destruct proj0, proj1.
-    cbn in *.
-    split.
-    - apply a0.
-      auto.
-    - apply a.
-      auto.
-  Qed.
-
-  Instance Span: Category := {
-    object := Bishop ;
-    hom := hom ;
-
-    id := @id ;
-    compose := @compose ;
+Module Import Pullback.
+  Record pullback [A B C: Category] (F: Functor A C) (G: Functor B C) := {
+    pull: Product.Product A B ;
+    assoc: F (fst pull) ~> G (snd pull)
   }.
 
-  Obligation 1.
-  Proof.
-    admit.
-  Admitted.
+  Arguments assoc [A B C F G] _.
+  Arguments pull {A B C F G} _.
 
-  Obligation 2.
-  Proof.
-    admit.
-  Admitted.
+  Section pullback.
+    Context [A B C: Category].
+    Variable F: Functor A C.
+    Variable G: Functor B C.
 
-  Obligation 3.
-  Proof.
-    admit.
-  Admitted.
-
-  Obligation 4.
-  Proof.
-    admit.
-  Admitted.
-
-  Definition transpose [A B] (f: Span A B): Span B A :=
-    lim _,
-    λ x,
-    (snd (proj f x), fst (proj f x)).
-
-  Obligation 1.
-  Proof.
-    destruct f.
-    cbn in *.
-    destruct proj0.
-    cbn in *.
-    destruct (a x y H).
-    split.
-    all: auto.
-  Qed.
-End Span.
-
-Module Import Orthogonal.
-  Section orthogonal.
-    Variable N: Bishop.
-
+    (* Basically a comma category *)
     #[local]
-    Definition orthogonal (f: Span N N) := f ∘ transpose f == id.
-
-    Instance Orthogonal: Category := {
-      object := True ;
-      hom _ _ := {f | orthogonal f} /~ {| equiv x y := (x :>) == (y :>) |} ;
-
-      id _ := exist _ id _ ;
-      compose _ _ _ f g := (f :>) ∘ (g :>) ;
-    }.
+    Definition hom (X Y: pullback F G) := {
+      xs: pull X ~> pull Y
+      | (map G (snd xs)) ∘ assoc X == assoc Y ∘ (map F (fst xs)) }
+    /~ {| equiv x y := (x:>) == (y:>) |}.
 
     Obligation 1.
     Proof.
       exists.
-      - intros ?.
-        exists.
-        apply (id: Isomorphism _ _ _).
-      - intros ? ? p.
-        destruct p as [p].
-        exists.
-        apply (p ᵀ).
-      - intros ? ? ? p q.
-        destruct p as [p], q as [q].
-        exists.
-        apply ((q: Isomorphism _ _ _) ∘ p).
+      all:split.
+      all:try reflexivity.
+      1,2: symmetry; destruct H; auto.
+      1,2: destruct H, H0.
+      1: rewrite H, H0.
+      2: rewrite H1, H2.
+      all: reflexivity.
     Qed.
+
+    Instance Pullback: Category := {
+      object := pullback F G ;
+      hom := hom ;
+
+      id _ := exist _ id _ ;
+      compose _ _ _ f g := (f:>) ∘ (g:>) ;
+    }.
+
+    Obligation 1.
+    Proof.
+      repeat rewrite map_id.
+      rewrite compose_id_left, compose_id_right.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      cbn in *.
+      repeat rewrite <- map_composes.
+      rewrite <- compose_assoc.
+      rewrite H.
+      rewrite compose_assoc.
+      rewrite H0.
+      rewrite <- compose_assoc.
+      reflexivity.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      cbn in *.
+      split.
+      all: apply compose_assoc.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      split.
+      all: apply compose_id_left.
+    Qed.
+
+    Obligation 5.
+    Proof.
+      split.
+      all: apply compose_id_right.
+    Qed.
+
+    Obligation 6.
+    Proof.
+      split.
+      all: apply compose_compat.
+      all: auto.
+    Qed.
+
+    Definition forget: Functor Pullback (Product.Product A B) := {|
+      fobj := pull ;
+      map _ _ f := f :> ;
+    |}.
+
+    Obligation 1.
+    Proof.
+      cbn.
+      split.
+      all: reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      split.
+      all: reflexivity.
+    Qed.
+
+    Definition p1: Functor Pullback A := Product.fst ∘ forget.
+    Definition p2: Functor Pullback B := Product.snd ∘ forget.
+  End pullback.
+
+  #[local]
+   Definition base' [X] (F: Cat/X) (G:Cat/X): Cat/X :=
+    lim (Pullback (proj F) (proj G)), proj F ∘ Product.fst ∘ forget (proj F) (proj G).
+End Pullback.
+
+Module Import Elements.
+  Record elem [C] (P: Functor C Bishop) := {
+    base: C ;
+    pick: P base ;
+  }.
+
+  Arguments base [C] [P] _.
+  Arguments pick [C] [P] _.
+
+  Section elem.
+    Context [C: Category].
+    Variable P: Functor C Bishop.
+
+    Definition hom (A B: elem P) := base A ~> base B.
+
+    Instance Elements: Category := {
+      object := elem P ;
+      hom := hom ;
+
+      id _ := id ;
+      compose _ _ _ := @compose _ _ _ _ ;
+    }.
+
+    Obligation 1.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      apply compose_id_left.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      apply compose_compat.
+      all: auto.
+    Qed.
+  End elem.
+End Elements.
+
+(* FIXME move back. Coq has trouble with pushouts so we need to
+explicitly construct a free completion.
+ *)
+Module Cocompletion.
+  (* Mostly like a presheaf except you need additional conditions to
+    ensure the Grothendieck stuff actually works. *)
+  Instance Cocompletion (C:Category): Category := Cat/C.
+
+  Section fiber.
+    Variable C: Category.
+
+    #[local]
+     Definition Hom (a: C): Functor (op C) Bishop := {|
+      fobj b := C b a ;
+      map _ _ f g := g ∘ f ;
+      |}.
+
+    Obligation 1.
+    Proof.
+      rewrite H.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      rewrite compose_assoc.
+      reflexivity.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_id_right.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      rewrite H.
+      reflexivity.
+    Qed.
+
+    #[local]
+     Definition yo (a: C): Cocompletion C :=
+      lim (op (Elements (Hom a))), {|
+        fobj x := base x ;
+        map _ _ f := f ;
+      |}.
+
+    Solve All Obligations with reflexivity.
+
+    #[local]
+     Definition yo_map [A B: C] (f: C A B): yo A ~> yo B := {|
+      fobj (x:op (Elements (Hom A))) :=
+        {| base := base x ; pick := f ∘ pick x |}:op (Elements (Hom B)) ;
+      map _ _ f := f ;
+    |}.
+
+    Obligation 1.
+    Proof.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      reflexivity.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      exists.
+      apply (id: Isomorphism _ _ _).
+    Qed.
+
+    (* Not really yoneda but not sure of a better name *)
+    Definition Yo: Functor C (Cocompletion C) := {|
+      fobj := yo ;
+      map := @yo_map ;
+    |}.
+
+    Obligation 1.
+    Proof.
+      admit.
+    Admitted.
 
     Obligation 2.
     Proof.
@@ -1049,27 +1222,131 @@ Module Import Orthogonal.
       admit.
     Admitted.
 
-    Obligation 4.
+    Definition Limit [D] (F: Functor (op D) C): Cocompletion C := lim (op D), F.
+
+    Definition Intersect (f: Cocompletion C) (g: Cocompletion C): Cocompletion C :=
+       lim (Pullback (proj f) (proj g)), (proj f ∘ Pullback.p1 _ _).
+  End fiber.
+End Cocompletion.
+
+Module Import Completion.
+  Import Cocompletion.
+
+  Section completion.
+    Variable C: Category.
+
+    Instance Completion (C: Category): Category := op (Cocompletion (op C)).
+
+    Definition Yo: Functor C (Completion C) := {|
+      fobj := Yo (op C) ;
+      map _ _ := @map _ _ (Yo (op C)) _ _  ;
+    |}.
+
+    Obligation 1.
     Proof.
       admit.
     Admitted.
+
+    Obligation 2.
+    Proof.
+      admit.
+    Admitted.
+
+    Obligation 3.
+    Proof.
+      admit.
+    Admitted.
+
+    Definition Colimit [D] (F: Functor (op D) (op C)): Completion C := lim (op D), F.
+
+    Definition Pushout (f: Completion C) (g: Completion C): Completion C :=
+       lim (Pullback (proj f) (proj g)), (proj f ∘ Pullback.p1 _ _).
+  End completion.
+End Completion.
+
+Module Import Algebra.
+  Module Import Algebra.
+    #[universes(cumulative)]
+    Record Algebra [C:Category] (F: functor C C) := {
+      elem: C ;
+      assoc: F elem ~> elem
+    }.
+
+    Arguments elem [C F] _.
+    Arguments assoc [C F] _.
+  End Algebra.
+
+  Section algebra.
+    Context [C: Category].
+    Variable F: functor C C.
+
+    #[local]
+     Definition hom (A B: Algebra F) :=
+      {m: elem A ~> elem B | m ∘ assoc A == assoc B ∘ map F m }
+        /~
+        {| equiv x y := (x :>) == (y :>) |}.
+
+    Obligation 1.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      - intros.
+        reflexivity.
+      - intros.
+        symmetry.
+        auto.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Instance Algebra: Category := {
+      object := Algebra F ;
+      hom := hom ;
+
+      id A := @id _ (elem A) ;
+      compose A B C := @compose _ (elem A) (elem B) (elem C) ;
+    }.
+
+    Obligation 1.
+    Proof.
+      rewrite map_id, compose_id_left, compose_id_right.
+      reflexivity.
+    Qed.
+
+    Obligation 2.
+    Proof.
+      rewrite <- map_composes.
+      rewrite compose_assoc.
+      rewrite <- H0.
+      rewrite <- compose_assoc.
+      rewrite H.
+      rewrite compose_assoc.
+      reflexivity.
+    Qed.
+
+    Obligation 3.
+    Proof.
+      apply compose_assoc.
+    Qed.
+
+    Obligation 4.
+    Proof.
+      apply compose_id_left.
+    Qed.
 
     Obligation 5.
     Proof.
-      admit.
-    Admitted.
+      apply compose_id_right.
+    Qed.
 
     Obligation 6.
     Proof.
-      admit.
-    Admitted.
-
-    Obligation 7.
-    Proof.
-      admit.
-    Admitted.
-  End orthogonal.
-End Orthogonal.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End algebra.
+End Algebra.
 
 Module Import Monomorphism.
   Section monomorphism.
@@ -1273,150 +1550,9 @@ Module Import Cartesian.
   }.
 End Cartesian.
 
-Module Import Span.
-  Import TruncateNotations.
-
-  Section spans.
-    Context [K: Category].
-    Variable (meet: ∀ c, Cartesian (K/c)).
-
-    Record span (A B: K) := {
-      pull: K ;
-      p1: pull ~> A ;
-      p2: pull ~> B ;
-    }.
-
-    Arguments pull [A B] _.
-    Arguments p1 [A B] _.
-    Arguments p2 [A B] _.
-
-    #[local]
-    Definition p1' [A B] (s: span A B): K/A := lim _, p1 s.
-    #[local]
-    Definition p2' [A B] (s: span A B): K/B := lim _, p2 s.
-
-    #[local]
-     Definition hom A B := span A B /~ {| equiv x y :=
-                                          | Isomorphism (K/_) (p1' x) (p1' y) | ∧ | Isomorphism (K/_) (p2' x) (p2' y) |
-                                       |}.
-
-    Obligation 1.
-    Proof.
-      exists.
-      - intros ?.
-        split.
-        + exists.
-          apply (id: Isomorphism _ _ _).
-        + exists.
-          apply (id: Isomorphism _ _ _).
-      - intros ? ? p.
-        destruct p as [p p'], p, p'.
-        all: split.
-        + exists; refine (_ ᵀ); auto.
-        + exists; refine (_ ᵀ); auto.
-      - intros ? ? ? p q.
-        destruct p as [p p'], p, p'.
-        destruct q as [q q'], q, q'.
-        split.
-        + exists.
-          apply ((X1: Isomorphism _ _ _) ∘ X).
-        + exists.
-          apply ((X2: Isomorphism _ _ _) ∘ X0).
-    Qed.
-
-    #[local]
-    Definition id {A}: hom A A := {| p1 := id ; p2 := id |}.
-
-    #[local]
-    Definition compose [A B C] (f: hom B C) (g: hom A B): hom A C :=
-      let f' := p1' f in
-      let g' := p2' g in
-      let pb := prod (f', g') in
-      {|
-        pull := dom pb ;
-        p1 := p1 g ∘ @snd (K/B) (meet _) f' g' ;
-        p2 := p2 f ∘ @fst (K/B) (meet _) f' g' ;
-      |}.
-
-    Instance Span: Category := {
-      object := K ;
-      hom := hom ;
-      id := @id ;
-      compose := @compose ;
-    }.
-
-    Obligation 1.
-    Proof.
-      admit.
-    Admitted.
-
-    Obligation 2.
-    Proof.
-      admit.
-    Admitted.
-
-    Obligation 3.
-    Proof.
-      admit.
-    Admitted.
-
-    Obligation 4.
-    Proof.
-      admit.
-    Admitted.
-  End spans.
-End Span.
-
 Module Import Subobject.
   Instance Subobject C c: Category := Monomorphism C/c.
 End Subobject.
-
-
-Module Import Elements.
-  Section elem.
-    Variable C: Category.
-    Variable P: Functor C Bishop.
-
-    Record elem := {
-      pull: C ;
-      pick: P pull ;
-    }.
-
-    Definition hom (A B: elem) := pull A ~> pull B.
-
-    Instance Elements: Category := {
-      object := elem ;
-      hom := hom ;
-
-      id _ := id ;
-      compose _ _ _ := @compose _ _ _ _ ;
-    }.
-
-    Obligation 1.
-    Proof.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      apply compose_compat.
-      all: auto.
-    Qed.
-  End elem.
-End Elements.
-
-Instance CategoryOfSimplices: Functor (op Δ) Bishop → Category := Elements (op Δ).
-
 
 Module Import Epimorphism.
   Section epimorphism.
@@ -1845,121 +1981,6 @@ Module Import Epimono.
     Qed.
   End epimon.
 End Epimono.
-
-
-Module Import Pullback.
-  Record pullback [A B C: Category] (F: Functor A C) (G: Functor B C) := {
-    pull: Product.Product A B ;
-    assoc: F (fst pull) ~> G (snd pull)
-  }.
-
-  Arguments assoc [A B C F G] _.
-  Arguments pull {A B C F G} _.
-
-  Section pullback.
-    Context [A B C: Category].
-    Variable F: Functor A C.
-    Variable G: Functor B C.
-
-    (* Basically a comma category *)
-    #[local]
-    Definition hom (X Y: pullback F G) := {
-      xs: pull X ~> pull Y
-      | (map G (snd xs)) ∘ assoc X == assoc Y ∘ (map F (fst xs)) }
-    /~ {| equiv x y := (x:>) == (y:>) |}.
-
-    Obligation 1.
-    Proof.
-      exists.
-      all:split.
-      all:try reflexivity.
-      1,2: symmetry; destruct H; auto.
-      1,2: destruct H, H0.
-      1: rewrite H, H0.
-      2: rewrite H1, H2.
-      all: reflexivity.
-    Qed.
-
-    Instance Pullback: Category := {
-      object := pullback F G ;
-      hom := hom ;
-
-      id _ := exist _ id _ ;
-      compose _ _ _ f g := (f:>) ∘ (g:>) ;
-    }.
-
-    Obligation 1.
-    Proof.
-      repeat rewrite map_id.
-      rewrite compose_id_left, compose_id_right.
-      reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      cbn in *.
-      repeat rewrite <- map_composes.
-      rewrite <- compose_assoc.
-      rewrite H.
-      rewrite compose_assoc.
-      rewrite H0.
-      rewrite <- compose_assoc.
-      reflexivity.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      cbn in *.
-      split.
-      all: apply compose_assoc.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      split.
-      all: apply compose_id_left.
-    Qed.
-
-    Obligation 5.
-    Proof.
-      split.
-      all: apply compose_id_right.
-    Qed.
-
-    Obligation 6.
-    Proof.
-      split.
-      all: apply compose_compat.
-      all: auto.
-    Qed.
-
-    Definition forget: Functor Pullback (Product.Product A B) := {|
-      fobj := pull ;
-      map _ _ f := f :> ;
-    |}.
-
-    Obligation 1.
-    Proof.
-      cbn.
-      split.
-      all: reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      split.
-      all: reflexivity.
-    Qed.
-
-    Definition p1: Functor Pullback A := Product.fst ∘ forget.
-    Definition p2: Functor Pullback B := Product.snd ∘ forget.
-  End pullback.
-
-  #[local]
-   Definition base' [X] (F: Cat/X) (G:Cat/X): Cat/X :=
-    lim (Pullback (proj F) (proj G)), proj F ∘ Product.fst ∘ forget (proj F) (proj G).
-End Pullback.
-
 
 Instance Discrete X: Category := {
   object := X ;
