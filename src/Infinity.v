@@ -143,6 +143,7 @@ Module Import Category.
     | ast_var {A B}: K A B → ast A B
     .
 
+
     #[local]
     Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
       match p with
@@ -151,10 +152,31 @@ Module Import Category.
       | ast_var f => f
       end.
 
-    Inductive path {K: Category}: K → K → Type :=
-    | path_id {A}: path A A
-    | path_compose {A B C}: K B C → path A B → path A C
+    #[local]
+    Instance ast_eq [K: Category] (A B: K): Setoid (ast A B) := {
+      equiv x y := denote x == denote y
+    }.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - intros ?.
+        reflexivity.
+      - intro.
+        symmetry.
+        assumption.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Inductive path {K: Category} (A: K): K → Type :=
+    | path_id: path A A
+    | path_compose {B C}: K B C → path A B → path A C
     .
+
+    Arguments path_id {K A}.
+    Arguments path_compose {K A B C}.
 
     #[local]
     Fixpoint pdenote {K: Category} [A B: K] (f: path A B): K A B :=
@@ -164,7 +186,26 @@ Module Import Category.
       end.
 
     #[local]
-    Definition sing [K: Category] [A B: K] (x: K A B): path A B := path_compose x path_id.
+    Instance path_eq [K: Category] (A B: K): Setoid (path A B) := {
+      equiv x y := pdenote x == pdenote y
+    }.
+
+    Obligation 1.
+    Proof.
+      exists.
+      - intros ?.
+        reflexivity.
+      - intro.
+        symmetry.
+        assumption.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    #[local]
+     Definition sing [K: Category] [A B: K] (x: K A B): path A B :=
+      path_compose x path_id.
 
     #[local]
      Fixpoint app [K: Category] [A B C: K] (x: path B C) (y: path A B): path A C :=
@@ -184,18 +225,20 @@ Module Import Category.
     #[local]
     Lemma flatten_correct' [K: Category] [A B C: K] (f: path B C) (g: path A B):
       pdenote f ∘ pdenote g == pdenote (app f g).
+    Proof.
       induction f.
       - cbn.
         rewrite compose_id_left.
         reflexivity.
       - cbn.
         rewrite <- compose_assoc.
-        rewrite <- (IHf g).
+        rewrite <- IHf.
         reflexivity.
     Qed.
 
     #[local]
      Theorem flatten_correct [K: Category] [A B: K] (f: ast A B): denote f == pdenote (flatten f).
+    Proof.
       induction f.
       - reflexivity.
       - cbn.
@@ -208,9 +251,10 @@ Module Import Category.
     Qed.
 
     #[local]
-     Theorem category_reflect [K: Category] [A B] [x y: ast A B]:
-      pdenote (flatten x) == pdenote (flatten y) →
-      denote x == denote y.
+     Theorem flatten_injective [K: Category] [A B] [x y: ast A B]:
+      flatten x == flatten y → x == y.
+    Proof.
+      cbn.
       repeat rewrite <- flatten_correct.
       intro.
       assumption.
@@ -234,7 +278,7 @@ Module Import Category.
     | [ |- ?f == ?g ] =>
       let rf := reify f in
       let rg := reify g in
-      change (denote $rf == denote $rg) ; apply category_reflect ; cbn
+      change (denote $rf == denote $rg) ; apply flatten_injective ; cbn
     end.
 
     Ltac category :=
