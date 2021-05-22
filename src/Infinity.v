@@ -133,6 +133,99 @@ Module Import Category.
   End CategoryNotations.
 End Category.
 
+Module Import Reflection.
+  Inductive ast {K: Category}: K → K → Type :=
+  | ast_id {A}: ast A A
+  | ast_compose {A B C}: ast B C → ast A B → ast A C
+  | ast_var {A B}: K A B → ast A B
+  .
+
+  Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
+    match p with
+    | ast_id => id
+    | ast_compose f g => denote f ∘ denote g
+    | ast_var f => f
+    end.
+
+  Ltac reify P :=
+    match P with
+    | (@id ?K ?A) => constr: (@ast_id K A)
+    | (@compose ?K ?A ?B ?C ?F ?G) =>
+      let NF := reify F in
+      let NG := reify G in
+      constr: (@ast_compose K A B C NF NG)
+    | _ => constr: (ast_var P)
+    end.
+
+  Inductive path {K: Category}: K → K → Type :=
+  | path_id {A}: path A A
+  | path_compose {A B C}: K B C → path A B → path A C
+  .
+
+  Fixpoint pdenote {K: Category} [A B: K] (f: path A B): K A B :=
+    match f with
+    | path_id => id
+    | path_compose h t => h ∘ pdenote t
+    end.
+
+  Definition sing [K: Category] [A B: K] (x: K A B): path A B := path_compose x path_id.
+
+  Fixpoint app [K: Category] [A B C: K] (x: path B C) (y: path A B): path A C :=
+    match x with
+    | path_id => y
+    | path_compose h t => path_compose h (app t y)
+    end.
+
+  Fixpoint flatten [K: Category] [A B: K] (x: ast A B): path A B :=
+    match x with
+    | ast_id => path_id
+    | ast_compose f g => app (flatten f) (flatten g)
+    | ast_var f => sing f
+    end.
+
+  Lemma flatten_correct' [K: Category] [A B C: K] (f: path B C) (g: path A B):
+    pdenote f ∘ pdenote g == pdenote (app f g).
+    induction f.
+    - cbn.
+      rewrite compose_id_left.
+      reflexivity.
+    - cbn.
+      rewrite <- compose_assoc.
+      rewrite <- (IHf g).
+      reflexivity.
+  Qed.
+
+  Theorem flatten_correct [K: Category] [A B: K] (f: ast A B): denote f == pdenote (flatten f).
+    induction f.
+    - reflexivity.
+    - cbn.
+      rewrite <- flatten_correct'.
+      rewrite IHf1, IHf2.
+      reflexivity.
+    - cbn.
+      rewrite compose_id_right.
+      reflexivity.
+  Qed.
+
+  Theorem category_reflect [K: Category] [A B] [x y: ast A B]:
+    pdenote (flatten x) == pdenote (flatten y) →
+    denote x == denote y.
+    repeat rewrite <- flatten_correct.
+    intro.
+    assumption.
+  Qed.
+
+  Ltac category :=
+    match goal with
+      | [ |- ?f == ?g ] =>
+        let rf := reify f in
+        let rg := reify g in
+          change (denote rf == denote rg) ;
+          apply category_reflect ;
+          cbn
+    end.
+End Reflection.
+
 Module Import Functor.
   #[universes(cumulative)]
   Record functor (C D: Category) := {
@@ -186,17 +279,20 @@ Module Import Functor.
 
   Obligation 2.
   Proof.
-    apply compose_assoc.
+    category.
+    reflexivity.
   Qed.
 
   Obligation 3.
   Proof.
-    apply compose_id_left.
+    category.
+    reflexivity.
   Qed.
 
   Obligation 4.
   Proof.
-    apply compose_id_right.
+    category.
+    reflexivity.
   Qed.
 
   Obligation 5.
@@ -281,12 +377,14 @@ Module Import Isomorphism.
 
   Obligation 2.
   Proof.
-    apply compose_id_left.
+    category.
+    reflexivity.
   Qed.
 
   Obligation 3.
   Proof.
-    apply compose_id_right.
+    category.
+    reflexivity.
   Qed.
 
   Obligation 4.
@@ -319,15 +417,15 @@ Module Import Isomorphism.
   Obligation 7.
   Proof.
     split.
-    + apply compose_id_left.
-    + apply compose_id_right.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 8.
   Proof.
     split.
-    + apply compose_id_right.
-    + apply compose_id_left.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 9.
@@ -385,19 +483,22 @@ Module Product.
   Next Obligation.
   Proof.
     split.
-    all: apply compose_assoc.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Next Obligation.
   Proof.
     split.
-    all: apply compose_id_left.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Next Obligation.
   Proof.
     split.
-    all: apply compose_id_right.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Next Obligation.
@@ -731,14 +832,15 @@ Module Import Hom.
   Obligation 2.
   Proof.
     unfold Basics.flip in *.
-    rewrite compose_assoc.
-    reflexivity.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 3.
   Proof.
     unfold Basics.flip in *.
-    apply compose_id_right.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 4.
@@ -756,12 +858,14 @@ Module Import Hom.
 
   Obligation 6.
   Proof.
-    apply compose_assoc.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 7.
   Proof.
-    apply compose_id_left.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 8.
@@ -825,7 +929,7 @@ Module Import Pullback.
   Obligation 2.
   Proof.
     repeat rewrite map_id.
-    rewrite compose_id_left, compose_id_right.
+    category.
     reflexivity.
   Qed.
 
@@ -843,21 +947,24 @@ Module Import Pullback.
 
   Obligation 4.
   Proof.
-      cbn in *.
-      split.
-      all: apply compose_assoc.
-    Qed.
+    cbn in *.
+    split.
+    all: category.
+    all: reflexivity.
+  Qed.
 
   Obligation 5.
   Proof.
     split.
-    all: apply compose_id_left.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 6.
   Proof.
     split.
-    all: apply compose_id_right.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 7.
@@ -927,17 +1034,20 @@ Module Import Fibred.
 
   Obligation 2.
   Proof.
-    apply compose_assoc.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 3.
   Proof.
-    apply compose_id_left.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 4.
   Proof.
-    apply compose_id_right.
+    all: category.
+    all: reflexivity.
   Qed.
 
   Obligation 5.
