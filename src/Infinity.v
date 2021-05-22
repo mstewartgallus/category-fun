@@ -135,82 +135,90 @@ Module Import Category.
     Notation "f ∘ g" := (compose f g).
     Notation "A ~> B" := (mor _ A B) (only parsing).
   End CategoryNotations.
-End Category.
 
-Module Import Reflection.
-  Inductive ast {K: Category}: K → K → Type :=
-  | ast_id A: ast A A
-  | ast_compose {A B C}: ast B C → ast A B → ast A C
-  | ast_var {A B}: K A B → ast A B
-  .
+  Module Reflection.
+    Inductive ast {K: Category}: K → K → Type :=
+    | ast_id A: ast A A
+    | ast_compose {A B C}: ast B C → ast A B → ast A C
+    | ast_var {A B}: K A B → ast A B
+    .
 
-  Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
-    match p with
-    | ast_id _ => id
-    | ast_compose f g => denote f ∘ denote g
-    | ast_var f => f
-    end.
+    #[local]
+    Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
+      match p with
+      | ast_id _ => id
+      | ast_compose f g => denote f ∘ denote g
+      | ast_var f => f
+      end.
 
-  Inductive path {K: Category}: K → K → Type :=
-  | path_id {A}: path A A
-  | path_compose {A B C}: K B C → path A B → path A C
-  .
+    Inductive path {K: Category}: K → K → Type :=
+    | path_id {A}: path A A
+    | path_compose {A B C}: K B C → path A B → path A C
+    .
 
-  Fixpoint pdenote {K: Category} [A B: K] (f: path A B): K A B :=
-    match f with
-    | path_id => id
-    | path_compose h t => h ∘ pdenote t
-    end.
+    #[local]
+    Fixpoint pdenote {K: Category} [A B: K] (f: path A B): K A B :=
+      match f with
+      | path_id => id
+      | path_compose h t => h ∘ pdenote t
+      end.
 
-  Definition sing [K: Category] [A B: K] (x: K A B): path A B := path_compose x path_id.
+    #[local]
+    Definition sing [K: Category] [A B: K] (x: K A B): path A B := path_compose x path_id.
 
-  Fixpoint app [K: Category] [A B C: K] (x: path B C) (y: path A B): path A C :=
-    match x with
-    | path_id => y
-    | path_compose h t => path_compose h (app t y)
-    end.
+    #[local]
+     Fixpoint app [K: Category] [A B C: K] (x: path B C) (y: path A B): path A C :=
+      match x with
+      | path_id => y
+      | path_compose h t => path_compose h (app t y)
+      end.
 
-  Fixpoint flatten [K: Category] [A B: K] (x: ast A B): path A B :=
-    match x with
-    | ast_id _ => path_id
-    | ast_compose f g => app (flatten f) (flatten g)
-    | ast_var f => sing f
-    end.
+    #[local]
+    Fixpoint flatten [K: Category] [A B: K] (x: ast A B): path A B :=
+      match x with
+      | ast_id _ => path_id
+      | ast_compose f g => app (flatten f) (flatten g)
+      | ast_var f => sing f
+      end.
 
-  Lemma flatten_correct' [K: Category] [A B C: K] (f: path B C) (g: path A B):
-    pdenote f ∘ pdenote g == pdenote (app f g).
-    induction f.
-    - cbn.
-      rewrite compose_id_left.
-      reflexivity.
-    - cbn.
-      rewrite <- compose_assoc.
-      rewrite <- (IHf g).
-      reflexivity.
-  Qed.
+    #[local]
+    Lemma flatten_correct' [K: Category] [A B C: K] (f: path B C) (g: path A B):
+      pdenote f ∘ pdenote g == pdenote (app f g).
+      induction f.
+      - cbn.
+        rewrite compose_id_left.
+        reflexivity.
+      - cbn.
+        rewrite <- compose_assoc.
+        rewrite <- (IHf g).
+        reflexivity.
+    Qed.
 
-  Theorem flatten_correct [K: Category] [A B: K] (f: ast A B): denote f == pdenote (flatten f).
-    induction f.
-    - reflexivity.
-    - cbn.
-      rewrite <- flatten_correct'.
-      rewrite IHf1, IHf2.
-      reflexivity.
-    - cbn.
-      rewrite compose_id_right.
-      reflexivity.
-  Qed.
+    #[local]
+     Theorem flatten_correct [K: Category] [A B: K] (f: ast A B): denote f == pdenote (flatten f).
+      induction f.
+      - reflexivity.
+      - cbn.
+        rewrite <- flatten_correct'.
+        rewrite IHf1, IHf2.
+        reflexivity.
+      - cbn.
+        rewrite compose_id_right.
+        reflexivity.
+    Qed.
 
-  Theorem category_reflect [K: Category] [A B] [x y: ast A B]:
-    pdenote (flatten x) == pdenote (flatten y) →
-    denote x == denote y.
-    repeat rewrite <- flatten_correct.
-    intro.
-    assumption.
-  Qed.
+    #[local]
+     Theorem category_reflect [K: Category] [A B] [x y: ast A B]:
+      pdenote (flatten x) == pdenote (flatten y) →
+      denote x == denote y.
+      repeat rewrite <- flatten_correct.
+      intro.
+      assumption.
+    Qed.
 
-  Ltac2 rec reify (p: constr) :=
-    lazy_match! p with
+    #[local]
+    Ltac2 rec reify (p: constr) :=
+      lazy_match! p with
     | (@id ?k ?a) =>
       constr: (ast_id $a)
     | (@compose ?k ?a ?b ?c ?f ?g) =>
@@ -218,23 +226,23 @@ Module Import Reflection.
       let ng := reify g in
       constr: (ast_compose $nf $ng)
     | ?p =>
-          constr: (ast_var $p)
+      constr: (ast_var $p)
     end.
 
-  Ltac2 category () :=
-    lazy_match! goal with
+    Ltac2 category () :=
+      lazy_match! goal with
     | [ |- ?f == ?g ] =>
       let rf := reify f in
       let rg := reify g in
-        change (denote $rf == denote $rg) ;
-        apply category_reflect ;
-        cbn
+      change (denote $rf == denote $rg) ; apply category_reflect ; cbn
     end.
 
-  Ltac category :=
-    ltac2:(Control.enter category).
+    Ltac category :=
+      ltac2:(Control.enter category).
+  End Reflection.
+End Category.
 
-End Reflection.
+Import Category.Reflection.
 
 Module Import Functor.
   #[universes(cumulative)]
