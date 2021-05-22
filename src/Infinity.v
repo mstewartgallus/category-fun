@@ -7,6 +7,10 @@ Unset Printing Primitive Projection Parameters.
 Global
 Set Universe Polymorphism.
 
+From Ltac2 Require Import Ltac2.
+
+Set Default Proof Mode "Classic".
+
 Require Import Coq.Unicode.Utf8.
 Require Import Coq.derive.Derive.
 Require Import Coq.Setoids.Setoid.
@@ -135,26 +139,16 @@ End Category.
 
 Module Import Reflection.
   Inductive ast {K: Category}: K → K → Type :=
-  | ast_id {A}: ast A A
+  | ast_id A: ast A A
   | ast_compose {A B C}: ast B C → ast A B → ast A C
   | ast_var {A B}: K A B → ast A B
   .
 
   Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
     match p with
-    | ast_id => id
+    | ast_id _ => id
     | ast_compose f g => denote f ∘ denote g
     | ast_var f => f
-    end.
-
-  Ltac reify P :=
-    match P with
-    | (@id ?K ?A) => constr: (@ast_id K A)
-    | (@compose ?K ?A ?B ?C ?F ?G) =>
-      let NF := reify F in
-      let NG := reify G in
-      constr: (@ast_compose K A B C NF NG)
-    | _ => constr: (ast_var P)
     end.
 
   Inductive path {K: Category}: K → K → Type :=
@@ -178,7 +172,7 @@ Module Import Reflection.
 
   Fixpoint flatten [K: Category] [A B: K] (x: ast A B): path A B :=
     match x with
-    | ast_id => path_id
+    | ast_id _ => path_id
     | ast_compose f g => app (flatten f) (flatten g)
     | ast_var f => sing f
     end.
@@ -215,15 +209,31 @@ Module Import Reflection.
     assumption.
   Qed.
 
-  Ltac category :=
-    match goal with
-      | [ |- ?f == ?g ] =>
-        let rf := reify f in
-        let rg := reify g in
-          change (denote rf == denote rg) ;
-          apply category_reflect ;
-          cbn
+  Ltac2 rec reify (p: constr) :=
+    lazy_match! p with
+    | (@id ?k ?a) =>
+      constr: (ast_id $a)
+    | (@compose ?k ?a ?b ?c ?f ?g) =>
+      let nf := reify f in
+      let ng := reify g in
+      constr: (ast_compose $nf $ng)
+    | ?p =>
+          constr: (ast_var $p)
     end.
+
+  Ltac2 category () :=
+    lazy_match! goal with
+    | [ |- ?f == ?g ] =>
+      let rf := reify f in
+      let rg := reify g in
+        change (denote $rf == denote $rg) ;
+        apply category_reflect ;
+        cbn
+    end.
+
+  Ltac category :=
+    ltac2:(Control.enter category).
+
 End Reflection.
 
 Module Import Functor.
