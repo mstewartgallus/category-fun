@@ -16,6 +16,7 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.ZArith.ZArith.
 Require Coq.Program.Basics.
+Require Coq.Program.Tactics.
 Require Import Coq.Vectors.Fin.
 Require Import Psatz.
 
@@ -49,6 +50,8 @@ Reserved Notation "X × Y" (at level 30, right associativity).
 Reserved Notation "⟨ A , B ⟩".
 Reserved Notation "'π₁'".
 Reserved Notation "'π₂'".
+
+Obligation Tactic := Tactics.program_simpl; try reflexivity.
 
 (* FIXME get propositional truncation from elsewhere *)
 Module Import Utils.
@@ -192,8 +195,6 @@ Module Import Sets.
     rewrite (H0 _).
     reflexivity.
   Qed.
-
-  Solve All Obligations with cbn; reflexivity.
 
   Add Parametric Morphism {A B} (f: Bishop A B) : (proj1_sig f)
       with signature equiv ==> equiv as fn_mor.
@@ -382,6 +383,8 @@ Module Import Reflection.
   Ltac category := ltac2:(Control.enter category).
 End Reflection.
 
+Obligation Tactic := Tactics.program_simpl; repeat (try split; category; reflexivity).
+
 Module Import Functor.
   #[universes(cumulative)]
   Record functor (C D: Category) := {
@@ -419,10 +422,10 @@ Module Import Functor.
     compose _ _ _ f g _ := f _ ∘ g _ ;
   |}.
 
-  Obligation 1.
+  Next Obligation.
   Proof.
     exists.
-    all: unfold Reflexive, Symmetric, Transitive, compose, id, mor; cbn.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
     - intros.
       reflexivity.
     - intros ? ? p t.
@@ -433,25 +436,7 @@ Module Import Functor.
       reflexivity.
   Qed.
 
-  Obligation 2.
-  Proof.
-    category.
-    reflexivity.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    category.
-    reflexivity.
-  Qed.
-
-  Obligation 4.
-  Proof.
-    category.
-    reflexivity.
-  Qed.
-
-  Obligation 5.
+  Next Obligation.
   Proof.
     apply compose_compat.
     all:auto.
@@ -524,18 +509,6 @@ Module Import Isomorphism.
 
   Next Obligation.
   Proof.
-    category.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    category.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
     rewrite <- compose_assoc.
     rewrite -> (compose_assoc (to g)).
     rewrite to_from.
@@ -555,27 +528,6 @@ Module Import Isomorphism.
   Qed.
 
   Next Obligation.
-  Proof.
-    split.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    split.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 8.
-  Proof.
-    split.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 9.
   Proof.
     split.
     + apply compose_compat.
@@ -673,16 +625,6 @@ Module Import Cat.
 
   Next Obligation.
   Proof.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
     repeat rewrite <- map_composes.
     reflexivity.
   Qed.
@@ -716,8 +658,6 @@ Module Import Cat.
     rewrite (H x).
     reflexivity.
   Qed.
-
-  Solve Obligations with reflexivity.
 End Cat.
 
 Module Import LaxOver.
@@ -751,22 +691,6 @@ Module Import LaxOver.
       id _ := Category.id ;
       compose _ _ _ f g := f ∘ g ;
     }.
-
-    Next Obligation.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
-    Next Obligation.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
-    Next Obligation.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
 
     Next Obligation.
     Proof.
@@ -896,7 +820,7 @@ Module Import Pullback.
       |} ;
   |}.
 
-  Obligation 1.
+  Next Obligation.
   Proof.
     exists.
     all:split.
@@ -908,14 +832,14 @@ Module Import Pullback.
     all: reflexivity.
   Qed.
 
-  Obligation 2.
+  Next Obligation.
   Proof.
     repeat rewrite map_id.
     category.
     reflexivity.
   Qed.
 
-  Obligation 3.
+  Next Obligation.
   Proof.
     cbn in *.
     repeat rewrite <- map_composes.
@@ -927,29 +851,7 @@ Module Import Pullback.
     reflexivity.
   Qed.
 
-  Obligation 4.
-  Proof.
-    cbn in *.
-    split.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 5.
-  Proof.
-    split.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 6.
-  Proof.
-    split.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 7.
+  Next Obligation.
   Proof.
     split.
     all: apply compose_compat.
@@ -961,14 +863,10 @@ Module Import Pullback.
     map _ _ := @source_mor _ _ _ _ _ _ _ ;
   |}.
 
-  Solve All Obligations with reflexivity.
-
   Definition p2 {A B C} (F: Functor A C) (G: Functor B C): Functor (Pullback F G) B := {|
     fobj := target ;
     map _ _ := @target_mor _ _ _ _ _ _ _ ;
   |}.
-
-  Solve All Obligations with reflexivity.
 End Pullback.
 
 Module Import Opposite.
@@ -981,24 +879,6 @@ Module Import Opposite.
       id A := @id K A ;
       compose A B C f g := g ∘ f ;
     |}.
-
-    Obligation 1.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
 
     Obligation 4.
     Proof.
@@ -1031,22 +911,6 @@ Module Import Elements.
 
     Next Obligation.
     Proof.
-      category.
-      reflexivity.
-    Qed.
-    Next Obligation.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
-    Next Obligation.
-    Proof.
-      category.
-      reflexivity.
-    Qed.
-
-    Obligation 4.
-    Proof.
       apply compose_compat.
       all: auto.
     Qed.
@@ -1055,56 +919,32 @@ End Elements.
 
 Module Import Hom.
    Definition Hom S: Functor S (Functor (op S) Bishop) := {|
-    fobj a := {|
-               fobj b := S b a ;
+    fobj A := {|
+               fobj B := S B A ;
                map _ _ f g := g ∘ f ;
              |} ;
     map _ _ f _ g := f ∘ g ;
   |}.
 
-  Obligation 1.
+  Next Obligation.
   Proof.
     rewrite H.
     reflexivity.
   Qed.
 
-  Obligation 2.
-  Proof.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 4.
+  Next Obligation.
   Proof.
     rewrite H.
     reflexivity.
   Qed.
 
-  Obligation 5.
+  Next Obligation.
   Proof.
     rewrite H.
     reflexivity.
   Qed.
 
-  Obligation 6.
-  Proof.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 7.
-  Proof.
-    all: category.
-    all: reflexivity.
-  Qed.
-
-  Obligation 8.
+  Next Obligation.
   Proof.
     rewrite H.
     reflexivity.
@@ -1137,19 +977,6 @@ Module Import Presheaf.
                   commutor _ := id ;
                 |} ;
   |}.
-
-  Next Obligation.
-    reflexivity.
-  Qed.
-  Next Obligation.
-    reflexivity.
-  Qed.
-  Next Obligation.
-    reflexivity.
-  Qed.
-  Next Obligation.
-    reflexivity.
-  Qed.
 
   (* FIXME feels suspect to me *)
   Next Obligation.
@@ -1219,8 +1046,6 @@ Module Import Presheaf.
     commutor _ := Category.id ;
     |}.
 
-  Solve All Obligations with reflexivity.
-
   Definition Snd {C} {A B: Presheaf C}: Presheaf C (Product A B) B :=
     {|
     slice :=
@@ -1230,8 +1055,6 @@ Module Import Presheaf.
       |} ;
     commutor := @assoc _ _ _ _ _ ;
     |}.
-
-  Solve All Obligations with reflexivity.
 
   Module ToposNotations.
     Notation "!" := Bang.
@@ -1250,22 +1073,6 @@ Definition Const [A B: Category] (b: B): Functor A B := {|
   fobj _ := b ;
   map _ _ _ := id ;
 |}.
-
-Next Obligation.
-Proof.
-  category.
-  reflexivity.
-Qed.
-Next Obligation.
-Proof.
-  category.
-  reflexivity.
-Qed.
-Next Obligation.
-Proof.
-  category.
-  reflexivity.
-Qed.
 
 Definition Trivial: Category := {|
   object := True ;
@@ -1393,31 +1200,11 @@ Module Import Over.
       compose A B C := @compose _ (dom A) (dom B) (dom C) ;
     }.
 
-    Obligation 1.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
     Obligation 2.
     Proof.
       rewrite compose_assoc.
       rewrite H0, H.
       reflexivity.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 5.
-    Proof.
-      apply compose_id_right.
     Qed.
 
     Obligation 6.
@@ -1431,28 +1218,6 @@ Module Import Over.
     Notation "'lim' A , P" := {| dom := A ; proj := P |}.
     Notation "C / c" := (Over.Over C c).
   End OverNotations.
-
-  Definition Σ [C:Category] [c d] (f: d ~> c): ((C/d):Cat) ~> (C/c) := {|
-    fobj g := lim _, f ∘ proj g ;
-    map _ _ g := g
-  |}.
-
-  Obligation 1.
-  Proof.
-    rewrite <- compose_assoc.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    reflexivity.
-  Qed.
-
-  Obligation 3.
-  Proof.
-    reflexivity.
-  Qed.
 End Over.
 
 Module Import Monoid.
