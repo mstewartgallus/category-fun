@@ -822,189 +822,177 @@ Module Product.
   |}.
 End Product.
 
+Module Discrete.
+  Unset Program Mode.
+  #[refine]
+   Instance Discrete (C: Type): Category := {
+    object := C ;
+    mor A B := (A = B) /~ {| equiv _ _ := True |}  ;
+
+    id _ := eq_refl ;
+
+    compose _ _ _ f g :=
+      match f with
+      | eq_refl => match g with
+                   | eq_refl => eq_refl
+                   end
+      end ;
+  }.
+
+  Proof.
+    - exists.
+      all: intro;intros;apply I.
+    - cbn in *.
+      intros.
+      apply I.
+    - cbn.
+      intros.
+      apply I.
+    - cbn.
+      intros.
+      apply I.
+    - cbn.
+      intros.
+      apply I.
+  Defined.
+
+  Section fibration.
+    Variables (D: Type) (C: Category) (P: D → C).
+
+    #[local]
+     Definition discrete_map [A B] (f: Discrete D A B): C (P A) (P B) :=
+      match f with
+      | eq_refl => id
+      end.
+
+    Set Program Mode.
+
+    Definition fibration: Functor (Discrete D) C :=
+      {|
+      fobj := P: Discrete D → C ;
+      map := @discrete_map
+      |}.
+
+    Next Obligation.
+    Proof.
+      cbn.
+      apply compose_id_left.
+    Qed.
+
+    (* IIRC This requires axiom K *)
+    Next Obligation.
+      admit.
+    Admitted.
+  End fibration.
+End Discrete.
+
 Module Import Presheaf.
-  #[universes(cumulative)]
-   Record diagram (C: Category) := {
-    dom: Category ;
-    proj: Functor dom C ;
-   }.
+  Import TruncateNotations.
+  Import Discrete.
 
-  Arguments dom [C] _.
-  Arguments proj [C] _.
+  (* Use discrete fibrations to represent presheaves *)
 
-  Module Export PresheafNotations.
+  Record diagram (C:Category) := {
+    dom: Type ;
+    proj: dom → C ;
+  }.
+
+  Arguments dom [C].
+  Arguments proj [C].
+
+  Module OverNotations.
+    Module Export OverNotations.
     Notation "'lim' A , P" := {| dom := A ; proj := P |}.
-  End PresheafNotations.
+  End OverNotations.
 
-  #[local]
-   Definition limit [C D] (F: Functor D C): Functor (op C) Bishop :=
-    {|
-    fobj y := (∀ x, C y (F x)) /~ {| equiv f g := ∀ x, f x == g x |} ;
-    map _ _ f g t := g t ∘ f ;
-    |}.
+  Record fib [C:Category] (A B: diagram C) := {
+    slice: dom A → dom B ;
+    commutes x: C (proj A x) (proj B (slice x)) ;
+  }.
 
-  Next Obligation.
-  Proof.
-    exists.
-    - intros ? t.
-      reflexivity.
-    - intros ? ? ? ?.
-      symmetry.
-      auto.
-    - intros ? ? ? p q t.
-      rewrite (p t), (q t).
-      reflexivity.
-  Qed.
+  Arguments slice [C A B].
+  Arguments commutes [C A B].
 
-  Next Obligation.
-  Proof.
-    rewrite (H _).
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Definition Presheaf C: Category := {|
+  Definition Presheaf (C: Category): Category := {|
     object := diagram C ;
-    mor F G := Functor _ _ (limit (proj F)) (limit (proj G)) ;
+    mor A B := fib A B /~ {| equiv f g := ∀ t, slice f t = slice g t |} ;
 
-    id _ := id ;
-    compose _ _ _ := @compose (Functor _ _) _ _ _ ;
+    id _ := {| slice x := x ; commutes _ := id |} ;
+    compose _ _ _ f g := {| slice x := slice f (slice g x) ; commutes x := commutes f (slice g x) ∘ commutes g x |} ;
   |}.
 
   Next Obligation.
   Proof.
-    rewrite (H _ _ _).
-    destruct f'.
-    cbn in *.
-    apply e.
-    intros.
-    rewrite (H0 _ _ _).
-    reflexivity.
-  Qed.
-
-  Definition Yo {C}: Functor C (Presheaf C)
-   := {|
-    fobj B := lim Trivial, {| fobj _ := B ; map _ _ _ := id ; |} ;
-    map A B f _ x _ := f ∘ x I ;
-  |}.
+    admit.
+  Admitted.
 
   Next Obligation.
   Proof.
     rewrite (H _).
+    rewrite (H0 _).
     reflexivity.
   Qed.
+
+  Record pullback [K] (C D: Presheaf K) := {
+    source: dom C ;
+    target: dom D ;
+    assoc: proj C source ~> proj D target ;
+  }.
+
+  Arguments source [K C D].
+  Arguments target [K C D].
+  Arguments assoc [K C D].
+
+  Definition Yo {C}: Functor C (Presheaf C) := {|
+    fobj A := lim True, λ _, A ;
+    map A B f := {| slice _ := I ; commutes _ := f |} ;
+  |}.
 
   Next Obligation.
   Proof.
-    destruct x0.
-    category.
+    destruct t.
     reflexivity.
   Qed.
 
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
+  Definition Terminal {C}: Presheaf C := lim C, λ x, x.
+  Definition Bang {C} {A: Presheaf C}: Presheaf C A Terminal := {| slice := proj A ; commutes _ := id |}.
 
-  Definition Initial {C}: Presheaf C := lim C, {| fobj x := x ; map _ _ f := f  |}.
-  Definition Absurd {C} {A: Presheaf C}: Presheaf C Initial A := λ x p t, p (proj A t).
-
-  Definition Terminal {C}: Presheaf C := lim Empty, {| fobj x := match x with end ; map A := match A with end |}.
+  Definition Initial {C}: Presheaf C := lim False, λ x, match x with end.
   Solve All Obligations with cbn; contradiction.
 
-  Definition Bang {C} {A: Presheaf C}: Presheaf C A Terminal := λ _ _ t, match t with end.
+  Definition Absurd {C} {A: Presheaf C}: Presheaf C Initial A := {| slice t := match t with end ; commutes t := match t with end  |}.
+  Solve All Obligations with cbn; contradiction.
 
-  Definition Prod {K} (A B: Presheaf K): Presheaf K :=
-    lim (Sum.Sum (dom A) (dom B)), Sum.fanin (proj A) (proj B).
+  Definition Sum {K} (A B: Presheaf K): Presheaf K :=
+    lim (dom A + dom B)%type,
+    λ x, match x with
+         | inl a => proj A a
+         | inr b => proj B b
+         end .
 
-  Definition Fanout {K} {C A B: Presheaf K} (f: C ~> A) (g: C ~> B): C ~> Prod A B :=
-    λ x p t,
-    let f' := proj1_sig (f x) p in
-    let g' := proj1_sig (g x) p in
-    match t as s return
-          (K x (match s as x' return (x' = s → K) with
-                | inl a => λ _ : inl a = s, proj A a
-                | inr b => λ _ : inr b = s, proj B b
-                end eq_refl))
-    with
-    | inl a => f' a
-    | inr b => g' b
-    end.
+  Definition Fanin {K} {A: Presheaf K}: Sum A A ~> A :=
+    {| slice x := match x with
+                  | inl x' => x'
+                  | inr x' => x'
+                  end |}.
 
   Next Obligation.
-    destruct x1.
-    - destruct (f x).
-      cbn.
-      auto.
-    - destruct (g x).
-      cbn.
-      auto.
-  Qed.
+    destruct x.
+    all: apply id.
+  Defined.
 
-  Definition Fst {C} {A B: Presheaf C}: Presheaf C (Prod A B) A := λ x p t, p (inl t).
+  Definition Inl {K} {A B: Presheaf K}: A ~> Sum A B := {| slice := inl ; commutes _ := id |}.
+  Definition Inr {K} {A B: Presheaf K}: B ~> Sum A B := {| slice := inr ; commutes _ := id |}.
 
-  Next Obligation.
-  Proof.
-    rewrite (H (inl x1)).
-    reflexivity.
-  Qed.
+  Definition Prod [K] (A B: Presheaf K): Presheaf K :=
+    lim (pullback A B), λ x, proj A (source x).
 
-  Definition Snd {C} {A B: Presheaf C}: Presheaf C (Prod A B) B := λ x p t, p (inr t).
-
-  Next Obligation.
-  Proof.
-    rewrite (H (inr x1)).
-    reflexivity.
-  Qed.
-
-  Definition Sum {C} (f: Presheaf C) (g: Presheaf C): Presheaf C
-    := lim (Pullback (proj f) (proj g)),
-       {|
-         fobj x := proj g (p2 (proj f) (proj g) x) ;
-         map _ _ x := map (proj g) (target_mor x) ;
-       |}.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite map_composes.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite <- map_id.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H0.
-    reflexivity.
-  Qed.
-
-  Definition IfElse {K} {A: Presheaf K}: Sum A A ~> A := λ x p t, p {| assoc := @id _ (proj A t) |}.
-
-  Next Obligation.
-  Proof.
-    rewrite (H _).
-    reflexivity.
-  Qed.
-
-  Definition Inl {C} {A B: Presheaf C}: Presheaf C A (Sum A B) := λ x p t, assoc t ∘ p (source t).
-
-  Next Obligation.
-  Proof.
-    rewrite (H _).
-    reflexivity.
-  Qed.
-
-  Definition Inr {C} {A B: Presheaf C}: Presheaf C B (Sum A B) := λ x p t, p (target t).
+  Definition Dup {K} {A: Presheaf K}: A ~> Prod A A :=
+    {| slice x := {| source := x ; target := x ; assoc := id |} ; commutes _ := id |}.
+  Definition Fst {C} {A B: Presheaf C}: Prod A B ~> A :=
+    {| slice xy := source (xy :>) ; commutes _ := id  |}.
+  Definition Snd {C} {A B: Presheaf C}: Prod A B ~> B :=
+    {| slice xy := target (xy :>) ; commutes x := assoc x |}.
 
   Module ToposNotations.
     Notation "!" := Bang.
@@ -1018,7 +1006,7 @@ Module Import Presheaf.
     Notation "'i₂'" := Inr.
 
     Infix "×" := Prod.
-    Notation "⟨ A , B ⟩" := (Fanout A B).
+    (* Notation "⟨ A , B ⟩" := (Fanout A B). *)
     Notation "'π₁'" := Fst.
     Notation "'π₂'" := Snd.
   End ToposNotations.
@@ -1175,39 +1163,6 @@ Module Import Elements.
   End elem.
 End Elements.
 
-Module Import Hom.
-   Definition Hom S: Functor S (Functor (op S) Bishop) := {|
-    fobj A := {|
-               fobj B := S B A ;
-               map _ _ f g := g ∘ f ;
-             |} ;
-    map _ _ f _ g := f ∘ g ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-End Hom.
 Module Import Over.
   #[universes(cumulative)]
    Record bundle [C: Category] (c: C) := {
@@ -1263,6 +1218,40 @@ Module Import Over.
     Notation "C / c" := (Over.Over C c).
   End OverNotations.
 End Over.
+
+Module Import Hom.
+   Definition Hom S: Functor S (Functor (op S) Bishop) := {|
+    fobj A := {|
+               fobj B := S B A ;
+               map _ _ f g := g ∘ f ;
+             |} ;
+    map _ _ f _ g := f ∘ g ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite H.
+    reflexivity.
+  Qed.
+End Hom.
 
 
 Module Bicategory.
