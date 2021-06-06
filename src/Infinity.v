@@ -1,4 +1,3 @@
-(* Seems to make classes go faster? *)
 Global
 Set Primitive Projections.
 Global
@@ -15,15 +14,15 @@ From Ltac2 Require Import Ltac2.
 Set Default Proof Mode "Classic".
 
 Require Import Coq.Unicode.Utf8.
+Require Import Coq.Logic.JMeq.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.ZArith.ZArith.
 Require Coq.Program.Basics.
 Require Coq.Program.Tactics.
 Require Import Coq.Vectors.Fin.
+Require Import FunInd.
 Require Import Psatz.
-
-Set Program Mode.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -31,7 +30,7 @@ Reserved Notation "A /~ B" (at level 40).
 
 Reserved Notation "A <: B" (at level 80).
 
-Reserved Notation "A ~> B" (at level 80).
+Reserved Notation "A ~> B" (at level 80, right associativity).
 Reserved Notation "A ∘ B" (at level 30).
 Reserved Notation "A · B" (at level 30).
 
@@ -49,6 +48,8 @@ Reserved Notation "C // c" (at level 40, left associativity).
 
 Reserved Notation "·".
 Reserved Notation "∅".
+
+Reserved Notation "X \ Y" (at level 30).
 
 Reserved Notation "X × Y" (at level 30, right associativity).
 Reserved Notation "⟨ A , B ⟩".
@@ -77,11 +78,10 @@ Module Import Bishop.
     FIXME: This probably isn't quite right and not an "exact" or "Abelian" category.
    *)
   #[universes(cumulative)]
-  Class Bishop := {
+  Record Bishop := {
     type: Type ;
     Bishop_Setoid: Setoid type ;
   }.
-  Arguments type: clear implicits.
   Existing Instance Bishop_Setoid.
 
   Module Export BishopNotations.
@@ -91,15 +91,21 @@ Module Import Bishop.
 End Bishop.
 
 Module Bishops.
+  Definition simple (t:Type):Bishop := {| type := t ; Bishop_Setoid := {| equiv := eq |} |}.
+
+  #[program]
   Definition True := True /~ {| equiv _ _ := True |}.
-  Obligation 1.
+
+  Next Obligation.
   Proof.
     exists.
     all:exists.
   Qed.
 
+  #[program]
   Definition False := False /~ {| equiv x := match x with end |}.
-  Obligation 1.
+
+  Next Obligation.
   Proof.
     exists.
     all:intro;contradiction.
@@ -108,7 +114,7 @@ End Bishops.
 
 Module Import Category.
   #[universes(cumulative)]
-  Class Category := {
+   Record Category := {
     object: Type ;
     mor: object → object → Bishop
     where "A ~> B" := (mor A B) ;
@@ -129,6 +135,17 @@ Module Import Category.
   Arguments object: clear implicits.
   Arguments mor: clear implicits.
 
+  Arguments id {c} {A}.
+  Arguments compose [c] [A B C].
+
+  Arguments compose_assoc [c] [A B C D].
+  Arguments compose_id_left [c] [A B].
+  Arguments compose_id_right [c] [A B].
+
+  Arguments compose_compat [c] [A B C].
+
+  Existing Class Category.
+
   Add Parametric Morphism [K: Category] (A B C: object K) : (@compose K A B C)
       with signature equiv ==> equiv ==> equiv as compose_mor.
   Proof.
@@ -147,6 +164,36 @@ Module Import Category.
   End CategoryNotations.
 End Category.
 
+Module Cartesian.
+  #[universes(cumulative)]
+   Class Cartesian := {
+    Cartesian_Category: Category ;
+
+    pt: Cartesian_Category ;
+    prod: Cartesian_Category → Cartesian_Category → Cartesian_Category ;
+
+    bang {A}: A ~> pt ;
+    fanout [A B C]: C ~> A → C ~> B → C ~> prod A B ;
+    fst {A B}: prod A B ~> A ;
+    snd {A B}: prod A B ~> B ;
+  }.
+
+  Existing Instance Cartesian_Category.
+
+  Coercion Cartesian_Category: Cartesian >-> Category.
+
+  Module CartesianNotations.
+    Notation "!" := bang.
+    Notation "·" := pt.
+
+    Infix "×" := prod.
+    Notation "⟨ A , B ⟩" := (fanout A B).
+    Notation "'π₁'" := fst.
+    Notation "'π₂'" := snd.
+  End CartesianNotations.
+End Cartesian.
+
+#[program]
 Definition Preset: Category := {|
   object := Type ;
   mor A B := (A → B) /~ {| equiv f g := ∀ x, f x = g x |} ;
@@ -171,6 +218,7 @@ Proof.
 Qed.
 
 Module Import Sets.
+  #[program]
   Definition Bishop: Category := {|
     object := Bishop ;
     mor A B := { op: Preset A B | ∀ x y, x == y → op x == op y } /~ {| equiv x y := ∀ t, (x:>) t == (y:>) t |} ;
@@ -192,7 +240,7 @@ Module Import Sets.
       reflexivity.
   Qed.
 
-  Obligation 7.
+  Next Obligation.
   Proof.
     rewrite (H _).
     apply (H3 _ _).
@@ -220,13 +268,14 @@ Module Import Reflection.
   .
 
   #[local]
-   Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
+  Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
     match p with
     | ast_id _ => id
     | ast_compose f g => denote f ∘ denote g
     | ast_var f => f
     end.
 
+  #[program]
   Definition Ast {K: Category} A B := ast A B /~ {| equiv x y := denote x == denote y |}.
 
   Next Obligation.
@@ -257,9 +306,10 @@ Module Import Reflection.
     | path_compose h t => h ∘ pdenote t
     end.
 
-  Definition Path {K: Category} A B := path A B /~  {| equiv x y := pdenote x == pdenote y |}.
+  #[program]
+  Definition Path {K: Category} A B := path A B /~ {| equiv x y := pdenote x == pdenote y |}.
 
-  Obligation 1.
+  Next Obligation.
   Proof.
     exists.
     - intros ?.
@@ -273,14 +323,7 @@ Module Import Reflection.
   Qed.
 
   #[local]
-   Definition sing {K: Category} {A B: K}: Bishop (K A B) (Path A B) :=
-    λ x, path_compose x path_id.
-
-  Obligation 1.
-  Proof.
-    repeat rewrite compose_id_right.
-    assumption.
-  Qed.
+   Definition sing {K: Category} {A B: K} (x: K A B): Path A B := path_compose x path_id.
 
   Section app.
     Context [K: Category] [A B: K] (y: path A B).
@@ -308,21 +351,7 @@ Module Import Reflection.
   Qed.
 
   #[local]
-   Definition app {K: Category} {A B C: K}: Bishop (Path B C) (Bishop (Path A B) (Path A C)) := λ x y, app' y x.
-
-  Obligation 1.
-  Proof.
-    repeat rewrite <- app_composes.
-    rewrite H.
-    reflexivity.
-  Qed.
-
-  Obligation 2.
-  Proof.
-    repeat rewrite <- app_composes.
-    rewrite H.
-    reflexivity.
-  Qed.
+   Definition app {K: Category} {A B C: K} (x:Path B C) (y: Path A B): Path A C := app' y x.
 
   #[local]
    Fixpoint flatten' [K: Category] [A B: K] (x: ast A B): path A B :=
@@ -338,6 +367,7 @@ Module Import Reflection.
     induction f.
     - reflexivity.
     - cbn.
+      unfold app.
       rewrite <- app_composes.
       rewrite IHf1, IHf2.
       reflexivity.
@@ -347,13 +377,7 @@ Module Import Reflection.
   Qed.
 
   #[local]
-   Definition flatten {K: Category} {A B: K} : Bishop (Ast A B) (Path A B) := λ x, flatten' x.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite <- flatten_correct.
-    assumption.
-  Qed.
+   Definition flatten {K: Category} {A B: K} (x: Ast A B): Path A B := flatten' x.
 
   #[local]
    Theorem flatten_injective [K: Category] [A B] [x y: Ast A B]:
@@ -388,6 +412,204 @@ Module Import Reflection.
 End Reflection.
 
 Obligation Tactic := Tactics.program_simpl; repeat (try split; try category; reflexivity).
+Module Import Monoid.
+  Class Monoid := {
+    M: Bishop.Bishop ;
+
+    unit: M ;
+    app: M → M → M
+    where "f ⊗ g" := (app f g) ;
+
+    app_assoc (f: M) (g: M) (h: M):
+      (f ⊗ (g ⊗ h)) == ((f ⊗ g) ⊗ h );
+    app_unit_left (f: M): (unit ⊗ f) == f ;
+    app_unit_right (f: M): (f ⊗ unit) == f ;
+
+    app_compat (f f': M) (g g': M):
+      f == f' → g == g' → f ⊗ g == f' ⊗ g' ;
+  }.
+
+  Add Parametric Morphism [K: Monoid] : (@app K)
+      with signature equiv ==> equiv ==> equiv as app_mor.
+  Proof.
+    intros ? ? p ? ? q.
+    apply app_compat.
+    - apply p.
+    - apply q.
+  Qed.
+
+  Module Export MonoidNotations.
+    Coercion M: Monoid >-> Bishop.Bishop.
+
+    Notation "f ⊗ g" := (app f g).
+  End MonoidNotations.
+End Monoid.
+
+Module Import Endo.
+  Import Monoid.
+
+  #[program]
+  Definition Endo (C: Category) (c: C): Monoid := {|
+    M := C c c ;
+
+    unit := id ;
+    app := @compose C _ _ _ ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+End Endo.
+
+Module Mon.
+  Import Monoid.
+  Import Cartesian.
+  Import CartesianNotations.
+
+  #[program]
+   Definition Mon: Cartesian := {|
+      Cartesian_Category :=
+        {|
+          object := Monoid ;
+          mor A B := { f: Bishop A B | f unit == unit ∧ (∀ x y, f (x ⊗ y) == f x ⊗ f y)} /~ {| equiv x y := (x:>) == (y :>) |} ;
+
+          id _ := exist _ id _ ;
+          compose _ _ _ f g := exist _ (proj1_sig f ∘ g) _ ;
+        |} ;
+
+      pt := {| M := Bishops.True ; unit := I ; app _ _ := I |} ;
+      prod A B :=
+        {|
+          M := (A * B) /~ {| equiv x y := Datatypes.fst x == Datatypes.fst y ∧ Datatypes.snd x == Datatypes.snd y |} ;
+          unit := (unit, unit) ;
+          app x y := (Datatypes.fst x ⊗ Datatypes.fst y, Datatypes.snd x ⊗ Datatypes.snd y) ;
+        |} ;
+   |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+End Mon.
+
+Module Circle.
+  Import Monoid.
+
+  Module Undirected.
+    Local Open Scope Z_scope.
+
+    #[program]
+    Definition Circle: Monoid := {|
+      M := Z /~ {| equiv := eq |} ;
+
+      unit := 0 ;
+      app f g := f + g ;
+   |}.
+
+    Solve All Obligations with cbn; lia.
+  End Undirected.
+
+  Module Directed.
+    #[program]
+    Definition Circle: Monoid := {|
+      M := nat /~ {| equiv := eq |} ;
+
+      unit := 0 ;
+      app f g := f + g ;
+    |}.
+
+    Solve All Obligations with cbn; lia.
+  End Directed.
+End Circle.
+
+Module One.
+  Import Monoid.
+  #[program]
+  Definition One (M: Monoid): Category := {|
+    object := True ;
+    mor _ _ := M ;
+    id _ := unit ;
+    compose _ _ _ := app ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    apply app_assoc.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply app_unit_left.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply app_unit_right.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+End One.
 
 Module Import Functor.
   #[universes(cumulative)]
@@ -419,6 +641,7 @@ Module Import Functor.
     assumption.
   Qed.
 
+  #[program]
   Definition Functor K L: Category := {|
     object := functor K L ;
     mor A B := (∀ x, L (A x) (B x)) /~ {| equiv f g := ∀ x, f x == g x |} ;
@@ -447,6 +670,61 @@ Module Import Functor.
   Qed.
 End Functor.
 
+Module Product.
+  #[program]
+  Definition Product (C D: Category): Category := {|
+    object := C * D ;
+    mor A B := (fst A ~> fst B) * (snd A ~> snd B) /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |} ;
+
+    id _ := (id, id) ;
+    compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g) ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    cbn.
+    exists.
+    - split.
+      all: reflexivity.
+    - split.
+      all: symmetry.
+      all: apply H.
+    - split.
+      + destruct H, H0.
+        rewrite H, H0.
+        reflexivity.
+      + destruct H, H0.
+        rewrite H1, H2.
+        reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    cbn in *.
+    split.
+    - rewrite H0, H.
+      reflexivity.
+    - rewrite H1, H2.
+      reflexivity.
+  Qed.
+
+  #[program]
+  Definition fst {A B}: Functor (Product A B) A := {|
+    fobj := fst ;
+    map _ _ := fst ;
+  |}.
+
+  #[program]
+  Definition snd {A B}: Functor (Product A B) B := {|
+    fobj := snd ;
+    map _ _ := snd ;
+  |}.
+End Product.
+
+
+Module Import Thin.
+  Definition IsThin (C: Category) := ∀ x y (f g: C x y), f == g.
+End Thin.
 
 Module Import Isomorphism.
   #[universes(cumulative)]
@@ -462,6 +740,7 @@ Module Import Isomorphism.
   Arguments to_from [K A B] _.
   Arguments from_to [K A B] _.
 
+  #[program]
   Definition Isomorphism (K: Category): Category := {|
     object := K ;
     mor A B := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |} ;
@@ -535,6 +814,228 @@ Module Import Isomorphism.
     Notation "A <~> B" := (Isomorphism _ A B).
   End IsomorphismNotations.
 End Isomorphism.
+Module Import Over.
+  #[universes(cumulative)]
+   Record bundle [C: Category] (c: C) := {
+    dom: C ;
+    proj: C dom c ;
+   }.
+
+  Arguments dom [C] [c] _.
+  Arguments proj [C] [c] _.
+
+  Section over.
+    Variables (C: Category) (c: C).
+
+    #[program]
+    Definition Over: Category := {|
+      object := bundle c ;
+      mor A B :=  {f: dom A ~> dom B | proj B ∘ f == proj A } /~ {| equiv f g := (f :>) == (g :>) |} ;
+      id A := @id _ (dom A) ;
+      compose A B C := @compose _ (dom A) (dom B) (dom C) ;
+    |}.
+
+    Next Obligation.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      - reflexivity.
+      - symmetry.
+        assumption.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite compose_assoc.
+      rewrite H0, H.
+      reflexivity.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End over.
+
+  Module Export OverNotations.
+    Notation "'lim' A , P" := {| dom := A ; proj := P |}.
+    Notation "C / c" := (Over.Over C c).
+  End OverNotations.
+End Over.
+
+Module Import Monomorphism.
+  #[program]
+  Definition Monomorphism (C: Category): Category := {|
+    object := C ;
+    mor A B :=  {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
+    id := @id _ ;
+    compose := @compose _ ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    - intro.
+      reflexivity.
+    - intros ? ? ?.
+      symmetry.
+      auto.
+    - intros ? ? ? p q.
+      rewrite p, q.
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    repeat rewrite compose_id_left in H.
+    assumption.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    repeat rewrite <- compose_assoc in H.
+    apply (H0 _ _ _ (H1 _ _ _ H)).
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+
+  Module MonomorphismNotations.
+    Notation "C ₊" := (Monomorphism C).
+  End MonomorphismNotations.
+End Monomorphism.
+Import MonomorphismNotations.
+
+Module Polynomial.
+  Inductive poly := X | add (_ _: poly) | mul (_ _:poly) | O | I.
+
+  Section eval.
+    Variable x: nat.
+
+    Fixpoint eval p :=
+      match p with
+      | X => x
+      | add L R => eval L + eval R
+      | mul L R => eval L * eval R
+      | O => 0
+      | I => 1
+      end.
+  End eval.
+
+  #[program]
+  Instance poly_Setoid: Setoid poly := {|
+    equiv x y := ∀ t, eval t x = eval t y ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    - intro.
+      reflexivity.
+    - intro.
+      symmetry.
+      apply (H t).
+    - intro.
+      symmetry.
+      rewrite (H t), (H0 t).
+      reflexivity.
+  Qed.
+
+  Add Parametric Morphism : add with signature (@equiv poly _ ==> @equiv poly _ ==> @equiv poly _) as add_mor.
+    intros.
+    intro t.
+    cbn.
+    rewrite (H t), (H0 t).
+    reflexivity.
+  Qed.
+
+  Add Parametric Morphism : mul with signature (@equiv poly _ ==> @equiv poly _ ==> @equiv poly _) as mul_mor.
+    intros.
+    intro t.
+    cbn.
+    rewrite (H t), (H0 t).
+    reflexivity.
+  Qed.
+
+  Definition poly_semi_ring: semi_ring_theory O I add mul (@equiv _ poly_Setoid).
+  Proof.
+    cbn.
+    exists.
+    all: intros; cbn; lia.
+  Qed.
+
+  Add Ring poly_semi : poly_semi_ring (abstract).
+
+  Section substitute.
+    Variable x: poly.
+
+    Fixpoint substitute p :=
+      match p with
+      | X => x
+      | add L R => add (substitute L) (substitute R)
+      | mul L R => mul (substitute L) (substitute R)
+      | O => O
+      | I => I
+      end.
+  End substitute.
+
+  Fixpoint D p :=
+    match p with
+    | X => I
+    | mul L R => add (mul (D L) R) (mul L (D R))
+    | add L R => add (D L) (D R)
+    | O => O
+    | I => O
+    end.
+
+  Module Import PolynomialNotations.
+    Notation "p \ q" := (substitute q p).
+    Notation "0" := O.
+    Notation "1" := I.
+    Notation "p + q" := (add p q).
+    Notation "p * q" := (mul p q).
+  End PolynomialNotations.
+
+  Add Parametric Morphism : substitute with signature (@equiv poly _ ==> @equiv poly _ ==> @equiv poly _) as substitute_mor.
+    admit.
+  Admitted.
+
+  #[program]
+  Definition Polynomial: Category := {|
+    object := True ;
+    mor A B := poly /~ poly_Setoid ;
+
+    id _ := X ;
+    compose _ _ _ p q := p \ q ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    induction f.
+    all: cbn.
+    all: auto.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    induction f.
+    all: cbn.
+    all: auto.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply substitute_mor.
+    all: assumption.
+  Qed.
+End Polynomial.
 
 Module Import Pullback.
   #[universes(cumulative)]
@@ -560,7 +1061,8 @@ Module Import Pullback.
   Arguments target_mor [A B C F G X Y] _.
   Arguments commutes [A B C F G X Y] _.
 
-  Definition Pullback [A B C] (F: Functor A C) (G: Functor B C): Category := {|
+  #[program]
+    Definition Pullback [A B C] (F: Functor A C) (G: Functor B C): Category := {|
     object := pullback F G ;
     mor A B := comma F G A B /~
                      {|
@@ -613,11 +1115,13 @@ Module Import Pullback.
     all: auto.
   Qed.
 
+  #[program]
   Definition p1 {A B C} (F: Functor A C) (G: Functor B C): Functor (Pullback F G) A := {|
     fobj := source ;
     map _ _ := @source_mor _ _ _ _ _ _ _ ;
   |}.
 
+  #[program]
   Definition p2 {A B C} (F: Functor A C) (G: Functor B C): Functor (Pullback F G) B := {|
     fobj := target ;
     map _ _ := @target_mor _ _ _ _ _ _ _ ;
@@ -628,6 +1132,7 @@ Module Import Opposite.
   Section opposite.
     Context `(K:Category).
 
+  #[program]
     Definition op: Category := {|
       object := object K ;
       mor A B := K B A ;
@@ -635,7 +1140,7 @@ Module Import Opposite.
       compose A B C f g := g ∘ f ;
     |}.
 
-    Obligation 4.
+    Next Obligation.
     Proof.
       rewrite H, H0.
       reflexivity.
@@ -643,6 +1148,7 @@ Module Import Opposite.
   End opposite.
 End Opposite.
 
+#[program]
 Definition Empty: Category := {|
   object := False ;
   mor x := match x with end ;
@@ -652,12 +1158,323 @@ Definition Empty: Category := {|
 
 Solve All Obligations with contradiction.
 
+#[program]
 Definition Trivial: Category := {|
   object := True ;
   mor _ _ := Bishops.True ;
   id _ := I ;
   compose _ _ _ _ _ := I ;
 |}.
+
+
+Module Import Monoidal.
+  Import Cartesian.
+  Import CartesianNotations.
+
+  #[universes(cumulative)]
+  Record monoidal (C D: Cartesian) := {
+    mon: functor C D ;
+    mon_pt: mon · <~> · ;
+    mon_prod {A B}: mon (A × B) <~> mon A × mon B ;
+  }.
+
+  Arguments mon [C D].
+
+  Module Export MonoidalNotations.
+    Coercion mon: monoidal >-> functor.
+  End MonoidalNotations.
+
+  #[program]
+  Definition Monoidal (K L: Cartesian): Cartesian := {|
+    Cartesian_Category := {|
+      object := monoidal K L ;
+      mor A B := Functor _ _ (mon A) (mon B) ;
+      id _ := id ;
+      compose _ _ _ := @compose _ _ _ _ ;
+    |} ;
+
+    pt := {| mon := {| fobj _ := pt ; map _ _ _ := id |} |} ;
+    prod A B := {| mon := {| fobj x := A x × B x ; map _ _ f := ⟨map A f ∘ π₁, map B f ∘ π₂ ⟩ |} ;  |} ;
+
+    bang _ _ := ! ;
+    fanout _ _ _ f g t := ⟨ f t , g t ⟩ ;
+    fst _ _ _ := π₁ ;
+    snd _ _ _ := π₂ ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    rewrite (H x), (H0 x).
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply (id: Isomorphism _ · ·).
+  Defined.
+
+  Next Obligation.
+  Proof.
+    exists ⟨ ! , ! ⟩ !.
+    - admit.
+    - admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+End Monoidal.
+
+Module DiscreteCartesian.
+  Import Cartesian.
+  Import CartesianNotations.
+  Import Monoid.
+  Class Discrete := {
+    Discrete_Category: Cartesian ;
+    thin: IsThin Discrete_Category ;
+    invert A B: Discrete_Category A B → Discrete_Category B A ;
+  }.
+
+  Coercion Discrete_Category: Discrete >-> Cartesian.
+End DiscreteCartesian.
+
+Module MonoidalPresheaf.
+  Import Cartesian.
+  Import CartesianNotations.
+  Import DiscreteCartesian.
+
+  Record diagram C := {
+    dom: Discrete ;
+    proj: Monoidal dom C ;
+  }.
+
+  Arguments dom [C].
+  Arguments proj [C].
+
+  (* By grothendieck style of thing you should obtain a functor sort of like
+     DiscreteFibration C ~ [C^op, Mon]
+ *)
+  Module Export OverNotations.
+    Notation "'lim' A , P" := {| dom := A ; proj := P |}.
+  End OverNotations.
+
+  Record fib [C:Cartesian] (A B: diagram C) := {
+    slice: dom A → dom B ;
+    commutes x: C (proj A x) (proj B (slice x)) ;
+  }.
+
+  Arguments slice [C A B].
+  Arguments commutes [C A B].
+
+  #[program]
+  Definition Presheaf (C: Cartesian): Category := {|
+    object := diagram C ;
+    mor A B := fib A B /~ {| equiv f g := ∀ t, slice f t = slice g t |} ;
+
+    id _ := {| slice x := x ; commutes _ := id |} ;
+    compose _ _ _ f g := {| slice x := slice f (slice g x) ; commutes x := commutes f (slice g x) ∘ commutes g x |} ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    - intro.
+      reflexivity.
+    - intros ? ? ? ?.
+      symmetry.
+      auto.
+    - intros ? ? ? p q t.
+      rewrite (p t), (q t).
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite (H _).
+    rewrite (H0 _).
+    reflexivity.
+  Qed.
+
+End MonoidalPresheaf.
+
+Module Discrete.
+  Import TruncateNotations.
+
+  Class Discrete := {
+    Discrete_Category: Category ;
+    thin: IsThin Discrete_Category ;
+    invert A B: Discrete_Category A B → Discrete_Category B A ;
+  }.
+
+  Coercion Discrete_Category: Discrete >-> Category.
+End Discrete.
+
+Module Import Presheaf.
+  Import TruncateNotations.
+  Import Discrete.
+
+  (* Use discrete fibrations to represent presheaves *)
+
+  Record diagram (C:Category) := {
+    dom: Discrete ;
+    proj: Functor dom C ;
+  }.
+
+  Arguments dom [C].
+  Arguments proj [C].
+
+  Module Export OverNotations.
+    Notation "'lim' A , P" := {| dom := A ; proj := P |}.
+  End OverNotations.
+
+  Record fib [C:Category] (A B: diagram C) := {
+    slice: dom A → dom B ;
+    commutes x: C (proj A x) (proj B (slice x)) ;
+  }.
+
+  Arguments slice [C A B].
+  Arguments commutes [C A B].
+
+  #[program]
+  Definition Presheaf (C: Category): Category := {|
+    object := diagram C ;
+    mor A B := fib A B /~ {| equiv f g := ∀ t, slice f t = slice g t |} ;
+
+    id _ := {| slice x := x ; commutes _ := id |} ;
+    compose _ _ _ f g := {| slice x := slice f (slice g x) ; commutes x := commutes f (slice g x) ∘ commutes g x |} ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    - intro.
+      reflexivity.
+    - intros ? ? ? ?.
+      symmetry.
+      auto.
+    - intros ? ? ? p q t.
+      rewrite (p t), (q t).
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite (H _).
+    rewrite (H0 _).
+    reflexivity.
+  Qed.
+
+  Record pullback [K] (C D: Presheaf K) := {
+    source: dom C ;
+    target: dom D ;
+    assoc: proj C source ~> proj D target ;
+  }.
+
+  Arguments source [K C D].
+  Arguments target [K C D].
+  Arguments assoc [K C D].
+
+  #[program]
+   Definition Yo {C}: Functor C (Presheaf C) := {|
+    fobj A := lim {| Discrete_Category := Trivial |}, {| fobj _ := A ; map _ _ _ := id |} ;
+    map A B f := {| slice _ := I ; commutes _ := f |} ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    destruct t.
+    reflexivity.
+  Qed.
+
+  (* Definition Terminal {C}: Presheaf C := lim C, {| fobj x := x  |}. *)
+  (* Next Obligation. *)
+  (* Definition Bang {C} {A: Presheaf C}: Presheaf C A Terminal := {| slice := proj A ; commutes _ := id |}. *)
+
+  #[local]
+  Set Program Mode.
+
+  Definition Initial {C}: Presheaf C := lim {| Discrete_Category := Empty |}, {| fobj x := match x with end |}.
+
+  Next Obligation.
+  Proof.
+    intros x.
+    destruct x.
+  Qed.
+  Solve All Obligations with cbn; contradiction.
+
+  Definition Absurd {C} {A: Presheaf C}: Presheaf C Initial A := {| slice t := match t with end ; commutes t := match t with end  |}.
+
+
+  Definition Sum {K} (A B: Presheaf K): Presheaf K :=
+    lim (dom A + dom B)%type,
+    λ x, match x with
+         | inl a => proj A a
+         | inr b => proj B b
+         end .
+
+  Definition Fanin {K} {A: Presheaf K}: Sum A A ~> A :=
+    {| slice x := match x with
+                  | inl x' => x'
+                  | inr x' => x'
+                  end |}.
+
+  Next Obligation.
+    destruct x.
+    all: apply id.
+  Defined.
+
+  Definition Inl {K} {A B: Presheaf K}: A ~> Sum A B := {| slice := inl ; commutes _ := id |}.
+  Definition Inr {K} {A B: Presheaf K}: B ~> Sum A B := {| slice := inr ; commutes _ := id |}.
+
+  Definition Prod [K] (A B: Presheaf K): Presheaf K :=
+    lim (pullback A B), λ x, proj A (source x).
+
+  Definition Dup {K} {A: Presheaf K}: A ~> Prod A A :=
+    {| slice x := {| source := x ; target := x ; assoc := id |} ; commutes _ := id |}.
+  Definition Fst {C} {A B: Presheaf C}: Prod A B ~> A :=
+    {| slice xy := source (xy :>) ; commutes _ := id  |}.
+  Definition Snd {C} {A B: Presheaf C}: Prod A B ~> B :=
+    {| slice xy := target (xy :>) ; commutes x := assoc x |}.
+
+  Module ToposNotations.
+    Notation "!" := Bang.
+    Notation "·" := Terminal.
+
+    Notation "∅" := Initial.
+
+    Infix "+" := Sum.
+    (* Notation "[ A ; B ]" := (Fanin A B). *)
+    Notation "'i₁'" := Inl.
+    Notation "'i₂'" := Inr.
+
+    Infix "×" := Prod.
+    (* Notation "⟨ A , B ⟩" := (Fanout A B). *)
+    Notation "'π₁'" := Fst.
+    Notation "'π₂'" := Snd.
+  End ToposNotations.
+End Presheaf.
+
 
 Module Sum.
   Unset Program Mode.
@@ -774,243 +1591,6 @@ Module Sum.
   Qed.
 End Sum.
 
-Module Product.
-  Definition Product (C D: Category): Category := {|
-    object := C * D ;
-    mor A B := (fst A ~> fst B) * (snd A ~> snd B) /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |} ;
-
-    id _ := (id, id) ;
-    compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g) ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    cbn.
-    exists.
-    - split.
-      all: reflexivity.
-    - split.
-      all: symmetry.
-      all: apply H.
-    - split.
-      + destruct H, H0.
-        rewrite H, H0.
-        reflexivity.
-      + destruct H, H0.
-        rewrite H1, H2.
-        reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    cbn in *.
-    split.
-    - rewrite H0, H.
-      reflexivity.
-    - rewrite H1, H2.
-      reflexivity.
-  Qed.
-
-  Definition fst {A B}: Functor (Product A B) A := {|
-    fobj := fst ;
-    map _ _ := fst ;
-  |}.
-
-  Definition snd {A B}: Functor (Product A B) B := {|
-    fobj := snd ;
-    map _ _ := snd ;
-  |}.
-End Product.
-
-Module Discrete.
-  Unset Program Mode.
-  #[refine]
-   Instance Discrete (C: Type): Category := {
-    object := C ;
-    mor A B := (A = B) /~ {| equiv _ _ := True |}  ;
-
-    id _ := eq_refl ;
-
-    compose _ _ _ f g :=
-      match f with
-      | eq_refl => match g with
-                   | eq_refl => eq_refl
-                   end
-      end ;
-  }.
-
-  Proof.
-    - exists.
-      all: intro;intros;apply I.
-    - cbn in *.
-      intros.
-      apply I.
-    - cbn.
-      intros.
-      apply I.
-    - cbn.
-      intros.
-      apply I.
-    - cbn.
-      intros.
-      apply I.
-  Defined.
-
-  Section fibration.
-    Variables (D: Type) (C: Category) (P: D → C).
-
-    #[local]
-     Definition discrete_map [A B] (f: Discrete D A B): C (P A) (P B) :=
-      match f with
-      | eq_refl => id
-      end.
-
-    Set Program Mode.
-
-    Definition fibration: Functor (Discrete D) C :=
-      {|
-      fobj := P: Discrete D → C ;
-      map := @discrete_map
-      |}.
-
-    Next Obligation.
-    Proof.
-      cbn.
-      apply compose_id_left.
-    Qed.
-
-    (* IIRC This requires axiom K *)
-    Next Obligation.
-      admit.
-    Admitted.
-  End fibration.
-End Discrete.
-
-Module Import Presheaf.
-  Import TruncateNotations.
-  Import Discrete.
-
-  (* Use discrete fibrations to represent presheaves *)
-
-  Record diagram (C:Category) := {
-    dom: Type ;
-    proj: dom → C ;
-  }.
-
-  Arguments dom [C].
-  Arguments proj [C].
-
-  Module OverNotations.
-    Module Export OverNotations.
-    Notation "'lim' A , P" := {| dom := A ; proj := P |}.
-  End OverNotations.
-
-  Record fib [C:Category] (A B: diagram C) := {
-    slice: dom A → dom B ;
-    commutes x: C (proj A x) (proj B (slice x)) ;
-  }.
-
-  Arguments slice [C A B].
-  Arguments commutes [C A B].
-
-  Definition Presheaf (C: Category): Category := {|
-    object := diagram C ;
-    mor A B := fib A B /~ {| equiv f g := ∀ t, slice f t = slice g t |} ;
-
-    id _ := {| slice x := x ; commutes _ := id |} ;
-    compose _ _ _ f g := {| slice x := slice f (slice g x) ; commutes x := commutes f (slice g x) ∘ commutes g x |} ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    rewrite (H _).
-    rewrite (H0 _).
-    reflexivity.
-  Qed.
-
-  Record pullback [K] (C D: Presheaf K) := {
-    source: dom C ;
-    target: dom D ;
-    assoc: proj C source ~> proj D target ;
-  }.
-
-  Arguments source [K C D].
-  Arguments target [K C D].
-  Arguments assoc [K C D].
-
-  Definition Yo {C}: Functor C (Presheaf C) := {|
-    fobj A := lim True, λ _, A ;
-    map A B f := {| slice _ := I ; commutes _ := f |} ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    destruct t.
-    reflexivity.
-  Qed.
-
-  Definition Terminal {C}: Presheaf C := lim C, λ x, x.
-  Definition Bang {C} {A: Presheaf C}: Presheaf C A Terminal := {| slice := proj A ; commutes _ := id |}.
-
-  Definition Initial {C}: Presheaf C := lim False, λ x, match x with end.
-  Solve All Obligations with cbn; contradiction.
-
-  Definition Absurd {C} {A: Presheaf C}: Presheaf C Initial A := {| slice t := match t with end ; commutes t := match t with end  |}.
-  Solve All Obligations with cbn; contradiction.
-
-  Definition Sum {K} (A B: Presheaf K): Presheaf K :=
-    lim (dom A + dom B)%type,
-    λ x, match x with
-         | inl a => proj A a
-         | inr b => proj B b
-         end .
-
-  Definition Fanin {K} {A: Presheaf K}: Sum A A ~> A :=
-    {| slice x := match x with
-                  | inl x' => x'
-                  | inr x' => x'
-                  end |}.
-
-  Next Obligation.
-    destruct x.
-    all: apply id.
-  Defined.
-
-  Definition Inl {K} {A B: Presheaf K}: A ~> Sum A B := {| slice := inl ; commutes _ := id |}.
-  Definition Inr {K} {A B: Presheaf K}: B ~> Sum A B := {| slice := inr ; commutes _ := id |}.
-
-  Definition Prod [K] (A B: Presheaf K): Presheaf K :=
-    lim (pullback A B), λ x, proj A (source x).
-
-  Definition Dup {K} {A: Presheaf K}: A ~> Prod A A :=
-    {| slice x := {| source := x ; target := x ; assoc := id |} ; commutes _ := id |}.
-  Definition Fst {C} {A B: Presheaf C}: Prod A B ~> A :=
-    {| slice xy := source (xy :>) ; commutes _ := id  |}.
-  Definition Snd {C} {A B: Presheaf C}: Prod A B ~> B :=
-    {| slice xy := target (xy :>) ; commutes x := assoc x |}.
-
-  Module ToposNotations.
-    Notation "!" := Bang.
-    Notation "·" := Terminal.
-
-    Notation "∅" := Initial.
-
-    Infix "+" := Sum.
-    (* Notation "[ A ; B ]" := (Fanin A B). *)
-    Notation "'i₁'" := Inl.
-    Notation "'i₂'" := Inr.
-
-    Infix "×" := Prod.
-    (* Notation "⟨ A , B ⟩" := (Fanout A B). *)
-    Notation "'π₁'" := Fst.
-    Notation "'π₂'" := Snd.
-  End ToposNotations.
-End Presheaf.
 
 (* Sanity check, the free cocompletion of the point should be like Set *)
 (* Module Set'. *)
@@ -1021,33 +1601,6 @@ End Presheaf.
 (*   Definition Pure (D: Category): Set' := lim D, Const (I:Trivial). *)
 (* End Set'. *)
 
-Module Circle.
-  Module Undirected.
-    Local Open Scope Z_scope.
-
-    Definition Circle: Category := {|
-      object := True ;
-      mor _ _ := Z /~ {| equiv := eq |} ;
-
-      id _ := 0 ;
-      compose _ _ _ f g := f + g ;
-   |}.
-
-    Solve All Obligations with cbn; lia.
-  End Undirected.
-
-  Module Directed.
-    Definition Circle: Category := {|
-      object := True ;
-      mor _ _ := nat /~ {| equiv := eq |} ;
-
-      id _ := 0 ;
-      compose _ _ _ f g := f + g ;
-    |}.
-
-    Solve All Obligations with cbn; lia.
-  End Directed.
-End Circle.
 
 Module Group.
   Import Circle.Undirected.
@@ -1163,61 +1716,6 @@ Module Import Elements.
   End elem.
 End Elements.
 
-Module Import Over.
-  #[universes(cumulative)]
-   Record bundle [C: Category] (c: C) := {
-    dom: C ;
-    proj: C dom c ;
-   }.
-
-  Arguments dom [C] [c] _.
-  Arguments proj [C] [c] _.
-
-  Section over.
-    Variables (C: Category) (c: C).
-
-    #[local]
-    Definition mor (A B: bundle c) :=
-      {f: dom A ~> dom B | proj B ∘ f == proj A } /~ {| equiv f g := (f :>) == (g :>) |}.
-
-    Obligation 1.
-    Proof.
-      exists.
-      all: unfold Reflexive, Symmetric, Transitive.
-      - reflexivity.
-      - symmetry.
-        assumption.
-      - intros ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-    Qed.
-
-    Instance Over: Category := {
-      object := bundle c ;
-      mor := mor ;
-      id A := @id _ (dom A) ;
-      compose A B C := @compose _ (dom A) (dom B) (dom C) ;
-    }.
-
-    Obligation 2.
-    Proof.
-      rewrite compose_assoc.
-      rewrite H0, H.
-      reflexivity.
-    Qed.
-
-    Obligation 6.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-  End over.
-
-  Module Export OverNotations.
-    Notation "'lim' A , P" := {| dom := A ; proj := P |}.
-    Notation "C / c" := (Over.Over C c).
-  End OverNotations.
-End Over.
 
 Module Import Hom.
    Definition Hom S: Functor S (Functor (op S) Bishop) := {|
@@ -1684,65 +2182,6 @@ Module Import Finite.
     admit.
   Admitted.
 End Finite.
-Module Import Monomorphism.
-  Definition Monomorphism (C: Category): Category := {|
-    object := C ;
-    mor A B :=  {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
-    id := @id _ ;
-    compose := @compose _ ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    - intro.
-      reflexivity.
-    - intros ? ? ?.
-      symmetry.
-      auto.
-    - intros ? ? ? p q.
-      rewrite p, q.
-      reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite compose_id_left in H.
-    assumption.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite <- compose_assoc in H.
-    apply (H0 _ _ _ (H1 _ _ _ H)).
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply compose_assoc.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply compose_id_left.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply compose_id_right.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H, H0.
-    reflexivity.
-  Qed.
-
-  Module MonomorphismNotations.
-    Notation "C ₊" := (Monomorphism C).
-  End MonomorphismNotations.
-End Monomorphism.
-Import MonomorphismNotations.
 
 Module Import Deloop.
   Module Export Undirected.
@@ -2607,14 +3046,6 @@ Proof.
 Qed.
 
 
-Module Import Cartesian.
-  Class Cartesian (C: Category) := {
-    prod: Functor (Product.Product C C) C ;
-    fanout {x y z: C}: z ~> x → z ~> y → z ~> prod (x, y) ;
-    fst {x y: C}: prod (x, y) ~> x ;
-    snd {x y: C}: prod (x, y) ~> y ;
-  }.
-End Cartesian.
 
 Module Import Subobject.
   Instance Subobject C c: Category := Monomorphism C/c.
