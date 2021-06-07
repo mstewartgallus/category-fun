@@ -15,188 +15,198 @@ Set Default Proof Mode "Classic".
 
 Require Import Coq.Unicode.Utf8.
 Require Import Coq.Lists.List.
+Require Import Coq.Setoids.Setoid.
+Require Import Coq.Classes.SetoidClass.
+Require Import Psatz.
 
-Set Implicit Arguments.
-Module Import Some.
-  Record some [A] (P: A → Type) := {
-    val: A ;
-    pred: P val ;
+Module Import Bundle.
+  #[universes(cumulative)]
+  Record bundle A := {
+    dom: Type ;
+    proj: dom → A ;
   }.
 
-  #[local]
-   Definition curry [A B C] (f: ∀ x: A, B x → C) (xy: some B): C := f (val xy) (pred xy).
-  #[local]
-   Definition const [A] (x: A) (_: True): A := x.
+  Arguments dom [A].
+  Arguments proj [A].
 
-  Module Export SomeNotations.
-    Notation "'some' x .. y , P" := (some (fun x => .. (some (fun y => P)) ..))
-                                      (at level 200, x binder, y binder, right associativity,
-                                       format "'[ ' '[ ' 'some' x .. y ']' , '/' P ']'") : type_scope.
-  End SomeNotations.
-End Some.
+  Coercion dom: bundle >-> Sortclass.
+  Coercion proj: bundle >-> Funclass.
+End Bundle.
 
 Module Import Logic.
-  Inductive prop C :=
-  | just (_: C)
-  | success
-  | failure
-  .
+  Import List.ListNotations.
 
-  Variant horn C := entails (_: prop C) (_: list (prop C)).
-  Inductive formula C :=
-  | const (_: horn C)
-  | free [A] (_: A → formula C).
-  Definition theory C := list (formula C).
+  (* FIXME have an or for results as well ? *)
+  Record axiom C := entails {
+                       head: bundle C ;
+                       tail: bundle C ;
+                       }.
+  Arguments entails [C].
+  Arguments head [C].
+  Arguments tail [C].
+
+  Definition axiom_scheme C := bundle (axiom C).
+  Definition theory C := bundle (axiom_scheme C).
+
+  (* FIXME make category *)
+  Inductive syn {K} {th: theory K}: K → K → Type :=
+  | syn_id {A}: syn A A
+  | syn_compose {A B C}: syn B C → syn A B → syn A C
+
+  | syn_axiom rule args C D:
+      (∀ ix, syn C (tail (th rule args) ix)) →
+      (∀ ix, syn (head (th rule args) ix) D) →
+      syn C D
+  .
 
   Module Export LogicNotations.
     Declare Scope logic_scope.
     Delimit Scope logic_scope with logic.
 
-    Bind Scope logic_scope with prop.
-    Bind Scope logic_scope with horn.
-    Bind Scope logic_scope with formula.
+    Bind Scope logic_scope with axiom.
+    Bind Scope logic_scope with axiom_scheme.
     Bind Scope list_scope with theory.
 
-    Notation "∀ x .. y , P" := (free (fun x => .. (free (fun y => const P)) ..))
-                                 (at level 200, x binder, y binder, right associativity,
-                                  format "'[ ' '[ ' '∀' x .. y ']' , '/' P ']'") : logic_scope.
+    Notation "[ P ]" := {| proj := P |} : logic_scope .
+
+    Notation "'FREE' x , P" := (λ x, P) (x pattern, at level 200) : logic_scope .
     Infix "⊢" := entails (at level 90) : logic_scope .
   End LogicNotations.
-
-  Fixpoint head [C] (F: formula C): Type :=
-    match F with
-    | const _ => True
-    | free P => some x, head (P x)
-    end.
-
-  Fixpoint curry [C] (F: formula C): head F → horn C :=
-    match F with
-    | const H => λ _, H
-    | free P => λ xy, curry (P (val xy)) (pred xy)
-    end.
-
-  Definition heads [C] : theory C → list Type := List.map (λ F, head F).
-
-  Fixpoint anyof (l: list Type): Type :=
-    match l with
-    | nil => False
-    | cons H T => H + anyof T
-    end.
-
-  Definition any_head [C] (th: theory C) := anyof (heads th).
-
-  Fixpoint pick [C] (th: theory C): any_head th → horn C :=
-    match th with
-    | nil => λ x, match x with end
-    | cons H T =>
-      let H' := curry H in
-      let T' := pick T in
-      λ xy, match xy with
-            | inl x => H' x
-            | inr x => T' x
-            end
-    end.
 End Logic.
 
-Module Import Heyting.
-  Class Heyting := {
-    S: Type ;
 
-    top: S ;
-    bot: S ;
+Module Import Sanity.
 
-    meet: S → S → S ;
-    join: S → S → S ;
-    impl: S → S → S ;
-                  }.
+  #[universes(cumulative)]
+  Class Propositional := {
+    P: Type ;
 
-  Definition meet_all `{Heyting}: list S → S := List.fold_right meet top.
-  Definition join_all `{Heyting}: list S → S := List.fold_right join bot.
+    true: P ;
+    and: P → P → P ;
 
-  Module Export HeytingNotations.
-    Declare Scope heyting_scope.
-    Delimit Scope heyting_scope with heyting.
-    Bind Scope heyting_scope with S.
+    false: P ;
+    or: P → P → P ;
+  }.
+  Open Scope logic_scope.
 
-    Notation "⊤" := top.
-    Notation "⊥" := bot.
+  Infix "∧" := and.
+  Infix "∨" := or.
 
-    Infix "∧" := meet : heyting.
-    Infix "∨" := join : heyting.
-    Infix "→" := impl : heyting.
+  Variant idx :=
+  | taut
+  | bang
+  | inl | inr | fanin
+  | fst | snd | fanout.
 
-    Notation "⋁" := join_all : heyting.
-    Notation "⋀" := meet_all : heyting.
+  Definition propositional `{Propositional}: theory P := {|
+    dom := idx ;
+    proj x :=
+      match x with
+      | taut => [FREE I,
+                [FREE I, true] ⊢ [ λ (ix: False), match ix with end ]]
+      | bang => [FREE A,
+                [FREE I, A] ⊢ [FREE I, false]]
 
-    Coercion S: Heyting >-> Sortclass.
-  End HeytingNotations.
-End Heyting.
+      | fanout => [FREE (A, B),
+                  [FREE I, A ∧ B] ⊢ [ λ (ix: bool), if ix then A else B ]]
+      | fst => [FREE (A, B),
+               [FREE I, A] ⊢ [FREE I, A ∧ B]]
+      | snd => [FREE (A, B),
+               [FREE I, B] ⊢ [FREE I, A ∧ B]]
 
-Module Import Interpreter.
-  Close Scope nat.
+      | fanin => [FREE (A, B),
+                 [λ (ix: bool), if ix then A else B] ⊢ [FREE I, A ∨ B]]
+      | inl => [FREE (A, B),
+               [FREE I, A ∨ B] ⊢ [FREE I, A]]
+      | inr => [FREE (A, B),
+               [FREE I, A ∨ B] ⊢ [FREE I, B]]
+      end
+   |}.
 
-  Section interpreter.
-    Context [C: Type].
-    Context (cset: Heyting).
-    Context (one: C → cset).
+  Section sanity.
+    Context `{Propositional}.
 
-    Open Scope heyting.
+    Definition free := @syn _ propositional.
 
-    #[local]
-     Definition chk_prop (P: prop C): cset :=
-      match P with
-      | just y => one y
-      | success _ => ⊤
-      | _ => ⊥
-      end.
+    Definition taut' C: free C true := @syn_axiom _ propositional
+                                                  taut I
+                                                  C true
+                                     (λ ix, match ix with end)
+                                     (FREE I, syn_id).
 
-    #[local]
-     Definition chk_horn (H: horn C): cset :=
-      match H with
-      | entails P Q =>
-        let P' := chk_prop P in
-        let Q' := ⋀ (List.map chk_prop Q) in
-        Q' → P'
-      end.
+    Definition bang' C: free false C := @syn_axiom _ propositional
+                                                   bang C
+                                                   false C
+                                                   (FREE I, syn_id)
+                                                   (FREE I, syn_id).
 
-    Definition chk (th: theory C) (x: any_head th): cset := chk_horn (pick th x).
-  End interpreter.
-End Interpreter.
+    Definition inl' A B: free A (A ∨ B) := @syn_axiom _ propositional
+                                                      inl (A, B)
+                                                      A (A ∨ B)
+                                                      (FREE I, syn_id) (FREE I, syn_id).
+    Definition inr' A B: free B (A ∨ B) := @syn_axiom _ propositional
+                                                      inr (A, B)
+                                                      B (A ∨ B)
+                                                      (FREE I, syn_id)
+                                                      (FREE I, syn_id).
 
-(* FIXME implement a Heyting algebra using bundles and interpret
-everything categorically *)
-Module Import Pred.
-  #[program]
-   Definition predicate_logic A: Heyting := {|
-    S := A → Prop ;
+    #[program]
+    Definition fanin' C A B (f: free A C) (g: free B C) :=
+      @syn_axiom _ propositional
+                 fanin (A, B)
+                 (A ∨ B) C
+                 (FREE I, syn_id) _.
 
-    top _ := True ;
-    bot _ := False ;
+    Next Obligation.
+      destruct ix.
+      - apply f.
+      - apply g.
+    Defined.
 
-    meet P Q x := P x ∧ Q x ;
-    join P Q x := P x ∨ Q x ;
-    impl P Q x := P x → Q x ;
-  |}.
-End Pred.
+    #[program]
+     Definition fanout' C A B (f: free C A) (g: free C B): free C (A ∧ B) :=
+      @syn_axiom _ propositional
+                 fanout (A, B)
+                 C (A ∧ B)
+                 _ (FREE I, syn_id).
+    Next Obligation.
+      destruct ix.
+      - apply f.
+      - apply g.
+    Defined.
+
+    Definition fst' A B: free (A ∧ B) A := @syn_axiom _ propositional
+                                                      fst (A, B)
+                                                      (A ∧ B) A
+                                                      (FREE I, syn_id) (FREE I, syn_id).
+    Definition snd' A B: free (A ∧ B) B := @syn_axiom _ propositional
+                                                      snd (A, B)
+                                                      (A ∧ B) B
+                                                      (FREE I, syn_id) (FREE I, syn_id).
+
+  End sanity.
+End Sanity.
+
 
 (* FIXME do the same thing but with bundles ? *)
 Module Import Hoas.
+  #[universes(cumulative)]
   Class Lam := {
     tm: Type ;
+    ty: Type ;
 
-    T: tm ;
-    P: tm ;
+    pt: ty ;
+    exp: ty → ty → ty ;
 
-    all: tm → (tm → tm) → tm ;
-    lam: tm → (tm → tm) → tm ;
+    lam: ty → (tm → tm) → tm ;
     app: tm → tm → tm ;
-              }.
+  }.
 End Hoas.
 
 Module Import Spec.
   Import List.ListNotations.
 
-  Variant type_query `{Lam} := ofty (_ _ : tm).
+  Variant type_query `{Lam} := ofty (_:tm) (_: ty).
 
   Module Export SpecNotations.
     Infix "∈" := ofty (at level 40).
@@ -204,45 +214,147 @@ Module Import Spec.
 
   Open Scope logic_scope.
 
-  Definition rules `{Lam}: theory type_query :=
-    [
-      const (just (P ∈ T) ⊢ []) ;
-
-    ∀ A B f x,
-      just (app f x ∈ B x) ⊢ [
-             just (f ∈ all A B) ;
-           just (x ∈ A) ] ;
-
-    (*
+  Variant index := app_rule | lam_rule.
+  Definition stlc `{Lam}: theory type_query := {|
+    dom := index ;
+    proj x :=
+      match x with
+      | app_rule => FREE (A, B, f, x) ,
+                      app f x ∈ B ⊢ [
+                           f ∈ exp A B ;
+                           x ∈ A ]
+        (*
        Not sure how I'm going to handle variables, not correct at all here,
        Also not sure how I'm going to handle evaluating expressions
-     *)
-    ∀ K L A B x,
-      just (all A B ∈ K) ⊢ [
-             just (A ∈ K) ;
-           just (x ∈ A) ;
-           just (B x ∈ L)
-           ] ;
-    ∀ K A B f x,
-      just (lam A f ∈ all A B) ⊢ [
-             just (A ∈ K) ;
-           just (x ∈ A) ;
-           just (f x ∈ B x)
-           ]
-    ].
+         *)
+      | lam_rule => FREE (A, B, f, x) ,
+                      lam A f ∈ exp A B ⊢ [
+                           x ∈ A ;
+                           f x ∈ B]
+      end
+   |}.
 End Spec.
 
-Definition oftype `{Lam} x A := ∃ y, chk (predicate_logic _) eq rules y (x ∈ A).
+Module Import Sanity.
+  Import List.ListNotations.
 
-Definition foo `{Lam}: oftype P T.
-  cbn.
-  eexists.
-  Unshelve.
-  2: {
+  Section sanity.
+    Context `{Lam}.
+
+    Definition free := @syn _ stlc.
+
+    Definition foo x A: free [ x ∈ A ; x ∈ A ] [].
+      apply (syn_weaken nil).
+    Defined.
+  End sanity.
+End Sanity.
+
+Module Import Lattice.
+  #[universes(cumulative)]
+  Class Lattice := {
+    S: Type ;
+
+    top: S ;
+    bot: S ;
+
+    meet: S → S → S ;
+    join: S → S → S ;
+  }.
+
+  Definition meet_all `{Lattice}: list S → S := List.fold_right meet top.
+  Definition join_all `{Lattice}: list S → S := List.fold_right join bot.
+
+  Module Export LatticeNotations.
+    Declare Scope lattice_scope.
+    Delimit Scope lattice_scope with lattice.
+    Bind Scope lattice_scope with S.
+
+    Notation "⊤" := top : lattice_scope.
+    Notation "⊥" := bot : lattice_scope.
+
+    Infix "∧" := meet : lattice_scope.
+
+    Notation "⋀" := meet_all : lattice_scope.
+    Notation "⋁" := join_all : lattice_scope.
+
+    Coercion S: Lattice >-> Sortclass.
+  End LatticeNotations.
+End Lattice.
+
+(* FIXME implement a Lattice algebra using bundles and interpret
+everything categorically *)
+Module Import Pred.
+  #[program]
+   Definition predicate_logic A: Lattice := {|
+    S := A → Prop ;
+
+    top _ := True ;
+    bot _ := False ;
+
+    meet P Q x := P x ∧ Q x ;
+    join P Q x := P x ∨ Q x ;
+  |}.
+End Pred.
+
+
+Module Import Sanity.
+  Local Set Implicit Arguments.
+
+
+  Definition ofty `{Lam} A B f x := check stlc app_rule (A, B, f, x).
+  Check ofty.
+  Definition ofty `{Lam} i v x A :=
+    let (H, T) := chk (predicate_logic _) (simplify pred_stlc) {| ix := i ; val := v |}  in
+    H (x ∈ A) → T (x ∈ A).
+  Definition foo `{Lam} A: ofty (lam A (λ x, x)) (exp A A).
+    exists lam_rule.
+    intro.
+    cbn in *.
+    destruct .
+    
+  Definition bar `{Lam} := foo 0 I.
+  #[program]
+   Definition bar `{Lam} := foo 1 _.
+  Next Obligation.
+    cbn.
+  (* Definition foo `{Lam}: oftype (λ x, x = P ∈ T) (λ x, x = P ∈ T) *)
+    cbn.
+    eexists.
+    Unshelve.
+    2: {
+      cbn.
+      left.
+      exists.
+    }
+    cbn.
+    reflexivity.
+  Qed.
+End Sanity.
+
+Module Import Foo.
+  Definition type_Lattice := {|
+    S := Set ;
+
+    top := True ;
+    bot := False ;
+
+    meet P Q := P * Q ;
+    join P Q := P + Q ;
+  |}.
+  Definition oftype `{Lam} (p: any_head rules) :=
+      let (H, T) := chk type_Lattice (λ q, {x: type_query | q = x}) rules p in
+      T → H.
+
+  Definition bar `{Lam} : any_head rules.
     cbn.
     left.
     exists.
-  }
-  cbn.
-  reflexivity.
-Qed.
+  Defined.
+
+  Definition foo `{Lam}: oftype bar.
+    cbn.
+    intros.
+    exists (P ∈ T).
+    reflexivity.
+  Defined.
+End Foo.
