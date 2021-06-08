@@ -23,6 +23,7 @@ Require Coq.Program.Tactics.
 Require Import Coq.Vectors.Fin.
 Require Import FunInd.
 Require Import Psatz.
+Require Coq.Vectors.Vector.
 
 Reserved Notation "| A |" (at level 40).
 
@@ -163,6 +164,206 @@ Module Import Category.
     Notation "A ~> B" := (mor _ A B) (only parsing).
   End CategoryNotations.
 End Category.
+
+Module Import Bundle.
+  Import Vector.
+
+  #[universes(cumulative)]
+  Record bundle A := {
+    dom: Type ;
+    proj: dom → A ;
+  }.
+
+  Arguments dom [A].
+  Arguments proj [A].
+
+  Coercion dom: bundle >-> Sortclass.
+  Coercion proj: bundle >-> Funclass.
+
+  Notation "'lim' x .. y , P" := {| proj x := .. {| proj y := P |} .. |}
+  (at level 200, x binder, y binder, right associativity,
+  format "'[ ' '[ ' 'lim'  x .. y ']' , '/' P ']'").
+
+  (* hack around bizarre universe issues *)
+  Notation "'vec' v" := {| proj := nth v |} (at level 1).
+End Bundle.
+
+Module Spans.
+  #[universes(cumulative)]
+  Record span [K: Category] [A: Type] (B: A → K) := {
+    dom: K ;
+    proj x: K dom (B x) ;
+  }.
+
+  Arguments dom [K A B].
+  Arguments proj [K A B].
+
+  Coercion dom: span >-> object.
+  Coercion proj: span >-> Funclass.
+
+  #[universes(cumulative)]
+  Record cospan [K: Category] [A: Type] (B: A → K) := {
+    cod: K ;
+    inj x: K (B x) cod ;
+  }.
+
+  Arguments cod [K A B].
+  Arguments inj [K A B].
+
+  Coercion cod: cospan >-> object.
+  Coercion inj: cospan >-> Funclass.
+End Spans.
+
+Module Import Logic.
+  Import List.ListNotations.
+
+  Record axiom C := entails {
+                        head:C ;
+                        tail:C ;
+                        }.
+  Arguments entails [C].
+  Arguments head [C].
+  Arguments tail [C].
+
+  Definition axiom_scheme C := bundle (bundle (axiom C)).
+  Definition theory C := bundle (axiom_scheme C).
+
+  (* FIXME make category *)
+  #[universes(cumulative)]
+  Inductive syn {K} {th: theory K}: K → K → Type :=
+  | syn_id {A}: syn A A
+  | syn_compose {A B C}: syn B C → syn A B → syn A C
+
+  | syn_axiom rule args C D:
+      (∀ ix, syn C (head (th rule args ix))) →
+      (∀ ix, syn (tail (th rule args ix)) D) →
+      syn C D
+  .
+
+  #[program]
+   Definition Syn [K] (th: theory K): Category := {|
+    object := K ;
+
+    (* FIXME figure out equality *)
+    mor A B := @syn K th A B /~ {| equiv _ _ := True |} ;
+
+    id := @syn_id _ _ ;
+    compose := @syn_compose _ _ ;
+   |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: exists.
+  Qed.
+
+  Module Export LogicNotations.
+    Declare Scope logic_scope.
+    Delimit Scope logic_scope with logic.
+
+    Bind Scope logic_scope with axiom.
+    Bind Scope logic_scope with axiom_scheme.
+    Bind Scope list_scope with theory.
+
+    Reserved Notation "A ———— B" (at level 90, format "'//' A '//' ———— '//' B").
+
+    Infix "————" := entails : logic_scope .
+  End LogicNotations.
+End Logic.
+
+Module SanityCheck.
+  Import Vector.
+  Import VectorNotations.
+
+  #[universes(cumulative)]
+  Class Propositional := {
+    P: Type ;
+
+    true: P ;
+    and: P → P → P ;
+
+    false: P ;
+    or: P → P → P ;
+  }.
+  Open Scope logic_scope.
+
+  Infix "∧" := and.
+  Infix "∨" := or.
+
+  Variant idx :=
+  | taut
+  | absurd
+  | inl | inr | fanin
+  | fst | snd | fanout.
+
+  Definition propositional `(Propositional): theory P := lim ix,
+    match ix with
+    | taut => lim A,
+              lim (_: True),
+               A
+               ————
+               true
+    | absurd => lim A,
+                lim (_: True),
+                  false
+                  ————
+                  A
+
+    | fanin => lim '(A, B),
+                lim b:bool,
+                      A ∨ B
+                      ————
+                      if b then A else B
+    | inl => lim '(A, B),
+             lim _:True,
+                   A
+                   ————
+                   A ∨ B
+    | inr => lim '(A, B),
+             lim _:True,
+                   B
+                   ————
+                   A ∨ B
+
+    | fanout => lim '(A, B),
+                lim b:bool,
+                      (if b then A else B)
+                      ————
+                      A ∧ B
+    | fst => lim '(A, B),
+             lim _:True,
+                   A ∧ B
+                   ————
+                   A
+    | snd => lim '(A, B),
+             lim _:True,
+                   A ∧ B
+                   ————
+                   B
+    end
+    .
+
+  Import Spans.
+
+  Section sanity.
+    Context `{H:Propositional}.
+
+    Definition Free := Syn (propositional H).
+
+    Definition prop_axiom := @syn_axiom _ (propositional H).
+
+    Definition taut' C: Free C true := prop_axiom taut C C true (λ _, syn_id) (λ _, syn_id).
+    Definition absurd' C: Free false C := prop_axiom absurd C false C (λ _, syn_id) (λ _, syn_id).
+
+    Definition fst' A B: Free (A ∧ B) A := prop_axiom fst (A, B) (A ∧ B) A (λ _, syn_id) (λ _, syn_id).
+    Definition snd' A B: Free (A ∧ B) B := prop_axiom snd (A, B) (A ∧ B) B (λ _, syn_id) (λ _, syn_id).
+
+    Definition fanout' C A B (f: Free C A) (g: Free C B)
+      := prop_axiom fanout (A, B) C (A ∧ B)
+                    (λ ix, if ix as IX return (syn C (if IX then A else B)) then f else g)
+                    (λ _, syn_id).
+  End sanity.
+End SanityCheck.
 
 Module Cartesian.
   #[universes(cumulative)]
@@ -549,6 +750,23 @@ Module Mon.
   Admitted.
 End Mon.
 
+#[program]
+Definition Empty: Category := {|
+  object := False ;
+  mor x := match x with end ;
+  id x := match x with end ;
+  compose x := match x with end ;
+|}.
+
+Solve All Obligations with contradiction.
+
+#[program]
+Definition Trivial: Monoid := {|
+  M := Bishops.True ;
+  unit := I ;
+  app _ _ := I ;
+|}.
+
 Module Circle.
   Import Monoid.
 
@@ -814,6 +1032,7 @@ Module Import Isomorphism.
     Notation "A <~> B" := (Isomorphism _ A B).
   End IsomorphismNotations.
 End Isomorphism.
+
 Module Import Over.
   #[universes(cumulative)]
    Record bundle [C: Category] (c: C) := {
@@ -1148,23 +1367,7 @@ Module Import Opposite.
   End opposite.
 End Opposite.
 
-#[program]
-Definition Empty: Category := {|
-  object := False ;
-  mor x := match x with end ;
-  id x := match x with end ;
-  compose x := match x with end ;
-|}.
 
-Solve All Obligations with contradiction.
-
-#[program]
-Definition Trivial: Category := {|
-  object := True ;
-  mor _ _ := Bishops.True ;
-  id _ := I ;
-  compose _ _ _ _ _ := I ;
-|}.
 
 
 Module Import Monoidal.

@@ -33,13 +33,39 @@ Module Import Bundle.
   Coercion proj: bundle >-> Funclass.
 End Bundle.
 
+Module Spans.
+  #[universes(cumulative)]
+  Record span [A] (B: A → Type) := {
+    dom: Type ;
+    proj x: dom → B x ;
+  }.
+
+  Arguments dom [A].
+  Arguments proj [A].
+
+  Coercion dom: span >-> Sortclass.
+  Coercion proj: span >-> Funclass.
+
+  #[universes(cumulative)]
+  Record cospan [A] (B: A → Type) := {
+    cod: Type ;
+    inj x: B x → cod ;
+  }.
+
+  Arguments cod [A].
+  Arguments inj [A].
+
+  Coercion cod: cospan >-> Sortclass.
+  Coercion inj: cospan >-> Funclass.
+End Spans.
+
 Module Import Logic.
   Import List.ListNotations.
 
   (* FIXME have an or for results as well ? *)
   Record axiom C := entails {
-                       head: bundle C ;
                        tail: bundle C ;
+                       head: bundle C ;
                        }.
   Arguments entails [C].
   Arguments head [C].
@@ -70,7 +96,7 @@ Module Import Logic.
     Notation "[ P ]" := {| proj := P |} : logic_scope .
 
     Notation "'FREE' x , P" := (λ x, P) (x pattern, at level 200) : logic_scope .
-    Infix "⊢" := entails (at level 90) : logic_scope .
+    Infix "————" := entails (at level 90) : logic_scope .
   End LogicNotations.
 End Logic.
 
@@ -103,23 +129,39 @@ Module Import Sanity.
     proj x :=
       match x with
       | taut => [FREE I,
-                [FREE I, true] ⊢ [ λ (ix: False), match ix with end ]]
+                 [ λ (ix: False), match ix with end ]
+                 ————
+                 [FREE I, true]]
       | bang => [FREE A,
-                [FREE I, A] ⊢ [FREE I, false]]
+                 [FREE I, false]
+                 ————
+                 [FREE I, A]]
 
       | fanout => [FREE (A, B),
-                  [FREE I, A ∧ B] ⊢ [ λ (ix: bool), if ix then A else B ]]
+                   [ λ (ix: bool), if ix then A else B ]
+                   ————
+                   [FREE I, A ∧ B]]
       | fst => [FREE (A, B),
-               [FREE I, A] ⊢ [FREE I, A ∧ B]]
+                [FREE I, A ∧ B]
+                ————
+                [FREE I, A]]
       | snd => [FREE (A, B),
-               [FREE I, B] ⊢ [FREE I, A ∧ B]]
+                [FREE I, A ∧ B]
+                ————
+                [FREE I, B]]
 
       | fanin => [FREE (A, B),
-                 [λ (ix: bool), if ix then A else B] ⊢ [FREE I, A ∨ B]]
+                  [FREE I, A ∨ B]
+                  ————
+                  [λ (ix: bool), if ix then A else B]]
       | inl => [FREE (A, B),
-               [FREE I, A ∨ B] ⊢ [FREE I, A]]
+                [FREE I, A]
+                ————
+                [FREE I, A ∨ B]]
       | inr => [FREE (A, B),
-               [FREE I, A ∨ B] ⊢ [FREE I, B]]
+                [FREE I, B]
+                ————
+                [FREE I, A ∨ B]]
       end
    |}.
 
