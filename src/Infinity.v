@@ -33,8 +33,8 @@ Reserved Notation "'sup' A , P" (right associativity, at level 200).
 Reserved Notation "A ~> B" (at level 80, right associativity).
 Reserved Notation "A ∘ B" (at level 30).
 
-Reserved Notation "X ⊗ Y" (at level 30, right associativity).
 Reserved Notation "X · Y" (at level 30, right associativity).
+Reserved Notation "∅".
 
 Reserved Notation "'I₊'".
 Reserved Notation "'S₁₊'".
@@ -50,7 +50,6 @@ Reserved Notation "C ₊" (at level 1).
 
 Reserved Notation "C // c" (at level 40, left associativity).
 
-Reserved Notation "∅".
 
 Reserved Notation "X \ Y" (at level 30).
 
@@ -81,11 +80,12 @@ Module Import Bishop.
     FIXME: This probably isn't quite right and not an "exact" or "Abelian" category.
    *)
   #[universes(cumulative)]
-  Record Bishop := {
-    type: Type ;
-    Bishop_Setoid: Setoid type ;
+  Class Bishop := {
+    T: Type ;
+    Bishop_Setoid: Setoid T ;
   }.
-  Existing Instance Bishop_Setoid.
+
+  Arguments T: clear implicits.
 
   Module Export BishopNotations.
     Declare Scope bishop_scope.
@@ -93,8 +93,9 @@ Module Import Bishop.
 
     Bind Scope bishop_scope with Bishop.
 
-    Coercion type: Bishop >-> Sortclass.
-    Notation "A /~ B" := {| type := A ; Bishop_Setoid := B |}: bishop_scope.
+    Existing Instance Bishop_Setoid.
+    Coercion T: Bishop >-> Sortclass.
+    Notation "A /~ B" := {| T := A ; Bishop_Setoid := B |}: bishop_scope.
   End BishopNotations.
 End Bishop.
 
@@ -147,6 +148,8 @@ Module Import Category.
     Delimit Scope category_scope with category.
 
     Bind Scope category_scope with Category.
+    Bind Scope category_scope with Obj.
+    Bind Scope category_scope with Mor.
 
     Coercion Obj: Category >-> Sortclass.
     Coercion Mor: Category >-> Funclass.
@@ -155,9 +158,6 @@ Module Import Category.
     Notation "A → B" := (Mor _ A B) (only parsing) : category_scope.
     Notation "A ~> B" := (Mor _ A B) (only parsing) : category_scope.
   End CategoryNotations.
-
-  Local
-  Open Scope category.
 
   Add Parametric Morphism [K:Category] (A B C: K) : (@compose K A B C)
       with signature equiv ==> equiv ==> equiv as compose_mor.
@@ -170,7 +170,6 @@ Module Import Category.
 End Category.
 
 Open Scope bishop_scope.
-Open Scope category_scope.
 
 #[program]
 Definition Preset: Category := {|
@@ -208,12 +207,11 @@ Module Import Sets.
   Local
   Obligation Tactic := unfold bishop_mor, Bishop_Mor; cbn; Tactics.program_simpl; try reflexivity.
 
-
   Module Export SetsNotations.
     #[local]
-     Definition proj1_Bishop_Mor [A B]: Bishop_Mor A B → A → B := @proj1_sig _ _.
+    Definition proj1_Bishop_Mor [A B]: Bishop_Mor A B → A → B := @proj1_sig _ _.
     #[local]
-    Definition proj2_Bishop_Mor [A B] (f:Bishop_Mor A B): bishop_mor _ := proj2_sig f.
+    Definition proj2_Bishop_Mor [A B] (f:Bishop_Mor A B): bishop_mor (proj1_Bishop_Mor f) := proj2_sig f.
 
     Coercion proj1_Bishop_Mor: Bishop_Mor >-> Funclass.
     Coercion proj2_Bishop_Mor: Bishop_Mor >-> bishop_mor.
@@ -262,6 +260,8 @@ Module Import Sets.
 
   Definition simple (t:Type):Bishop := t /~ {| equiv := eq |}.
 End Sets.
+
+Open Scope category_scope.
 
 Module Import Reflection.
   #[universes(cumulative)]
@@ -417,6 +417,7 @@ Module Import Reflection.
 End Reflection.
 
 Obligation Tactic := Tactics.program_simpl; repeat (try split; try category; reflexivity).
+
 Module Import Functor.
   #[universes(cumulative)]
   Record prefunctor (C D: Category) := limit {
@@ -489,75 +490,24 @@ Module Import Functor.
   End FunctorNotations.
 End Functor.
 
-Module Group.
-  Class Group := {
-    G: Bishop.Bishop ;
-
-    unit: G ;
-    app: G → G → G
-    where "f · g" := (app f g) ;
-
-    invert: G → G  where "f ⁻¹" := (invert f) ;
-
-    app_assoc (f: G) (g: G) (h: G):
-      (f · (app g h)) == ((f · g) · h );
-    app_unit_left (f: G): (unit · f) == f ;
-    app_unit_right (f: G): (f · unit) == f ;
-
-    app_invert_left (f: G):
-      invert f · f == unit;
-    app_invert_right (f: G):
-      f · invert f == unit;
-
-    app_compat (f f': G) (g g': G):
-      f == f' → g == g' → f · g == f' · g' ;
-    invert_compat (f f': G):
-      f == f' → invert f == invert f' ;
-  }.
-
-  Add Parametric Morphism [K: Group] : (@app K)
-      with signature equiv ==> equiv ==> equiv as app_mor.
-  Proof.
-    intros ? ? p ? ? q.
-    apply app_compat.
-    - apply p.
-    - apply q.
-  Qed.
-
-  Add Parametric Morphism [K: Group] : (@invert K)
-      with signature equiv ==> equiv as group_mor.
-  Proof.
-    intros ? ? p.
-    apply invert_compat.
-    apply p.
-  Qed.
-
-  Module Export GroupNotations.
-    Coercion G: Group >-> Bishop.Bishop.
-
-    Notation "f · g" := (app f g).
-    Notation "f ⁻¹" := (invert f).
-  End GroupNotations.
-End Group.
-
 Module Monoid.
   Class Monoid := {
-    M: Bishop.Bishop ;
+    S: Bishop.Bishop ;
 
-    unit: M ;
-    app: M → M → M
-    where "f ⊗ g" := (app f g) ;
+    unit: S ;
+    app: S → S → S
+    where "f · g" := (app f g) ;
 
-    app_assoc (f: M) (g: M) (h: M):
-      (f ⊗ (g ⊗ h)) == ((f ⊗ g) ⊗ h );
-    app_unit_left (f: M): (unit ⊗ f) == f ;
-    app_unit_right (f: M): (f ⊗ unit) == f ;
+    app_assoc (f: S) (g: S) (h: S):
+      (f · (g · h)) == ((f · g) · h );
+    app_unit_left (f: S): (unit · f) == f ;
+    app_unit_right (f: S): (f · unit) == f ;
 
-    app_compat (f f': M) (g g': M):
-      f == f' → g == g' → f ⊗ g == f' ⊗ g' ;
+    app_compat (f f': S) (g g': S):
+      f == f' → g == g' → f · g == f' · g' ;
   }.
 
-  Add Parametric Morphism [K: Monoid] : (@app K)
+  Add Parametric Morphism [M: Monoid] : (@app M)
       with signature equiv ==> equiv ==> equiv as app_mor.
   Proof.
     intros ? ? p ? ? q.
@@ -567,18 +517,29 @@ Module Monoid.
   Qed.
 
   Module Export MonoidNotations.
-    Coercion M: Monoid >-> Bishop.Bishop.
+    Declare Scope monoid_scope.
+    Delimit Scope monoid_scope with monoid.
 
-    Notation "f ⊗ g" := (app f g).
+    Bind Scope monoid_scope with Monoid.
+    Bind Scope monoid_scope with S.
+
+    Coercion S: Monoid >-> Bishop.Bishop.
+    Existing Instance S.
+
+    Notation "f · g" := (app f g) : monoid_scope.
+    Notation "∅" := unit : monoid_scope.
   End MonoidNotations.
 End Monoid.
+
+Import Monoid.MonoidNotations.
+Open Scope monoid_scope.
 
 Module Mon.
   Import Monoid.
 
-  Class Mon_Mor [A B: Monoid] (f: A → B) : Prop := {
-    map_unit: f unit == unit ;
-    map_app x y: f (x ⊗ y) == f x ⊗ f y ;
+  Class Mon_Mor [A B: Monoid] (f: A → B): Prop := {
+    map_unit: f ∅ == ∅ ;
+    map_app x y: f (x · y) == f x · f y ;
   }.
 
   #[program]
@@ -592,30 +553,87 @@ Module Mon.
 
   Next Obligation.
   Proof.
-    admit.
-  Admitted.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
 
   Next Obligation.
   Proof.
-    admit.
-  Admitted.
+    exists.
+    - intros ? ?.
+      reflexivity.
+    - intros ? ? p t.
+      rewrite (p t).
+      reflexivity.
+    - intros ? ? ? p q t.
+      rewrite (p t), (q t).
+      reflexivity.
+  Qed.
 
   Next Obligation.
   Proof.
-    admit.
-  Admitted.
+    exists.
+    - repeat rewrite map_unit.
+      reflexivity.
+    - intros.
+      repeat rewrite map_app.
+      reflexivity.
+  Qed.
 
   Next Obligation.
   Proof.
-    admit.
-  Admitted.
+    rewrite (H _), (H0 t).
+    reflexivity.
+  Qed.
 End Mon.
+
+Module Group.
+  Import Monoid.
+
+  Class Group := {
+    M: Monoid ;
+    invert: M → M  where "f ⁻¹" := (invert f) ;
+
+    app_invert_left (f: M):
+      f ⁻¹ · f == ∅;
+    app_invert_right (f: M):
+      f · f ⁻¹ == ∅;
+
+    invert_compat (f f': M):
+      f == f' → f ⁻¹ == f' ⁻¹ ;
+  }.
+
+  Add Parametric Morphism [G: Group] : (@invert G)
+      with signature equiv ==> equiv as group_mor.
+  Proof.
+    intros ? ? p.
+    apply invert_compat.
+    apply p.
+  Qed.
+
+  Module Export GroupNotations.
+    Declare Scope group_scope.
+    Delimit Scope group_scope with group.
+
+    Bind Scope group_scope with Group.
+    Bind Scope group_scope with M.
+
+    Coercion M: Group >-> Monoid.
+    Existing Instance M.
+
+    Notation "f ⁻¹" := (invert f) : monoid_scope.
+  End GroupNotations.
+End Group.
+
+Import Group.GroupNotations.
+Open Scope group_scope.
 
 Module Import Grp.
   Import Group.
 
   Class Grp_Mor [A B: Group] (F: A → B) := {
-    map_unit: F unit == unit ;
+    map_unit: F ∅ == ∅ ;
     map_app x y: F (x · y) == F x · F y ;
     map_invert x: F (x ⁻¹) == F x ⁻¹ ;
   }.
@@ -643,26 +661,6 @@ Module Import Grp.
     admit.
   Admitted.
 End Grp.
-
-Module Import Discrete.
-  #[program]
-  Definition Dis (S: Bishop): Category := {|
-    Obj := S ;
-    Mor A B := (A == B) /~ {| equiv _ _ := True |} ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all: exists.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H0, H.
-    reflexivity.
-  Qed.
-End Discrete.
 
 Module Groupoid.
   #[universes(cumulative)]
@@ -695,6 +693,84 @@ Module Groupoid.
 End Groupoid.
 
 Import Groupoid.GroupoidNotations.
+
+Module Import Discrete.
+  Import Groupoid.
+
+  #[program]
+   Definition Dis (S: Bishop): Groupoid := {|
+    C := {|
+      Obj := S ;
+      Mor A B := (A == B) /~ {| equiv _ _ := True |} ;
+    |} ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: exists.
+  Defined.
+
+  Next Obligation.
+  Proof.
+    rewrite H0, H.
+    reflexivity.
+  Defined.
+
+  Next Obligation.
+  Proof.
+    symmetry.
+    assumption.
+  Defined.
+End Discrete.
+
+Module Import Decidable.
+  Import Groupoid.
+  #[program]
+   Definition Decidable (S: Bishop) (eq_dec: forall x y:S, {x == y} + {~ (x == y)}): Groupoid := {|
+    C := {|
+      Obj := S ;
+      Mor A B := match eq_dec A B with
+               | left _ => True
+               | right _ => False
+                 end /~ {| equiv _ _ := True |} ;
+        |} ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: exists.
+  Defined.
+
+  Next Obligation.
+  Proof.
+    destruct (eq_dec A A).
+    - apply I.
+    - apply n.
+      reflexivity.
+  Defined.
+
+  Next Obligation.
+  Proof.
+    destruct (eq_dec A B), (eq_dec B C0), (eq_dec A C0).
+    all: try contradiction.
+    all: try apply I.
+    apply n.
+    rewrite e, e0.
+    reflexivity.
+  Defined.
+
+  Next Obligation.
+  Proof.
+    destruct (eq_dec B A), (eq_dec A B).
+    all: try contradiction.
+    - apply I.
+    - apply n.
+      symmetry.
+      assumption.
+  Defined.
+End Decidable.
 
 Module PointedGroupoid.
   Import Groupoid.
@@ -734,78 +810,6 @@ End Pointed.
 
 Import Pointed.PointedNotations.
 
-Module Import Groupoids.
-  Import Groupoid.
-
-  #[program]
-   Definition Interval: Groupoid := {|
-    C := {|
-      Obj := bool ;
-      Mor _ _ := Bishops.True ;
-
-      id _ := I ;
-      compose _ _ _ _ _ := I ;
-    |} ;
-    invert _ _ _ := I ;
-  |}.
-
-  Module Export One.
-    Import Group.
-
-    #[program]
-     Definition 𝑩 (M: Group): PointedGroupoid.Groupoid := {|
-      PointedGroupoid.G := {|
-                            C := {|
-                                  Obj := True ;
-                                  Mor _ _ := M ;
-
-                                  id _ := unit ;
-                                  compose _ _ _ := app ;
-                                |} ;
-                            Groupoid.invert _ _ := Group.invert ;
-                          |} ;
-      PointedGroupoid.pt := I ;
-   |}.
-
-    Next Obligation.
-    Proof.
-      apply app_assoc.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      apply app_unit_left.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      apply app_unit_right.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      apply app_invert_left.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      apply app_invert_right.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      rewrite H.
-      reflexivity.
-    Qed.
-  End One.
-End Groupoids.
-
 Module Import Categories.
   Module Export One.
     Import Monoid.
@@ -814,9 +818,9 @@ Module Import Categories.
      Definition One (M: Monoid): Pointed.Category := {|
       Pointed.C := {|
                     Obj := True ;
-                    Mor _ _ := M ;
+                    Mor _ _ := S ;
 
-                    id _ := unit ;
+                    id _ := ∅ ;
                     compose _ _ _ := app ;
                   |} ;
       Pointed.pt := I ;
@@ -879,12 +883,58 @@ End Categories.
 
 Import Categories.CategoriesNotation.
 
+Module Import Groupoids.
+  Import Groupoid.
+
+  #[program]
+   Definition Interval: Groupoid := {|
+    C := {|
+      Obj := bool ;
+      Mor _ _ := Bishops.True ;
+
+      id _ := I ;
+      compose _ _ _ _ _ := I ;
+    |} ;
+    invert _ _ _ := I ;
+  |}.
+
+  Module Export One.
+    Import Monoid.
+    Import Group.
+
+    #[program]
+     Definition 𝑩 (G: Group): PointedGroupoid.Groupoid := {|
+      PointedGroupoid.G := {|
+                            C := 𝑩₊ G ;
+                            Groupoid.invert _ _ := Group.invert ;
+                          |} ;
+      PointedGroupoid.pt := I ;
+   |}.
+
+    Next Obligation.
+    Proof.
+      apply app_invert_left.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      apply app_invert_right.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite H.
+      reflexivity.
+    Qed.
+  End One.
+End Groupoids.
+
 Module Import Monoids.
   Import Monoid.
 
   #[program]
    Definition Circle: Monoid := {|
-    M := nat /~ {| equiv := eq |} ;
+    S := nat /~ {| equiv := eq |} ;
 
     unit := 0 ;
     app f g := f + g ;
@@ -894,7 +944,7 @@ Module Import Monoids.
 
   #[program]
    Definition Endo (C: Pointed.Category): Monoid := {|
-    M := C (Pointed.pt C) (Pointed.pt C) ;
+    S := C (Pointed.pt C) (Pointed.pt C) ;
 
     unit := id ;
     app := @compose _ _ _ _ ;
@@ -915,16 +965,19 @@ End Monoids.
 Import Monoids.MonoidsNotations.
 
 Module Import Groups.
+  Import Monoid.
   Import Group.
 
   Local Open Scope Z_scope.
 
   #[program]
    Definition Circle: Group := {|
-    G := Z /~ {| equiv := eq |} ;
+    M := {|
+          S := Z /~ {| equiv := eq |} ;
 
-    unit := 0 ;
-    app f g := f + g ;
+          unit := 0 ;
+          app f g := f + g ;
+        |} ;
     invert x := -x;
    |}.
 
@@ -932,14 +985,21 @@ Module Import Groups.
 
   #[program]
    Definition Λ (C: PointedGroupoid.Groupoid): Group := {|
-    G := C (PointedGroupoid.pt C) (PointedGroupoid.pt C) ;
-
-    unit := id ;
-    app := @compose _ _ _ _ ;
+    M := {|
+          S := C (PointedGroupoid.pt C) (PointedGroupoid.pt C) ;
+          unit := id ;
+          app := @compose _ _ _ _ ;
+         |} ;
     invert := @Groupoid.invert _ _ _ ;
   |}.
 
   Import Groupoid.
+
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
 
   Next Obligation.
   Proof.
@@ -949,12 +1009,6 @@ Module Import Groups.
   Next Obligation.
   Proof.
     apply compose_invert_right.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H, H0.
-    reflexivity.
   Qed.
 
   Next Obligation.
@@ -1008,7 +1062,7 @@ Module Product.
   Qed.
 
   #[program]
-  Definition fst {A B}: Funct (Prod A B) A := limit (fst: Prod _ _ → _) (λ _ _, fst).
+  Definition fst {A B}: Funct (Prod A B) A := limit (λ (x: Prod _ _), fst x) (λ _ _ x, fst x).
 
   Next Obligation.
   Proof.
@@ -1016,6 +1070,8 @@ Module Product.
     all: Tactics.program_simpl;cbn.
     all: reflexivity.
   Qed.
+
+  Print fst.
 
   #[program]
   Definition snd {A B}: Funct (Prod A B) B := limit (snd: Prod _ _ → _) (λ _ _, snd).
@@ -1034,11 +1090,11 @@ End Product.
 
 Definition Arr := Funct I₊.
 Definition Endos := Funct (𝑩₊ S¹₊).
-(* Definition Cylinder₊ := Product.Prod I₊. *)
+Definition Cylinder := Product.Prod I₊.
 
 Definition Iso := Funct Interval.
 Definition Autos := Funct (𝑩 S¹).
-Definition Cylinder := Product.Prod Interval.
+Definition Cylinder' := Product.Prod Interval.
 
 Module Import Monomorphism.
   #[program]
@@ -1296,124 +1352,31 @@ Module Import Isomorphism.
   End IsomorphismNotations.
 End Isomorphism.
 
-Module Import Automorphism.
-  Import Group.
+Module Bicategory.
+  Import Product.
 
-  #[universes(cumulative)]
-   Record automorphism (C: Category) (c: C) := {
-    to: C c c ;
-    from: C  c c ;
-    to_from: to ∘ from == id ;
-    from_to: from ∘ to == id ;
+  Class Bicategory := {
+    Obj: Type ;
+    Mor: Obj → Obj → Category ;
+
+    id {A}: Mor A A ;
+    compose {A B C}: Funct (Prod (Mor B C) (Mor A B)) (Mor A C) where
+    "A ∘ B" := (proj1_sig compose (A, B)) ;
+
+    compose_id_left [A B] (F: Mor A B): (id ∘ F) <~> F ;
+    compose_id_right [A B] (F: Mor A B): F ∘ id <~> F ;
+
+    compose_assoc [A B C D] (f: Mor C D) (g: Mor B C) (h: Mor A B):
+      f ∘ (g ∘ h) <~> (f ∘ g) ∘ h;
   }.
 
-  Arguments to [C c].
-  Arguments from [C c].
-  Arguments to_from [C c].
-  Arguments from_to [C c].
+  Module Export BicategoryNotations.
+    Coercion Obj: Bicategory >-> Sortclass.
+    Coercion Mor: Bicategory >-> Funclass.
+  End BicategoryNotations.
+End Bicategory.
 
-  #[program]
-  Definition Auto (C: Category) (c: C): Group := {|
-    G := automorphism C c /~ {| equiv x y := to x == to y ∧ from x == from y |} ;
-
-    unit := {| to := id ; from := id |} ;
-    app f g := {| to := to f ∘ to g ; from := from g ∘ from f |} ;
-    invert f := {| to := from f ; from := to f |} ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all: intro.
-    all: Tactics.program_simpl.
-    - split.
-      all: reflexivity.
-    - split.
-      all: symmetry.
-      all: auto.
-    - split.
-      1: rewrite H, H0.
-      2: rewrite H2, H1.
-      all: reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite <- compose_assoc.
-    rewrite (compose_assoc (to g)).
-    rewrite to_from.
-    rewrite compose_id_left.
-    rewrite to_from.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite <- compose_assoc.
-    rewrite (compose_assoc (from f)).
-    rewrite from_to.
-    rewrite compose_id_left.
-    rewrite from_to.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply from_to.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply to_from.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    split.
-    all: apply from_to.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    split.
-    all:apply to_from.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    split.
-    1: rewrite H, H0.
-    2: rewrite H2, H1.
-    all: reflexivity.
-  Qed.
-End Automorphism.
-
-#[program]
-Definition Boolean: Category := {|
-  Obj := bool ;
-  Mor A B := Is_true (eqb A B) /~ {| equiv _ _ := True |} ;
-|}.
-
-Next Obligation.
-Proof.
-  exists.
-  all: exists.
-Qed.
-
-Next Obligation.
-Proof.
-  destruct A.
-  all: cbn.
-  all: exists.
-Defined.
-
-Next Obligation.
-Proof.
-  destruct A, B, C.
-  all: cbn in *.
-  all: try contradiction.
-  all: exists.
-Defined.
+Import Bicategory.BicategoryNotations.
 
 
 Module Import Opposite.
@@ -1626,125 +1589,6 @@ Module SanityCheck.
   End sanity.
 End SanityCheck.
 
-Module Bicategory.
-  Import Product.
-
-  Class Bicategory := {
-    Obj: Type ;
-    Mor: Obj → Obj → Category ;
-
-    id {A}: Mor A A ;
-    compose {A B C}: Funct (Prod (Mor B C) (Mor A B)) (Mor A C) where
-    "A ∘ B" := (proj1_sig compose (A, B)) ;
-
-    compose_id_left [A B] (F: Mor A B): (id ∘ F) <~> F ;
-    compose_id_right [A B] (F: Mor A B): F ∘ id <~> F ;
-
-    compose_assoc [A B C D] (f: Mor C D) (g: Mor B C) (h: Mor A B):
-      f ∘ (g ∘ h) <~> (f ∘ g) ∘ h;
-  }.
-
-  Module Export BicategoryNotations.
-    Coercion Obj: Bicategory >-> Sortclass.
-    Coercion Mor: Bicategory >-> Funclass.
-  End BicategoryNotations.
-End Bicategory.
-
-Import Bicategory.BicategoryNotations.
-Module Import Cat.
-  Import Bicategory.
-
-  #[local]
-   #[program]
-   Definition compose' [A B C] (F: Funct B C) (G: Funct A B): Funct A C :=
-    limit (λ '(arr x), arr (map F (map G x))) _ _.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all: Tactics.program_simpl;cbn.
-    - repeat rewrite <- map_composes.
-      reflexivity.
-    - repeat rewrite map_id.
-      reflexivity.
-    - rewrite H.
-      reflexivity.
-  Qed.
-
-  #[local]
-   #[program]
-   Definition compose'' [A B C]: Funct (Product.Prod (Funct B C) (Funct A B)) (Funct A C) :=
-    limit (λ (X: Arr (Product.Prod _ _)), {|
-             s := compose' (fst (s X)) (snd (s X));
-             t := compose' (fst (t X)) (snd (t X));
-             π (x: A) := fst (π X) (proj1_sig (snd (t X)) x) ∘ map (proj1_sig (fst (s X))) (snd (π X) x) |}) _ _.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all: Tactics.program_simpl;cbn.
-    - cbn in *.
-  #[program]
-  Definition Cat: Bicategory := {|
-    Obj := Category ;
-    Mor := Funct ;
-
-    id _ := limit (λ x, x) _ _;
-    compose := @compose'';
-  |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all: Tactics.program_simpl;cbn.
-    all: reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    eexists.
-    Unshelve.
-    2: {
-      eexists.
-      Unshelve.
-      3: {
-        intro.
-        destruct X.
-        destruct π0.
-        
-      cbn in *.
-    refine (t _ ∘ map f1 (t0 _)).
-  Defined.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    rewrite map_id.
-    category.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-End Cat.
 
 Module CatArrow.
   Close Scope nat.
