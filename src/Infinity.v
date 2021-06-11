@@ -28,7 +28,8 @@ Reserved Notation "| A |" (at level 40).
 
 Reserved Notation "A /~ B" (at level 40).
 Reserved Notation "'lim' A , P" (right associativity, at level 200).
-Reserved Notation "'sup' A , P" (right associativity, at level 200).
+Reserved Notation "'glb' A , P" (right associativity, at level 200).
+Reserved Notation "'lub' A , P" (right associativity, at level 200).
 
 Reserved Notation "A ~> B" (at level 80, right associativity).
 Reserved Notation "A ∘ B" (at level 30).
@@ -418,6 +419,98 @@ End Reflection.
 
 Obligation Tactic := Tactics.program_simpl; repeat (try split; try category; reflexivity).
 
+Module Import Opposite.
+  #[program]
+   Definition op (K: Category): Category := {|
+    Obj := K ;
+    Mor A B := K B A ;
+
+    id A := @id K A ;
+    compose A B C f g := g ∘ f ;
+   |}.
+
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+
+  Module Import OppositeNotations.
+    Notation "C 'ᵒᵖ'" := (op C).
+  End OppositeNotations.
+End Opposite.
+
+Module Profunctor.
+  #[universes(cumulative)]
+  Record prefunctor (C D: Category) := limit {
+    P: D → C → Set ;
+    lmap [A B: D] [X: C]: D A B → P B X → P A X ;
+    rmap [A B: C] [X: D]: C A B → P X A → P X B ;
+  }.
+
+  Arguments limit [C D].
+  Arguments P [C D].
+  Arguments lmap [C D] p [A B] [X].
+  Arguments rmap [C D] p [A B] [X].
+
+  #[universes(cumulative)]
+  Class profunctor [C D: Category] (F: prefunctor C D): Prop := {
+    lmap_composes [X Y Z W] (x: D Y Z) (y: D X Y)
+                  (t: P F _ W): lmap F y (lmap F x t) = lmap F (x ∘ y) t ;
+    lmap_id [X Y] (t: P F X Y): lmap F id t = t ;
+
+    rmap_composes [X Y Z W] (x: C Y Z) (y: C X Y)
+                  (t: P F W _): rmap F x (rmap F y t) = rmap F (x ∘ y) t ;
+    rmap_id [X Y] (t: P F X Y): rmap F id t = t ;
+  }.
+
+  #[local]
+  Definition prof K L := {p: prefunctor K L | profunctor p }.
+
+  #[program]
+  Definition Prof (K L: Category): Category := {|
+    Obj := prof K L ;
+    Mor A B := (∀ x y, P A x y → P B x y) /~ {| equiv f g := ∀ x y t, f x y t = g x y t |} ;
+
+    id _ _ _ x := x ;
+    compose _ _ _ f g x y t := f x y (g x y t) ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
+    - intros.
+      reflexivity.
+    - intros ? ? p x y t.
+      symmetry.
+      apply (p x y t).
+    - intros ? ? ? p q x y t.
+      rewrite (p x y t), (q x y t).
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite (H _ _ _).
+    rewrite (H0 _ _ _).
+    reflexivity.
+  Qed.
+
+  Module Export ProfNotations.
+    Coercion P: prefunctor >-> Funclass.
+
+    #[local]
+     Definition proj1_prof [K L]: prof K L → prefunctor K L := @proj1_sig _ _.
+    Coercion proj1_prof:prof >-> prefunctor.
+
+    #[local]
+    Definition proj2_prof [K L] (f: prof K L): profunctor f := proj2_sig f.
+    Coercion proj2_prof:prof >-> profunctor.
+    Existing Instance proj2_prof.
+  End ProfNotations.
+End Profunctor.
+
 Module Import Functor.
   #[universes(cumulative)]
   Record prefunctor (C D: Category) := limit {
@@ -697,11 +790,25 @@ Import Groupoid.GroupoidNotations.
 Module Import Discrete.
   Import Groupoid.
 
+  Class Discrete := {
+    G: Groupoid ;
+    thin [x y] (f g: G x y): f == g ;
+  }.
+
+  Coercion G: Discrete >-> Groupoid.
+  Existing Instance G.
+End Discrete.
+
+Module Import FreeDiscrete.
+  Import Groupoid.
+
   #[program]
-   Definition Dis (S: Bishop): Groupoid := {|
-    C := {|
-      Obj := S ;
-      Mor A B := (A == B) /~ {| equiv _ _ := True |} ;
+   Definition Dis (S: Bishop): Discrete := {|
+    G := {|
+      C := {|
+        Obj := S ;
+        Mor A B := (A == B) /~ {| equiv _ _ := True |} ;
+      |} ;
     |} ;
   |}.
 
@@ -722,7 +829,7 @@ Module Import Discrete.
     symmetry.
     assumption.
   Defined.
-End Discrete.
+End FreeDiscrete.
 
 Module Import Decidable.
   Import Groupoid.
@@ -933,6 +1040,13 @@ Module Import Monoids.
   Import Monoid.
 
   #[program]
+   Definition Trivial: Monoid := {|
+    S := Bishops.True ;
+    unit := I ;
+    app _ _ := I ;
+  |}.
+
+  #[program]
    Definition Circle: Monoid := {|
     S := nat /~ {| equiv := eq |} ;
 
@@ -969,6 +1083,12 @@ Module Import Groups.
   Import Group.
 
   Local Open Scope Z_scope.
+
+  #[program]
+   Definition Trivial: Group := {|
+    M := Monoids.Trivial ;
+    invert _ := I ;
+  |}.
 
   #[program]
    Definition Circle: Group := {|
@@ -1145,7 +1265,7 @@ Import MonomorphismNotations.
 
 Module Import Over.
   #[universes(cumulative)]
-   Record bundle [C: Category] (t: C) := suprema { s: C ; π: C s t ; }.
+   Record bundle [C: Category] (t: C) := supremum { s: C ; π: C s t ; }.
 
   Arguments s [C] [t] _.
   Arguments π [C] [t] _.
@@ -1189,10 +1309,63 @@ Module Import Over.
   End over.
 
   Module Export OverNotations.
-    Notation "'sup' A , P" := {| s := A ; π := P |}.
+    Notation "'lub' A , P" := {| s := A ; π := P |}.
     Infix "/" := Over.
   End OverNotations.
 End Over.
+
+Module Import Under.
+  #[universes(cumulative)]
+   Record cobundle [C: Category] (s: C) := infima { t: C ; i: C s t ; }.
+
+  Arguments t [C] [s] _.
+  Arguments i [C] [s] _.
+
+  Section under.
+    Variables (C: Category) (s: C).
+
+    #[program]
+    Definition Under: Category := {|
+      Obj := cobundle s ;
+      Mor A B := {f: t A ~> t B | i B == f ∘ i A } /~ {| equiv f g := (f :>) == (g :>) |} ;
+
+      id A := @id _ (t A) ;
+      compose A B C := @compose _ (t A) (t B) (t C) ;
+    |}.
+
+    Next Obligation.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      - reflexivity.
+      - symmetry.
+        assumption.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite <- compose_assoc.
+      rewrite H0, H.
+      reflexivity.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End under.
+
+  Module Export UnderNotations.
+    Notation "'glb' A , P" := {| t := A ; i := P |}.
+    Infix "\" := Under.
+  End UnderNotations.
+End Under.
+
+Definition PointedSet := Bishop\Bishops.True.
 
 Module Import Arrow.
   #[universes(cumulative)]
@@ -1263,6 +1436,8 @@ Module Import Arrow.
 End Arrow.
 
 Module Import Isomorphism.
+  Import Groupoid.
+
   #[universes(cumulative)]
    Record iso [K: Category] (A B: K) := {
     to: K A B ;
@@ -1277,16 +1452,24 @@ Module Import Isomorphism.
   Arguments from_to [K A B] _.
 
   #[program]
-  Definition Core (K: Category): Category := {|
-    Obj := K ;
-    Mor A B := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |} ;
+   Definition Core (K: Category): Groupoid := {|
+    C := {|
+      Obj := K ;
+      Mor A B := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |} ;
 
-    id A := {| to := id ; from := id |} ;
-    compose A B C f g :=
-      {|
-        to := to f ∘ to g ;
-        from := from g ∘ from f
-      |} ;
+      id A := {| to := id ; from := id |} ;
+      compose A B C f g :=
+        {|
+          to := to f ∘ to g ;
+          from := from g ∘ from f
+        |} ;
+    |} ;
+    invert _ _ f := {|
+      to := from f ;
+      from := to f ;
+      to_from := from_to f ;
+      from_to := to_from f ;
+    |} ;
   |}.
 
   Next Obligation.
@@ -1338,16 +1521,19 @@ Module Import Isomorphism.
       all:assumption.
   Qed.
 
-  Definition invert [K:Category] [A B: K] (f: Core _ A B): Core _ B A :=
-    {|
-    to := from f ;
-    from := to f ;
-    to_from := from_to f ;
-    from_to := to_from f ;
-    |}.
+  Next Obligation.
+  Proof.
+    split.
+    all: apply from_to.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    split.
+    all: apply to_from.
+  Qed.
 
   Module Export IsomorphismNotations.
-    Notation "A ⁻¹" := (invert A).
     Notation "A <~> B" := (Core _ A B).
   End IsomorphismNotations.
 End Isomorphism.
@@ -1379,55 +1565,63 @@ End Bicategory.
 Import Bicategory.BicategoryNotations.
 
 
-Module Import Opposite.
-  #[program]
-   Definition op (K: Category): Category := {|
-    Obj := K ;
-    Mor A B := K B A ;
 
-    id A := @id K A ;
-    compose A B C f g := g ∘ f ;
-   |}.
+(* (* Like a generalized bundle *) *)
+(* Record hFiber [A B: Category] (f: Funct A B) (c: B) := { *)
+(*   s: A ; *)
+(*   π: c ~> proj1_sig f s; *)
+(* }. *)
 
-  Next Obligation.
-  Proof.
-    rewrite H, H0.
-    reflexivity.
-  Qed.
+(* Definition Boolean := Decidable (simple bool) bool_dec. *)
+(* #[program] *)
+(* Definition cospan (A B: Preset) := hFiber (limit (λ (x: Boolean), if x then A else B) (λ _ _ x, _)). *)
 
-  Module Import OppositeNotations.
-    Notation "C 'ᵒᵖ'" := (op C).
-  End OppositeNotations.
+(* Next Obligation. *)
+(*   destruct H, H0. *)
+(*   all: cbn in *. *)
+(*   all: try contradiction. *)
+(*   - apply X. *)
+(*   - apply X. *)
+(* Defined. *)
 
-  #[program]
-   Definition neg (C:Category): Funct ((C ᵒᵖ) ᵒᵖ) C :=
-    limit
-      (λ x: (C ᵒᵖ) ᵒᵖ, x: C)
-      (λ _ _ (x: C _ _), x).
+(* Next Obligation. *)
+(*   exists. *)
+(*   all: cbn in *. *)
+(*   all: unfold cospan_obligation_1 in *. *)
+(*   all: cbn in *. *)
+(*   - intros. *)
+(*     destruct X, Y, Z. *)
+(*     all: try contradiction. *)
+(*     all: reflexivity. *)
+(*   - intros. *)
+(*     destruct A0. *)
+(*     all: reflexivity. *)
+(*   - intros. *)
+(*     destruct A0, B0. *)
+(*     all: try contradiction. *)
+(*     all: reflexivity. *)
+(* Qed. *)
 
-  Next Obligation.
-  Proof.
-    exists.
-    all: Tactics.program_simpl;cbn.
-    all: reflexivity.
-  Qed.
-End Opposite.
+(* Check cospan. *)
+(* Definition bar: cospan nat bool nat. *)
+(*   exists true. *)
+(*   cbn. *)
 
 Module Bundle.
   #[universes(cumulative)]
-  Record bundle A := limit {
-    dom: Type ;
-    proj: dom → A ;
+  Record bundle A := suprema {
+    s: Type ;
+    π: s → A ;
   }.
 
-  Arguments limit [A dom].
-  Arguments dom [A].
-  Arguments proj [A].
+  Arguments suprema [A s].
+  Arguments s [A].
+  Arguments π [A].
 
-  Coercion dom: bundle >-> Sortclass.
-  Coercion proj: bundle >-> Funclass.
+  Coercion s: bundle >-> Sortclass.
+  Coercion π: bundle >-> Funclass.
 
-  Notation "'sup' x .. y , P" := {| proj x := .. {| proj y := P |} .. |}
+  Notation "'sup' x .. y , P" := {| π x := .. {| π y := P |} .. |}
   (at level 200, x binder, y binder, right associativity,
   format "'[ ' '[ ' 'sup'  x .. y ']' , '/' P ']'").
 End Bundle.
@@ -1596,14 +1790,14 @@ Module CatArrow.
   Record arrow := arr {
     source: Category ;
     target: Category ;
-    proj: Functor source target ;
+    proj: Funct source target ;
   }.
 
   Arguments arr [source target].
 
   Record arrow1 (A B: arrow) := arr1 {
-    source1: Functor (source A) (source B) ;
-    target1: Functor (target A) (target B) ;
+    source1: Funct (source A) (source B) ;
+    target1: Funct (target A) (target B) ;
     proj1 x: proj B (source1 x) ~> target1 (proj A x) ;
   }.
 
@@ -1739,7 +1933,6 @@ Definition Trivial: Monoid := {|
 
 
 Module Import Thin.
-  Definition IsThin (C: Category) := ∀ x y (f g: C x y), f == g.
 End Thin.
 
 
@@ -2112,17 +2305,6 @@ Module MonoidalPresheaf.
 
 End MonoidalPresheaf.
 
-Module Discrete.
-  Import TruncateNotations.
-
-  Class Discrete := {
-    Discrete_Category: Category ;
-    thin: IsThin Discrete_Category ;
-    invert A B: Discrete_Category A B → Discrete_Category B A ;
-  }.
-
-  Coercion Discrete_Category: Discrete >-> Category.
-End Discrete.
 
 Module Import Presheaf.
   Import TruncateNotations.
