@@ -17,59 +17,57 @@ Require Import Coq.Unicode.Utf8.
 Require Import Coq.Lists.List.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
-Require Import Psatz.
 
 Module Import Bundle.
   #[universes(cumulative)]
-  Record bundle A := {
-    dom: Type ;
-    proj: dom → A ;
+  Record bundle A := suprema {
+    s: Type ;
+    π: s → A ;
   }.
 
-  Arguments dom [A].
-  Arguments proj [A].
+  Arguments suprema [A s].
+  Arguments s [A].
+  Arguments π [A].
 
-  Coercion dom: bundle >-> Sortclass.
-  Coercion proj: bundle >-> Funclass.
+  Coercion s: bundle >-> Sortclass.
+  Coercion π: bundle >-> Funclass.
+
+  Notation "'sup' x .. y , P" := {| π x := .. {| π y := P |} .. |}
+  (at level 200, x binder, y binder, right associativity,
+  format "'[ ' '[ ' 'sup'  x .. y ']' , '/' P ']'").
 End Bundle.
 
-Module Spans.
-  #[universes(cumulative)]
-  Record span [A] (B: A → Type) := {
-    dom: Type ;
-    proj x: dom → B x ;
-  }.
-
-  Arguments dom [A].
-  Arguments proj [A].
-
-  Coercion dom: span >-> Sortclass.
-  Coercion proj: span >-> Funclass.
+Module Import Span.
 
   #[universes(cumulative)]
-  Record cospan [A] (B: A → Type) := {
-    cod: Type ;
-    inj x: B x → cod ;
+  Record span A B := {
+    s: Type ;
+    π1: s → A ;
+    π2: s → B ;
   }.
 
-  Arguments cod [A].
-  Arguments inj [A].
+  Arguments s [A B].
+  Arguments π1 [A B].
+  Arguments π2 [A B].
 
-  Coercion cod: cospan >-> Sortclass.
-  Coercion inj: cospan >-> Funclass.
-End Spans.
+  Coercion s: span >-> Sortclass.
+
+  Module Export SpanNotations.
+    Reserved Notation "'SPAN' x , P ———— Q" (x ident, at level 90, format "'SPAN' x , '//' P '//' ———— '//' Q").
+    Reserved Notation "'SPAN' x : A , P ———— Q" (x ident, at level 90, format "'SPAN' x : A , '//' P '//' ———— '//' Q").
+    Reserved Notation "'SPAN' ( x : A ) , P ———— Q" (x ident, at level 90, format "'SPAN' ( x : A ) , '//' P '//' ———— '//' Q").
+
+    Notation "'SPAN' x , P ———— Q" := {| π1 x := P ; π2 x := Q |} .
+    Notation "'SPAN' x : A , P ———— Q" := {| π1 (x : A) := P ; π2 (x : A) := Q |} .
+    Notation "'SPAN' ( x : A ) , P ———— Q" := {| π1 (x : A) := P ; π2 (x : A) := Q |} .
+  End SpanNotations.
+End Span.
 
 Module Import Logic.
   Import List.ListNotations.
 
   (* FIXME have an or for results as well ? *)
-  Record axiom C := entails {
-                       tail: bundle C ;
-                       head: bundle C ;
-                       }.
-  Arguments entails [C].
-  Arguments head [C].
-  Arguments tail [C].
+  Definition axiom C := span C C.
 
   Definition axiom_scheme C := bundle (axiom C).
   Definition theory C := bundle (axiom_scheme C).
@@ -80,29 +78,13 @@ Module Import Logic.
   | syn_compose {A B C}: syn B C → syn A B → syn A C
 
   | syn_axiom rule args C D:
-      (∀ ix, syn C (tail (th rule args) ix)) →
-      (∀ ix, syn (head (th rule args) ix) D) →
+      (∀ ix, syn C (π1 (th rule args) ix)) →
+      (∀ ix, syn (π2 (th rule args) ix) D) →
       syn C D
   .
-
-  Module Export LogicNotations.
-    Declare Scope logic_scope.
-    Delimit Scope logic_scope with logic.
-
-    Bind Scope logic_scope with axiom.
-    Bind Scope logic_scope with axiom_scheme.
-    Bind Scope list_scope with theory.
-
-    Notation "[ P ]" := {| proj := P |} : logic_scope .
-
-    Notation "'FREE' x , P" := (λ x, P) (x pattern, at level 200) : logic_scope .
-    Infix "————" := entails (at level 90) : logic_scope .
-  End LogicNotations.
 End Logic.
 
-
 Module Import Sanity.
-
   #[universes(cumulative)]
   Class Propositional := {
     P: Type ;
@@ -113,91 +95,95 @@ Module Import Sanity.
     false: P ;
     or: P → P → P ;
   }.
-  Open Scope logic_scope.
 
   Infix "∧" := and.
   Infix "∨" := or.
 
   Variant idx :=
-  | taut
   | bang
+  | absurd
   | inl | inr | fanin
   | fst | snd | fanout.
 
-  Definition propositional `{Propositional}: theory P := {|
-    dom := idx ;
-    proj x :=
-      match x with
-      | taut => [FREE I,
-                 [ λ (ix: False), match ix with end ]
-                 ————
-                 [FREE I, true]]
-      | bang => [FREE A,
-                 [FREE I, false]
-                 ————
-                 [FREE I, A]]
+  Definition propositional `{Propositional}: theory P := sup ix,
+    match ix with
+    | bang => sup A,
+              SPAN (_: True),
+               A
+               ————
+               true
 
-      | fanout => [FREE (A, B),
-                   [ λ (ix: bool), if ix then A else B ]
-                   ————
-                   [FREE I, A ∧ B]]
-      | fst => [FREE (A, B),
-                [FREE I, A ∧ B]
-                ————
-                [FREE I, A]]
-      | snd => [FREE (A, B),
-                [FREE I, A ∧ B]
-                ————
-                [FREE I, B]]
-
-      | fanin => [FREE (A, B),
-                  [FREE I, A ∨ B]
+    | absurd => sup A,
+                SPAN (_: True),
+                  false
                   ————
-                  [λ (ix: bool), if ix then A else B]]
-      | inl => [FREE (A, B),
-                [FREE I, A]
-                ————
-                [FREE I, A ∨ B]]
-      | inr => [FREE (A, B),
-                [FREE I, B]
-                ————
-                [FREE I, A ∨ B]]
-      end
-   |}.
+                  A
+
+    | fanin => sup '(A, B),
+                SPAN b:bool,
+                      A ∨ B
+                      ————
+                      if b then A else B
+
+    | inl => sup '(A, B),
+             SPAN _:True,
+                   A
+                   ————
+                   A ∨ B
+    | inr => sup '(A, B),
+             SPAN _:True,
+                   B
+                   ————
+                   A ∨ B
+
+    | fanout => sup '(A, B),
+                SPAN b:bool,
+                      (if b then A else B)
+                      ————
+                      A ∧ B
+
+    | fst => sup '(A, B),
+             SPAN _:True,
+                   A ∧ B
+                   ————
+                   A
+
+    | snd => sup '(A, B),
+             SPAN _:True,
+                   A ∧ B
+                   ————
+                   B
+    end
+    .
+
 
   Section sanity.
     Context `{Propositional}.
 
     Definition free := @syn _ propositional.
 
-    Definition taut' C: free C true := @syn_axiom _ propositional
-                                                  taut I
+    Definition bang' C: free C true := @syn_axiom _ propositional
+                                                  bang C
                                                   C true
-                                     (λ ix, match ix with end)
-                                     (FREE I, syn_id).
-
-    Definition bang' C: free false C := @syn_axiom _ propositional
-                                                   bang C
-                                                   false C
-                                                   (FREE I, syn_id)
-                                                   (FREE I, syn_id).
+                                                  (λ _, syn_id)
+                                                  (λ _, syn_id).
 
     Definition inl' A B: free A (A ∨ B) := @syn_axiom _ propositional
                                                       inl (A, B)
                                                       A (A ∨ B)
-                                                      (FREE I, syn_id) (FREE I, syn_id).
+                                                      (λ _, syn_id) (λ _, syn_id).
     Definition inr' A B: free B (A ∨ B) := @syn_axiom _ propositional
                                                       inr (A, B)
                                                       B (A ∨ B)
-                                                      (FREE I, syn_id)
-                                                      (FREE I, syn_id).
+                                                      (λ _, syn_id)
+                                                      (λ _, syn_id).
 
     #[program]
     Definition fanin' C A B (f: free A C) (g: free B C) :=
       @syn_axiom _ propositional
                  fanin (A, B)
                  (A ∨ B) C
-                 (FREE I, syn_id) _.
+                 (λ _, syn_id) _.
 
     Next Obligation.
       destruct ix.
@@ -210,7 +196,7 @@ Module Import Sanity.
       @syn_axiom _ propositional
                  fanout (A, B)
                  C (A ∧ B)
-                 _ (FREE I, syn_id).
+                 _ (λ _, syn_id).
     Next Obligation.
       destruct ix.
       - apply f.
@@ -220,13 +206,143 @@ Module Import Sanity.
     Definition fst' A B: free (A ∧ B) A := @syn_axiom _ propositional
                                                       fst (A, B)
                                                       (A ∧ B) A
-                                                      (FREE I, syn_id) (FREE I, syn_id).
+                                                      (λ _, syn_id) (λ _, syn_id).
     Definition snd' A B: free (A ∧ B) B := @syn_axiom _ propositional
                                                       snd (A, B)
                                                       (A ∧ B) B
-                                                      (FREE I, syn_id) (FREE I, syn_id).
-
+                                                      (λ _, syn_id) (λ _, syn_id).
   End sanity.
+
+  Instance as_Prop: Propositional := {
+    P := Prop ;
+
+    true := True ;
+    and := Logic.and ;
+
+    false := False ;
+    or := Logic.or ;
+  }.
+
+  Definition eval_Prop [A B: @P as_Prop]: free A B → A → B.
+    intros f.
+    induction f.
+    - intro x.
+      apply x.
+    - intro x.
+      apply (IHf1 (IHf2 x)).
+    - destruct rule.
+      all: cbn in *.
+      + intro x.
+        apply H0.
+        all: auto.
+      + intro x.
+        set (H' := H I x).
+        contradiction.
+      + intro x.
+        destruct args as [P Q].
+        cbn in *.
+        apply (H0 I).
+        left.
+        apply (H I x).
+      + intro x.
+        destruct args as [P Q].
+        cbn in *.
+        apply (H0 I).
+        right.
+        apply (H I x).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        refine (_ (H Datatypes.false x)).
+        * intro x'.
+          destruct x'.
+          -- apply (H0 Datatypes.true H1).
+          -- apply (H0 Datatypes.false H1).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        apply (H0 I).
+        apply (H I x).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        apply (H0 I).
+        apply (H I x).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        apply (H0 Datatypes.false).
+        split.
+        * apply (H Datatypes.true x).
+        * apply (H Datatypes.false x).
+  Defined.
+
+  Instance as_Set: Propositional := {
+    P := Set ;
+
+    true := unit ;
+    and := prod ;
+
+    false := Empty_set ;
+    or := sum ;
+  }.
+
+  Definition eval_Set [A B: @P as_Set]: free A B → A → B.
+    intros f.
+    induction f.
+    - intro x.
+      apply x.
+    - intro x.
+      apply (IHf1 (IHf2 x)).
+    - destruct rule.
+      all: cbn in *.
+      + intro x.
+        apply (H0 I tt).
+      + intro x.
+        set (H' := H I x).
+        contradiction.
+      + intro x.
+        destruct args as [P Q].
+        cbn in *.
+        apply (H0 I).
+        left.
+        apply (H I x).
+      + intro x.
+        destruct args as [P Q].
+        cbn in *.
+        apply (H0 I).
+        right.
+        apply (H I x).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        refine (_ (H Datatypes.false x)).
+        * intro x'.
+          destruct x' as [p|q].
+          -- apply (H0 Datatypes.true p).
+          -- apply (H0 Datatypes.false q).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        apply (H0 I).
+        apply (H I x).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        apply (H0 I).
+        apply (H I x).
+      + destruct args as [P Q].
+        cbn in *.
+        intro x.
+        apply (H0 Datatypes.false).
+        split.
+        * apply (H Datatypes.true x).
+        * apply (H Datatypes.false x).
+  Defined.
+
+  Example foo `{Propositional}: free true (true ∧ true) := fanout' _ _ _ (bang' _) (bang' _).
+
+  Definition foo' := eval_Set foo.
 End Sanity.
 
 

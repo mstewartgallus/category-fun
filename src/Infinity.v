@@ -63,6 +63,7 @@ Obligation Tactic := auto; cbn; Tactics.program_simpl; try reflexivity.
 
 (* FIXME get propositional truncation from elsewhere *)
 Module Import Utils.
+  #[universes(cumulative)]
   Variant truncate A: Prop :=
   | truncate_intro (_: A): truncate A.
   Arguments truncate_intro [A] _.
@@ -70,6 +71,21 @@ Module Import Utils.
   Module TruncateNotations.
     Notation "| A |" := (truncate A): type_scope.
   End TruncateNotations.
+
+  #[universes(cumulative)]
+  Record someT [A] (P: A → Type) := some_intro {
+    val: A ;
+    pred: P val ;
+  }.
+  Arguments some_intro [A P].
+  Arguments val [A P].
+  Arguments pred [A P].
+
+  Module Export SomeNotations.
+    Notation "'some' x .. y , P" := (someT (λ x, .. (someT (λ y,  P)) .. ))
+                                     (at level 200, x binder, y binder, right associativity,
+                                      format "'[ ' '[ ' 'some' x .. y ']' , '/' P ']'").
+  End SomeNotations.
 End Utils.
 
 Module Import Bishop.
@@ -99,28 +115,6 @@ Module Import Bishop.
     Notation "A /~ B" := {| T := A ; Bishop_Setoid := B |}: bishop_scope.
   End BishopNotations.
 End Bishop.
-
-Module Bishops.
-  Definition simple (t:Type): Bishop := t /~ {| equiv := eq |}.
-
-  #[program]
-  Definition True: Bishop := True /~ {| equiv _ _ := True |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all:exists.
-  Qed.
-
-  #[program]
-  Definition False: Bishop := False /~ {| equiv x := match x with end |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all:intro;contradiction.
-  Qed.
-End Bishops.
 
 Module Import Category.
   #[universes(cumulative)]
@@ -196,6 +190,23 @@ Proof.
   rewrite (H _), (H0 x).
   reflexivity.
 Qed.
+
+Module w.
+  Definition fiber [A B] (f: A → B) (y: B): Prop :=
+    ∃ x, y = f x.
+
+  Section w.
+    Context [X Y Z: Type].
+
+    Variables f: X → Z.
+    Variables g: X → Y.
+    Variables h: Y → Z.
+
+    Inductive w: Type := sup (s: X) (π: fiber (λ x, h (g x)) (f s) → w).
+  End w.
+
+  Arguments sup [X Y Z f g h].
+End w.
 
 Module Import Sets.
   Definition bishop_mor [A B:Bishop] (op: Preset A B) := ∀ x y, x == y → op x == op y.
@@ -419,6 +430,564 @@ End Reflection.
 
 Obligation Tactic := Tactics.program_simpl; repeat (try split; try category; reflexivity).
 
+Module Import Over.
+  #[universes(cumulative)]
+   Record bundle [C: Category] (t: C) := supremum { s: C ; π: C s t ; }.
+
+  Arguments s [C] [t] _.
+  Arguments π [C] [t] _.
+
+  Section over.
+    Variables (C: Category) (t: C).
+
+    #[program]
+    Definition Over: Category := {|
+      Obj := bundle t ;
+      Mor A B :=  {f: s A ~> s B | π B ∘ f == π A } /~ {| equiv f g := (f :>) == (g :>) |} ;
+
+      id A := @id _ (s A) ;
+      compose A B C := @compose _ (s A) (s B) (s C) ;
+    |}.
+
+    Next Obligation.
+    Proof.
+      exists.
+      all: unfold Reflexive, Symmetric, Transitive.
+      - reflexivity.
+      - symmetry.
+        assumption.
+      - intros ? ? ? p q.
+        rewrite p, q.
+        reflexivity.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite compose_assoc.
+      rewrite H0, H.
+      reflexivity.
+    Qed.
+
+    Next Obligation.
+    Proof.
+      rewrite H, H0.
+      reflexivity.
+    Qed.
+  End over.
+
+  Module Export OverNotations.
+    Notation "'lub' A , P" := {| s := A ; π := P |}.
+    Infix "/" := Over.
+    Coercion s: bundle >-> Obj.
+  End OverNotations.
+End Over.
+
+Module Import Functor.
+  #[universes(cumulative)]
+  Record prefunctor (C D: Category) := limit {
+    op: C → D ;
+    map [A B: C]: C A B → D (op A) (op B) ;
+  }.
+
+  Arguments limit [C D].
+  Arguments op [C D].
+  Arguments map [C D] p [A B].
+
+  #[universes(cumulative)]
+  Class functor [C D: Category] (F: prefunctor C D): Prop := {
+    map_composes [X Y Z] (x: C Y Z) (y: C X Y): map F x ∘ map F y == map F (x ∘ y) ;
+
+    map_id {A}: map F (@id _ A) == id ;
+    map_compat [A B] (f f': C A B): f == f' → map F f == map F f' ;
+  }.
+
+  Add Parametric Morphism (C D: Category) (F: prefunctor C D) `(@functor C D F) (A B: C)  : (@map _ _ F A B)
+      with signature equiv ==> equiv as map_mor.
+  Proof.
+    intros ? ? ?.
+    apply map_compat.
+    assumption.
+  Qed.
+
+  #[local]
+  Definition funct K L := {p: prefunctor K L | functor p }.
+
+  #[program]
+  Definition Funct (K L: Category): Category := {|
+    Obj := funct K L ;
+    Mor A B := (∀ x, L (op A x) (op B x)) /~ {| equiv f g := ∀ x, f x == g x |} ;
+    id _ _ := id ;
+    compose _ _ _ f g _ := f _ ∘ g _ ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive; cbn.
+    - intros.
+      reflexivity.
+    - intros ? ? p t.
+      symmetry.
+      apply (p t).
+    - intros ? ? ? p q t.
+      rewrite (p t), (q t).
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply compose_compat.
+    all:auto.
+  Qed.
+
+  Module Export FunctorNotations.
+    Coercion op: prefunctor >-> Funclass.
+
+    #[local]
+     Definition proj1_funct [K L]: funct K L → prefunctor K L := @proj1_sig _ _.
+    Coercion proj1_funct:funct >-> prefunctor.
+
+    #[local]
+    Definition proj2_funct [K L] (f: funct K L): functor f := proj2_sig f.
+    Coercion proj2_funct:funct >-> functor.
+    Existing Instance proj2_funct.
+  End FunctorNotations.
+
+  #[program]
+   #[local]
+   Definition compose [A B C] (f: Funct B C) (g: Funct A B): Funct A C :=
+    limit (λ x, proj1_sig f (proj1_sig g x)) (λ _ _ x, map f (map g x)).
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      repeat rewrite map_composes.
+      reflexivity.
+    - intros.
+      repeat rewrite map_id.
+      reflexivity.
+    - intros.
+      rewrite H.
+      reflexivity.
+  Qed.
+End Functor.
+
+Module Import Algebra.
+  Module Import Algebra.
+    #[universes(cumulative)]
+    Record Algebra [C:Category] (F: Funct C C) := {
+      s: C ;
+      π: proj1_sig F s ~> s
+    }.
+
+    Arguments s [C F] _.
+    Arguments π [C F] _.
+  End Algebra.
+
+  #[program]
+   Definition Algebra [C: Category] (F: Funct C C): Category := {|
+    Obj := Algebra F ;
+    Mor A B:=  {m: s A ~> s B | m ∘ π A == π B ∘ map (proj1_sig F) m }
+                 /~
+                 {| equiv x y := proj1_sig x == proj1_sig y |} ;
+
+    id A := @id _ (s A) ;
+    compose A B C := @compose _ (s A) (s B) (s C) ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive.
+    - intros.
+      reflexivity.
+    - intros.
+      symmetry.
+      auto.
+    - intros ? ? ? p q.
+      rewrite p, q.
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite map_id, compose_id_left, compose_id_right.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite <- map_composes.
+    rewrite compose_assoc.
+    rewrite <- H0.
+    rewrite <- compose_assoc.
+    rewrite H.
+    rewrite compose_assoc.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
+End Algebra.
+
+Definition fiber [C: Category] [A B D] (f: C A B) (y: C D B) :=
+  ∃ x, y == f ∘ x.
+
+Module Bishops.
+  Close Scope nat.
+
+  Definition simple (t:Type): Bishop := t /~ {| equiv := eq |}.
+
+  Definition sum_eqv (A B: Bishop) (x y: A + B) :=
+    match (x, y) with
+      | (inl x', inl y') => x' == y'
+      | (inr x', inr y') => x' == y'
+      | _ => False
+    end.
+
+  #[program]
+   Definition sum (A B: Bishop): Bishop := (A + B) /~ {| equiv := sum_eqv A B |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+  #[program]
+   Definition fanin {C A B: Bishop} (f: A ~> C) (g: B ~> C): sum A B ~> C := λ x,
+                                                                             match x with
+                                                                             | inl x' => f x'
+                                                                             | inr x' => g x'
+                                                                             end.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+  Definition inl {A B: Bishop}: A ~> sum A B := inl.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    cbn.
+    assumption.
+  Qed.
+
+  #[program]
+  Definition inr {A B: Bishop}: B ~> sum A B := inr.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    cbn.
+    assumption.
+  Qed.
+  #[program]
+  Definition True: Bishop := True /~ {| equiv _ _ := True |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all:exists.
+  Qed.
+
+  #[program]
+  Definition bang {A}: A ~> True := λ _, I.
+
+  #[program]
+  Definition False: Bishop := False /~ {| equiv x := match x with end |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all:intro;contradiction.
+  Qed.
+
+
+  #[program]
+   Definition prod (A B: Bishop): Bishop := A * B /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: unfold Reflexive, Symmetric, Transitive.
+    - split.
+      all: reflexivity.
+    - split.
+      all: symmetry.
+      all: apply H.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      rewrite p, q, p', q'.
+      split.
+      all: reflexivity.
+  Qed.
+
+  #[program]
+  Definition fanout {C A B: Bishop} (f: C ~> A) (g: C ~> B): C ~> prod A B := λ x, (f x, g x).
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+  Definition Σ [C: Category] [X Y: C] (f: C X Y): Funct (C/X) (C/Y) :=
+    limit
+      (λ (F:C/X), (lub (s F), f ∘ π F):C/Y)
+      (λ _ _ x, x).
+
+  Next Obligation.
+  Proof.
+    rewrite <- compose_assoc.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      reflexivity.
+    - intros.
+      reflexivity.
+    - intros ? ? ? ? p.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  #[program]
+   Definition fiber [C: Category] [X Y Z: C] (g: X ~> Y) (y: Z ~> Y): Bishop :=
+    (∃ x, y == g ∘ x) /~ {| equiv _ _ := Logic.True |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: exists.
+  Qed.
+
+  Variant dep_prod [X Y: Bishop] (g: X ~> Y) S := dp (y: True ~> Y) (fib: fiber g y ~> S).
+
+  Arguments dp [X Y g S].
+
+  #[program]
+  Definition dep_prod' [X Y: Bishop] (g: X ~> Y) S :=
+    dep_prod g S /~ {| equiv '(dp x xf) '(dp y yf) := x == y ∧ ∀ p q, xf p == yf q |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+   Definition DepProd [X Y: Bishop] (g: X ~> Y): Funct (Bishop/X) (Bishop/Y) :=
+    limit
+      (λ (S:Bishop/X),
+       (lub (dep_prod' g (s S)), λ '(dp y _), y I):Bishop/Y)
+      (λ _ _ x '(dp y yf), dp y (λ p, proj1_sig x (yf p))).
+
+  Next Obligation.
+  Proof.
+    intros x y.
+    destruct x, y.
+    intro p.
+    cbn in *.
+    destruct p as [p q].
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros l r.
+    destruct l, r.
+    cbn in *.
+    intro p.
+    destruct p as [p q].
+    apply (proj2_sig x).
+    apply (proj2_sig yf).
+    exists.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    cbn in *.
+    intros A B.
+    destruct A, B.
+    cbn in *.
+    intro p.
+    split.
+    - intro.
+      apply p.
+    - intros.
+      apply (proj2_sig x).
+      apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    destruct t.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+
+  (* #[program] *)
+  (*  Definition BaseChange [X Z: Bishop] (g: X ~> Z): Funct (Bishop/Z) (Bishop/X) := *)
+  (*   limit *)
+  (*     (λ (S:Bishop/Z), *)
+  (*      (lub (pullback {| i1 := π S ; i2 := g |}), λ x, snd x):Bishop/X) *)
+  (*     (λ _ _ f, λ y, (f (fst y), snd y)). *)
+
+  (* Next Obligation. *)
+  (* Proof. *)
+  (*   intros ? ? p. *)
+  (*   cbn in *. *)
+  (*   apply p. *)
+  (* Qed. *)
+
+  (* Next Obligation. *)
+  (* Proof. *)
+  (*   rewrite (H0 _). *)
+  (*   rewrite H. *)
+  (*   reflexivity. *)
+  (* Qed. *)
+
+  (* Next Obligation. *)
+  (* Proof. *)
+  (*   intros ? ? p. *)
+  (*   cbn. *)
+  (*   split. *)
+  (*   - apply (proj2_sig f). *)
+  (*     apply p. *)
+  (*   - apply p. *)
+  (* Qed. *)
+
+  (* Next Obligation. *)
+  (* Proof. *)
+  (*   admit. *)
+  (* Admitted. *)
+
+  (* Section w. *)
+  (*   Context [X Y Z: Bishop]. *)
+
+  (*   Variables f: X ~> Z. *)
+  (*   Variables g: X ~> Y. *)
+  (*   Variables h: Y ~> Z. *)
+
+  (*   Definition Poly: Funct (Bishop/Z) (Bishop/Z) := *)
+  (*     Functor.compose (Functor.compose (DepSum h) (DepProd g)) (BaseChange f). *)
+
+  (*   Inductive w := sup (s: True ~> Y) (π: fiber g s → {wx : w * X | Logic.True } ). *)
+
+  (*   Definition s '(sup x _) := x. *)
+  (*   Definition π: ∀ x, fiber _ (s x) → _ := λ '(sup _ p), p. *)
+
+  (*   #[program] *)
+  (*   Fixpoint weq (l r: w): Prop := *)
+  (*     ∃ (p: s l == s r), *)
+  (*     ∀ x y, weq (fst (π l x)) (fst (π r y)) *)
+  (*            ∧ *)
+  (*            snd (π l x) == snd (π r y). *)
+
+  (*   #[program] *)
+  (*    Definition W: Algebra Poly := {| *)
+  (*     Algebra.s := lub (w /~ {| equiv := @weq |}), λ x, h (s x I) ; *)
+  (*     Algebra.π '(dp y yf) := sup y (λ x, yf x) ; *)
+  (*    |}. *)
+
+  (*   Next Obligation. *)
+  (*   Proof. *)
+  (*     admit. *)
+  (*   Admitted. *)
+
+  (*   Next Obligation. *)
+  (*   Proof. *)
+  (*     admit. *)
+  (*   Admitted. *)
+
+  (*   Next Obligation. *)
+  (*   Proof. *)
+  (*     admit. *)
+  (*   Admitted. *)
+
+  (*   Next Obligation. *)
+  (*   Proof. *)
+  (*     apply (proj2_sig h). *)
+  (*     destruct t. *)
+  (*     cbn in *. *)
+  (*     reflexivity. *)
+  (*   Qed. *)
+
+  (*   (* #[program] *) *)
+  (*   (*  Definition W_rect A: W ~> A := *) *)
+  (*   (*   fix rect x := *) *)
+  (*   (*     match x with *) *)
+  (*   (*     | sup y yf => Algebra.π A (dp y (λ fib, *) *)
+  (*   (*                                      let '(a, b) := yf _ in *) *)
+  (*   (*                                      (rect a, b))) *) *)
+  (*   (*     end. *) *)
+
+  (*   (* Next Obligation. *) *)
+  (*   (* Proof. *) *)
+  (*   (*   apply (ex_intro _ fib). *) *)
+  (*   (*   apply H. *) *)
+  (*   (* Defined. *) *)
+
+  (*   (* Next Obligation. *) *)
+  (*   (* Proof. *) *)
+  (*   (*   admit. *) *)
+  (*   (* Admitted. *) *)
+
+  (*   (* Next Obligation. *) *)
+  (*   (* Proof. *) *)
+  (*   (*   admit. *) *)
+  (*   (* Admitted. *) *)
+
+  (*   (* Next Obligation. *) *)
+  (*   (* Proof. *) *)
+  (*   (*   admit. *) *)
+  (*   (* Admitted. *) *)
+  (* End w. *)
+
+  #[program]
+  Definition fst {A B: Bishop}: prod A B ~> A := fst.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    destruct p as [p q].
+    apply p.
+  Qed.
+
+  #[program]
+  Definition snd {A B: Bishop}: prod A B ~> B := snd.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    destruct p as [p q].
+    apply q.
+  Qed.
+
+  Module BishopsNotations.
+    Infix "*" := prod : bishop_scope.
+  End BishopsNotations.
+End Bishops.
+
+Import Bishops.BishopsNotations.
+
+
 Module Import Opposite.
   #[program]
    Definition op (K: Category): Category := {|
@@ -439,6 +1008,8 @@ Module Import Opposite.
     Notation "C 'ᵒᵖ'" := (op C).
   End OppositeNotations.
 End Opposite.
+
+Import OppositeNotations.
 
 Module Profunctor.
   #[universes(cumulative)]
@@ -511,77 +1082,1192 @@ Module Profunctor.
   End ProfNotations.
 End Profunctor.
 
-Module Import Functor.
-  #[universes(cumulative)]
-  Record prefunctor (C D: Category) := limit {
-    op: C → D ;
-    map [A B: C]: C A B → D (op A) (op B) ;
-  }.
 
-  Arguments limit [C D].
-  Arguments op [C D].
-  Arguments map [C D] p [A B].
-
-  #[universes(cumulative)]
-  Class functor [C D: Category] (F: prefunctor C D): Prop := {
-    map_composes [X Y Z] (x: C Y Z) (y: C X Y): map F x ∘ map F y == map F (x ∘ y) ;
-
-    map_id {A}: map F (@id _ A) == id ;
-    map_compat [A B] (f f': C A B): f == f' → map F f == map F f' ;
-  }.
-
-  Add Parametric Morphism (C D: Category) (F: prefunctor C D) `(@functor C D F) (A B: C)  : (@map _ _ F A B)
-      with signature equiv ==> equiv as map_mor.
-  Proof.
-    intros ? ? ?.
-    apply map_compat.
-    assumption.
-  Qed.
-
-  #[local]
-  Definition funct K L := {p: prefunctor K L | functor p }.
-
+Module Import Monomorphism.
   #[program]
-  Definition Funct (K L: Category): Category := {|
-    Obj := funct K L ;
-    Mor A B := (∀ x, L (op A x) (op B x)) /~ {| equiv f g := ∀ x, f x == g x |} ;
-    id _ _ := id ;
-    compose _ _ _ f g _ := f _ ∘ g _ ;
+  Definition Monomorphism (C: Category): Category := {|
+    Obj := C ;
+    Mor A B := {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
+    id := @id _ ;
+    compose := @compose _ ;
   |}.
 
   Next Obligation.
   Proof.
     exists.
-    all: unfold Reflexive, Symmetric, Transitive; cbn.
-    - intros.
+    - intro.
       reflexivity.
-    - intros ? ? p t.
+    - intros ? ? ?.
       symmetry.
-      apply (p t).
-    - intros ? ? ? p q t.
-      rewrite (p t), (q t).
+      auto.
+    - intros ? ? ? p q.
+      rewrite p, q.
       reflexivity.
   Qed.
 
   Next Obligation.
   Proof.
-    apply compose_compat.
-    all:auto.
+    repeat rewrite compose_id_left in H.
+    assumption.
   Qed.
 
-  Module Export FunctorNotations.
-    Coercion op: prefunctor >-> Funclass.
+  Next Obligation.
+  Proof.
+    repeat rewrite <- compose_assoc in H.
+    apply (H0 _ _ _ (H1 _ _ _ H)).
+  Qed.
 
-    #[local]
-     Definition proj1_funct [K L]: funct K L → prefunctor K L := @proj1_sig _ _.
-    Coercion proj1_funct:funct >-> prefunctor.
+  Next Obligation.
+  Proof.
+    rewrite H, H0.
+    reflexivity.
+  Qed.
 
-    #[local]
-    Definition proj2_funct [K L] (f: funct K L): functor f := proj2_sig f.
-    Coercion proj2_funct:funct >-> functor.
-    Existing Instance proj2_funct.
-  End FunctorNotations.
-End Functor.
+  Module MonomorphismNotations.
+    Notation "C ₊" := (Monomorphism C).
+  End MonomorphismNotations.
+End Monomorphism.
+
+Import MonomorphismNotations.
+
+Module Presheaf.
+  Definition Space C := Funct (C ᵒᵖ) Bishop.
+  (* FIXME make monoidal functor *)
+  Definition Quantity C := Funct C Bishop.
+
+  #[program]
+   Definition Yo C: Funct C (Space C) := limit (λ (b: C), limit (λ (a: C ᵒᵖ), C a b: Bishop) (λ _ _ f g, f ∘ g) : Space C) (λ _ _ f _ g, f ∘ g).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      category.
+      reflexivity.
+    - intros.
+      category.
+      reflexivity.
+    - intros ? ? ? ? p ?.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      category.
+      reflexivity.
+    - intros.
+      category.
+      reflexivity.
+    - intros ? ? ? ? p ? ?.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  #[program]
+   Definition CoYo C: Funct (C ᵒᵖ) (Quantity C) := limit (λ (b: C ᵒᵖ), limit (λ (a: C), C b a: Bishop) (λ _ _ f g, f ∘ g) : Quantity C) (λ _ _ f _ g, g ∘ f).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      category.
+      reflexivity.
+    - intros.
+      category.
+      reflexivity.
+    - intros ? ? ? ? p ?.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      category.
+      reflexivity.
+    - intros.
+      category.
+      reflexivity.
+    - intros ? ? ? ? p ? ?.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  #[program]
+   Definition Spec [C: Category] (A: Quantity C): Space C :=
+    limit (λ (u: C ᵒᵖ), A ~> proj1_sig (CoYo C) u : Bishop) (λ _ _ x y _ z, y _ z ∘ x).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p ? ?.
+    cbn in *.
+    apply compose_compat.
+    2: reflexivity.
+    rewrite (p _ _).
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      category.
+      reflexivity.
+    - intros.
+      category.
+      reflexivity.
+    - intros ? ? ? ? p.
+      intros.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+    #[program]
+   Definition CoSpec [C: Category] (A: Space C): Quantity C :=
+    limit (λ (u: C), A ~> proj1_sig (Yo C) u : Bishop) (λ _ _ x y _ z, x ∘ y _ z).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p ? ?.
+    cbn in *.
+    apply compose_compat.
+    1: reflexivity.
+    rewrite (p _ _).
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      category.
+      reflexivity.
+    - intros.
+      category.
+      reflexivity.
+    - intros ? ? ? ? p.
+      intros.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  Close Scope nat.
+
+  #[program]
+   Definition El [C: Category] (P: Funct C Bishop): Category := {|
+    Obj := someT (λ x, proj1_sig P x) ;
+    Mor A B := val A ~> val B ;
+
+    id _ := id ;
+    compose _ _ _ f g := f ∘ g;
+  |}.
+
+  Next Obligation.
+  Proof.
+    apply compose_compat.
+    all: auto.
+  Qed.
+
+  #[program]
+  Definition unit [C: Category] P (F: Funct C Bishop/P) (x: El P) :=
+     π F (val x).
+
+  Definition counit [C: Category] (P: Funct C Bishop) (F: Funct (El P) Bishop) A :=
+    some (p: proj1_sig P A), proj1_sig F (some_intro A p).
+
+
+  Definition id'' [C: Category] [P: Funct C Bishop] [F: Funct (El P) Bishop] [A]
+             (xv yv: proj1_sig P A)
+    : proj1_sig F {| val := A; pred := xv |} ~> proj1_sig F {| val := A; pred := yv |}.
+    cbn.
+    apply (@map _ _ (proj1_sig F)
+                (some_intro A xv)
+                (some_intro A yv) id).
+  Defined.
+
+  #[program]
+  Definition counit' [C: Category] (P: Funct C Bishop) (F: Funct (El P) Bishop) A: Bishop :=
+    counit P F A /~ {| equiv x y :=
+                         val x == val y ∧
+                         id'' (val x) (val y) (pred x) == pred y
+                    |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+  Definition counit'' [C: Category] (P: Funct C Bishop) (F: Funct (El P) Bishop): Funct C Bishop :=
+    limit (counit' P F)
+           (λ _ _ (f: C ᵒᵖ _ _) x,
+            some_intro
+              (proj1_sig (map P f) (val x))
+              (proj1_sig (map (proj1_sig F) _) (pred x))
+          ).
+
+  Next Obligation.
+  Proof.
+    intros x y p.
+    destruct p as [p q].
+    split.
+    1: cbn in *; rewrite p; reflexivity.
+    cbn in *.
+    unfold id''.
+    unfold counit''_obligation_1 in *.
+    cbn in *.
+    intros.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+   Definition counit''
+
+  #[program]
+   Definition pullback_op [C: Category] [c: C] (F G: C/c) (y: C): Bishop :=
+    {xy: (y ~> s F) * (y ~> s G) |
+         π F ∘ fst xy == π G ∘ snd xy
+       } /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    - intros ?.
+      split.
+      all: intros.
+      all: reflexivity.
+    - intros ? ? p.
+      destruct p as [p q].
+      cbn in *.
+      split.
+      all: intros.
+      all: symmetry.
+      all: auto.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      split.
+      all: intros.
+      1: rewrite p, q.
+      2: rewrite p', q'.
+      all: reflexivity.
+  Qed.
+
+  #[program]
+   Definition pullback_map [C: Category] [c: C] (F G: C/c)
+   [A B]
+   (f: A ~> B):
+    pullback_op F G B ~> pullback_op F G A :=
+    λ x, (fst x ∘ f, snd x ∘ f).
+
+  Next Obligation.
+  Proof.
+    cbn in *.
+    rewrite compose_assoc.
+    rewrite H.
+    category.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    destruct p as [p q].
+    cbn in *.
+    rewrite p, q.
+    split.
+    all: reflexivity.
+  Qed.
+
+  #[program]
+  Definition pullback [C: Category] [c: Space C]
+   (F: Space C/c) (G: Space C/c): Space C :=
+    limit (λ x: C ᵒᵖ, pullback_op F G (proj1_sig (Yo C) x))
+      (λ _ _ (x: C _ _), pullback_map F G (map (proj1_sig (Yo _)) x)).
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros ? ? ? ? ? t.
+      destruct t as [t e], t as [l r].
+      cbn in *.
+      split.
+      all: intros.
+      1: apply (proj2_sig (l x0)).
+      2: apply (proj2_sig (r x0)).
+      all: rewrite compose_assoc.
+      all: reflexivity.
+    - intros ? ?.
+      all: cbn in *.
+      split.
+      all: intros.
+      1: apply (proj2_sig (fst (proj1_sig t) x)).
+      2: apply (proj2_sig (snd (proj1_sig t) x)).
+      all: category;reflexivity.
+    - intros ? ? ? ? p ?.
+      split.
+      all: intros.
+      1: apply (proj2_sig (fst (proj1_sig t) x)).
+      2: apply (proj2_sig (snd (proj1_sig t) x)).
+      all: rewrite p.
+      all: reflexivity.
+  Qed.
+
+  (* FIXME make functor consuming product of objects *)
+  #[program]
+   Definition local_prod [C: Category] [c: Space C]
+   (f: Space C/c) (g: Space C/c): Space C/c :=
+    lub (pullback f g),
+    λ _ x, (π f _ ∘ fst x _) id.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    apply (proj2_sig (π f o)).
+    destruct x, y, p as [p q].
+    cbn in *.
+    rewrite (p _ _).
+    reflexivity.
+  Qed.
+
+  #[program]
+   Definition fiber [C: Category] [c: C] (F: C/c) (pt: C) (y: pt ~> c): Bishop :=
+    {x: (pt ~> s F) | y = π F ∘ x}
+      /~ {| equiv x y := proj1_sig x == y |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Variant exp [C: Category] [c: C] (F G: C/c) (pt: C) :=
+    exp_intro (x: pt ~> c) (h: fiber F _ x ~> fiber G _ x).
+
+  Arguments exp_intro [C c F G pt].
+
+  #[program]
+  Definition exp_op [C: Category] [c: C] (F G: C/c) pt: Bishop :=
+    exp F G pt /~ {| equiv '(exp_intro x xf) '(exp_intro y yf) :=
+                (x == y) ∧ (∀ t p q, proj1_sig (proj1_sig xf (exist _ t p)) == proj1_sig yf (exist _ t q))
+           |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+  Definition exp_map [C: Category] [c: Space C] (F G: Space C/c)
+   [A B: Space C]
+   (f: B ~> A): exp_op F G A ~> exp_op F G B :=
+    λ '(exp_intro x xf),
+    exp_intro
+      (λ y, _)
+      _.
+
+  Next Obligation.
+  Proof.
+    apply
+      eexists.
+    Unshelve.
+    2: {
+      Check (map (proj1_sig (s F)) id).
+    2: {
+      cbn in *.
+      apply x0.
+      cbn in *.
+      eexists.
+      Unshelve.
+      2: {
+        apply (π F).
+        (* apply (map (proj1_sig (s F)) _). *)
+    exists p.
+    auto.
+  Defined.
+    Unshelve.
+    2: {
+      refine (p .
+      
+    rewrite H.
+      a
+    refine (proj1_sig (xf _ _)).
+    Unshelve.
+    2: {
+    2: {
+      apply 
+    refine (proj1_sig ((proj1_sig xf) _) ∘ f).
+    unfold fiber.
+    eexists.
+    cbn.
+    Unshelve.
+    2: {
+      
+    Unshelve.
+    2: {
+      refine (y ∘ _).
+      
+    unfold fiber in *.
+    cbn in *.
+    refine (proj1_sig ((proj1_sig xf) _) ∘ f).
+    refine ((xf _: C _ _) ∘ f).
+      (exist _ y _).
+    apply x.
+  Admitted.
+
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    apply (proj2_sig (y o1)).
+    rewrite p.
+    reflexivity.
+  Qed.
+
+#[program]
+   Definition local_exp' [C: Category] [c: Space C] (F G: Space C/c): Space C :=
+    limit (λ x: C ᵒᵖ, exp_op F G x)
+          (λ _ _ f, _).
+
+Next Obligation.
+  Next Obligation.
+  Proof.
+    apply H1.
+    refine (_ ∘ p).
+    refine (x ∘ _).
+    apply 
+    + cbn.
+  #[program]
+   Definition LIMIT {D C: Category}
+   (F: Funct (D ᵒᵖ) (Space C))
+    : Space C :=
+    limit (λ (y: C ᵒᵖ),
+           (forall x, proj1_sig (proj1_sig F x) y) /~ {| equiv x y := ∀ t, x t == y t |}
+           : Bishop) (λ _ _ f g t, proj1_sig (map (proj1_sig (proj1_sig F t)) f) (g t)).
+
+  Next Obligation.
+  Proof.
+    exists.
+    - intros ? p.
+      reflexivity.
+    - intros ? ? p ?.
+      symmetry.
+      auto.
+    - intros ? ? ? p q ?.
+      rewrite (p _), (q _).
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p t.
+    rewrite (p t).
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      apply (proj2_sig (F t0)).
+    - intros.
+      apply (proj2_sig (F t0)).
+    - intros.
+      apply (proj2_sig (F t0)).
+      assumption.
+  Qed.
+
+  (* FIXME make consume comma category ? *)
+  #[program]
+  Definition Σ [C: Category] [X Y: C] (f: C X Y): Funct (C/X) (C/Y) :=
+    limit
+      (λ (F:C/X), (lub (s F), f ∘ π F):C/Y)
+      (λ _ _ x, x).
+
+  Next Obligation.
+  Proof.
+    rewrite <- compose_assoc.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      reflexivity.
+    - intros.
+      reflexivity.
+    - intros ? ? ? ? p.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  (* FIXME
+    pullback ~ C/c product
+    dependent product ~ C/c exp
+    depdenent sum ~ (exists f: C/c, C/s f) -> C/c
+*)
+  #[program]
+   Definition BaseChange [C:Category] [X Y: Space C] (f: X ~> Y): Funct (Space C/Y) (Space C/X) :=
+    limit
+      (λ (S:Space C/Y),
+       (lub (pullback S (lub _, f)), λ t x, snd x t id):Space C/X)
+      (λ A B f, λ t y, (λ s p, proj1_sig (f _) (fst y _ p), λ s p, snd y _ p)).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    cbn in *.
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    cbn in *.
+    apply (proj2_sig (f x)).
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    cbn in *.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite <- (H _ _).
+    apply H0.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    destruct p as [p q].
+    cbn in *.
+    split.
+    all: intros.
+    - apply (proj2_sig (f x0)).
+      auto.
+    - auto.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros ? ? ? ? ? ? t.
+      destruct t.
+      all: cbn in *.
+      split.
+      all: intros.
+      all: reflexivity.
+    - intros ? ? t.
+      destruct t.
+      cbn in *.
+      split.
+      all: intros.
+      all: reflexivity.
+    - intros ? ? ? ? ? ? t.
+      destruct t.
+      cbn in *.
+      split.
+      all: intros.
+      + apply H.
+      + reflexivity.
+  Qed.
+
+  #[program]
+   Definition exp [C:Category] (F G: Space C): Space C :=
+    limit
+      (λ x: C ᵒᵖ,
+            ((∀ y, (C y x * proj1_sig F y) ~> proj1_sig G y)
+               /~
+               {| equiv x y := ∀ t, x t == y t |}
+                  ): Bishop)
+      (λ _ _ (x: C _ _) k _ tp, k _ (x ∘ fst tp, snd tp)).
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    intros tp0 tp1 p.
+    apply (proj2_sig (k o1)).
+    destruct tp0, tp1.
+    cbn in *.
+    destruct p as [p q].
+    split.
+    - rewrite p.
+      reflexivity.
+    - rewrite q.
+      reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p ? t.
+    destruct t.
+    cbn in *.
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      apply (proj2_sig (t t0)).
+      cbn.
+      split.
+      2: reflexivity.
+      rewrite compose_assoc.
+      reflexivity.
+    - intros ? ? ? t.
+      destruct t.
+      cbn.
+      apply (proj2_sig (t0 t1)).
+      cbn.
+      rewrite compose_id_left.
+      split.
+      all: reflexivity.
+    - intros ? ? ? ? p ? ? ?.
+      apply (proj2_sig (t t0)).
+      cbn.
+      rewrite p.
+      split.
+      all: reflexivity.
+  Qed.
+  Import Bishops.
+
+
+#[program]
+   Definition prod [C: Category] (A B: Space C): Space C :=
+    limit (λ (x: C ᵒᵖ), proj1_sig A x * proj1_sig B x: Bishop) (λ _ _ x y, (map A x (fst y), map B x (snd y))).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    cbn.
+    destruct x0, y, p.
+    cbn in *.
+    rewrite H, H0.
+    split.
+    all: reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros ? ? ? ? ? t.
+      destruct t.
+      split.
+      + cbn.
+        apply (proj2_sig A).
+      + cbn.
+        apply (proj2_sig B).
+    - intros ? t.
+      destruct t.
+      split.
+      + apply (proj2_sig A).
+      + apply (proj2_sig B).
+    - intros.
+      split.
+      + apply (proj2_sig A).
+        assumption.
+      + apply (proj2_sig B).
+        assumption.
+  Qed.
+
+  #[program]
+   Definition uncurry [K:Category] [A B C: Space K]
+   (f: prod A B ~> C): A ~> exp B C :=
+    λ _ x _ y, f _ (map A (fst y) x, snd y).
+
+  Next Obligation.
+  Proof.
+    intros L R p.
+    destruct L, R, p.
+    apply (proj2_sig (f o0)).
+    cbn in *.
+    split.
+    2: auto.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p ? y.
+    all: cbn in *.
+    apply (proj2_sig (f t)).
+    cbn.
+    split.
+    2: reflexivity.
+    apply (proj2_sig (map (proj1_sig A) (Datatypes.fst y))).
+    assumption.
+  Qed.
+
+  (* #[program] *)
+  (* Definition fst [C] [A B: Space C]: prod A B ~> A := λ _, fst. *)
+
+  (* #[program] *)
+  (* Definition snd [C] [A B: Space C]: prod A B ~> B := λ _, snd. *)
+
+  #[program]
+   Definition eval [C:Category] [A B: Space C]: prod (exp A B) A ~> B :=
+    λ _ '(f, x), f _ (id, x).
+
+  Next Obligation.
+  Proof.
+    intros x y p.
+    destruct x, y, p as [p q].
+    cbn in *.
+    rewrite (p _).
+    apply (proj2_sig (t1 o)).
+    cbn.
+    split.
+    1: reflexivity.
+    assumption.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros x y p.
+    destruct x, y, p as [p q].
+    cbn in *.
+    apply (proj2_sig (g o1)).
+    cbn.
+    split.
+    2: assumption.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros x y p ? xs.
+    destruct xs.
+    cbn in *.
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros.
+      apply (proj2_sig (t x0)).
+      split.
+      2: reflexivity.
+      1: cbn.
+      1: apply compose_assoc.
+    - intros.
+      apply (proj2_sig (t x)).
+      split.
+      2: reflexivity.
+      cbn.
+      rewrite compose_id_left.
+      reflexivity.
+    - intros ? ? ? ? ? ? ? xs.
+      destruct xs.
+      cbn in *.
+      apply (proj2_sig (t x)).
+      cbn.
+      split.
+      2: reflexivity.
+      rewrite H.
+      reflexivity.
+  Qed.
+
+  #[program]
+   Definition local_exp [C: Category] [c: Space C] (F G: Space C/c): Space C/c :=
+    lub (local_exp' F G), λ _ f, _.
+
+  Next Obligation.
+    apply G.
+    apply f.
+    refine (id, _).
+  Check local_exp.
+  limit
+      (λ x: C ᵒᵖ, local_exp )
+      (λ A B (f: C _ _) g _ xs, _).
+  Next Obligation.
+
+  Next Obligation.
+  Proof.
+    intros x y p.
+    destruct x, y, p.
+    cbn in *.
+    apply (proj2_sig (g o)).
+    cbn.
+    split.
+    2: assumption.
+    rewrite H.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p ? xs.
+    cbn in *.
+    destruct xs.
+    cbn in *.
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all: cbn in *.
+    - intros ? ? ? ? ? ? ? xs.
+      destruct xs.
+      cbn in *.
+      apply (proj2_sig (t x0)).
+      cbn.
+      split.
+      2: reflexivity.
+      apply compose_assoc.
+    - intros ? ? ? xs.
+      destruct xs.
+      cbn in *.
+      apply (proj2_sig (t x)).
+      cbn.
+      split.
+      2: reflexivity.
+      apply compose_id_left.
+    - intros ? ? ? ? p ? ? xs.
+      destruct xs.
+      cbn in *.
+      apply (proj2_sig (t x)).
+      cbn.
+      split.
+      2: reflexivity.
+      rewrite p.
+      reflexivity.
+  Qed.
+
+  #[program]
+   Definition local_exp [C: Category] [c: Space C] (F G: Space C/c): Space C/c :=
+    lub (local_exp' F G), λ _ x, _.
+
+  Next Obligation.
+  Proof.
+    apply G.
+    apply x.
+    refine (id, _).
+    
+    
+  #[program]
+   Definition DepProd [C: Category] [X Y: Space C] (f: X ~> Y): Funct (Space C/X) (Space C/Y) :=
+    limit
+      (λ (S:Space C/X),
+       (lub (limit
+               (λ pt: C ᵒᵖ,
+                      (∀ x: Y ~> X, (id == f ∘ x) → proj1_sig (Yo C) pt ~> s S)
+                        /~ {| equiv x y := ∀ t u, x t u == y t u |}
+                : Bishop)
+               (λ _ _ x _,_)),
+       _):Space C/Y)
+      (λ _ _ x _ y, _).
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    cbn in *.
+  Next Obligation.
+  Proof.
+    intros x y p.
+    destruct p as [p q].
+    destruct x as [x ex], y as [y ey].
+    cbn in *.
+    rewrite <- (ey _ _).
+    rewrite <- (ex _ _).
+    apply (proj2_sig (f o)).
+    rewrite (p _ _).
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    eexists
+  Variant dep_prod [C: Category] [X Y: Space C] (f: X ~> Y) (S: Space C) (t: C ᵒᵖ) :=
+    dp
+      (y: ∀ Z, Z ~> Y)
+      (F: prod (proj1_sig (Yo C) t) (fiber f y) ~> S).
+
+  Arguments dp [C X Y f S t].
+
+  #[program]
+  Definition dep_prod' [C: Category] [X Y: Space C] (f: X ~> Y) (S: Space C) (t: C ᵒᵖ): Bishop :=
+    dep_prod f S t
+             /~ {| equiv '(dp x xf) '(dp y yf) :=
+                     (∀ t, x t == y t)
+                     ∧ (∀ t u p q, xf t (u, p) == yf t (u, q)) |}.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+  Definition dep_prod'' [C: Category] [X Y: Space C] (f: X ~> Y) (S: Space C): Space C :=
+    limit
+      (dep_prod' f S)
+      (λ A B (x: C B A) '(dp y yf),
+       dp (λ _ _ p, _)
+          (λ _ fib, _)).
+
+  Next Obligation.
+  Proof.
+    intros ? ? p.
+    rewrite p.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply (H _).
+    refine (_ ∘ p).
+    
+    (* (* refine (fib ∘ _). *) *)
+    (* cbn in *. *)
+    refine (yf _ _ _ (x ∘ fib)).
+    Unshelve.
+    2: {
+      intros.
+      refine (H _ ∘ _).
+    2: {
+      refine (x ∘ fib).
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    apply (x ∘ fib).
+  Defined.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  #[program]
+   Definition DepProd [C: Category] [X Y: Space C] (f: X ~> Y): Funct (Space C/X) (Space C/Y) :=
+    limit
+      (λ (S:Space C/X), (lub (dep_prod'' f (s S)), λ _ '(dp y _), y _ id):Space C/Y)
+      (λ _ _ x _ '(dp y yf), dp y (λ p x _, _)).
+
+  Next Obligation.
+  Proof.
+    intros x y.
+    destruct x, y.
+    intro p.
+    cbn in *.
+    destruct p as [p q].
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    apply (yf _ _ H2).
+    intros ? ? p.
+    apply (proj2_sig (x t)).
+    apply (proj2_sig (yf t)).
+    apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    intros A B p.
+    destruct A, B.
+    cbn in *.
+    split.
+    - intros.
+      apply p.
+    - intros.
+      apply (proj2_sig (x t)).
+      apply p.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    destruct t.
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+
+
+  Section w.
+    Context [K: Category].
+    Variable A: Space K.
+    Variable C: Space K.
+    Variable B: C ~> A.
+
+    Definition fiber [D] (y: D ~> A) :=
+      ∃ x, y == B ∘ x.
+
+   Inductive w (c: Space K): Type := {
+      s: c ~> A ;
+      π: fiber s → w c ;
+    }.
+
+    Arguments s [c].
+    Arguments π [c].
+
+    Fixpoint weq [c] (l r: w c): Prop :=
+      ∃ (p: s l == s r),
+      ∀ x y, weq (π l x) (π r y).
+
+
+    #[program]
+    Fixpoint wmap [A B] (x : K B A) (y: w (proj1_sig (Yo K) A)): w (proj1_sig (Yo K) B) :=
+      {|
+      s _ f := _ ;
+      (* π _ := π y _ *)
+      |}.
+
+    Next Obligation.
+    Proof.
+      Check (map (proj1_sig (s y))).
+            (* (x ∘ f). *)
+    (*   destruct B as [sB πB], πB as [B' e]. *)
+    (*   cbn in *. *)
+    (*   Check (e _ _ _ H0). *)
+    (*   eexists (H ∘ _). *)
+      
+    (*   Unshelve. *)
+    (*   1: symmetry. *)
+    (*   1: rewrite compose_assoc. *)
+    (*   1: rewrite <- H0. *)
+    (*   apply compose_compat. *)
+    (*   2: reflexivity. *)
+      
+    (*   Check (proj2_sig f _ (s y)). *)
+
+  #[program]
+   Definition W: Space K :=
+    limit (λ (x: K ᵒᵖ), w (proj1_sig (Yo K) x) /~ {| equiv := @weq _ |}: Bishop) (λ _ _ x y, _).
+
+  Next Obligation.
+  Proof.
+    admit.
+  Admitted.
+
+  Next Obligation.
+    cbn in *.
+    eexists.
+    Unshelve.
+    2: {
+      cbn in *.
+      intr
+  End w.
+
+  Next Obligation.
+  Proof.
+
+    
+  Module PresheafNotations.
+    (* Notation "!" := Bang. *)
+    (* Notation "·" := Terminal. *)
+
+    (* Notation "∅" := Initial. *)
+
+    (* Infix "+" := Sum. *)
+    (* (* Notation "[ A ; B ]" := (Fanin A B). *) *)
+    (* Notation "'i₁'" := Inl. *)
+    (* Notation "'i₂'" := Inr. *)
+
+    Infix "*" := prod.
+    (* Notation "⟨ A , B ⟩" := (Fanout A B). *)
+    (* Notation "'π₁'" := fst. *)
+    (* Notation "'π₂'" := snd. *)
+  End PresheafNotations.
+End Presheaf.
 
 Module Monoid.
   Class Monoid := {
@@ -623,6 +2309,73 @@ Module Monoid.
     Notation "∅" := unit : monoid_scope.
   End MonoidNotations.
 End Monoid.
+Module Import Arrow.
+  #[universes(cumulative)]
+  Record arrow (K: Category) := arr { s: K ; t: K ; π: s ~> t ; }.
+
+  Arguments arr [K s t].
+  Arguments s [K].
+  Arguments t [K].
+  Arguments π [K].
+
+  #[universes(cumulative)]
+  Record Arr_Mor [K] (A B: arrow K) := arr_Mor {
+    s_Mor: s A ~> s B ;
+    t_Mor: t A ~> t B ;
+    π_Mor: t_Mor ∘ π A == π B ∘ s_Mor ;
+  }.
+
+  Arguments arr_Mor [K A B].
+  Arguments s_Mor [K A B].
+  Arguments t_Mor [K A B].
+  Arguments π_Mor [K A B].
+
+  #[program]
+  Definition Arr (K: Category): Category := {|
+    Obj := arrow K ;
+    Mor A B := Arr_Mor A B /~ {| equiv f g := (t_Mor f == t_Mor g) ∧ (s_Mor f == s_Mor g) |} ;
+
+    id _ := arr_Mor id id _ ;
+    compose _ _ _ f g := {| t_Mor := t_Mor f ∘ t_Mor g ;
+                            s_Mor := s_Mor f ∘ s_Mor g |} ;
+  |}.
+
+  Next Obligation.
+  Proof.
+    exists.
+    all:unfold Reflexive, Symmetric, Transitive; cbn.
+    - split.
+      all:reflexivity.
+    - split.
+      all: destruct H.
+      all: symmetry.
+      all: assumption.
+    - intros ? ? ? p q.
+      destruct p as [p p'], q as [q q'].
+      split.
+      1: rewrite p, q.
+      2: rewrite p', q'.
+      all: reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    rewrite <- compose_assoc.
+    rewrite (π_Mor g).
+    rewrite compose_assoc.
+    rewrite compose_assoc.
+    rewrite (π_Mor f).
+    reflexivity.
+  Qed.
+
+  Next Obligation.
+  Proof.
+    split.
+    1: rewrite H, H0.
+    2: rewrite H1, H2.
+    all:reflexivity.
+  Qed.
+End Arrow.
 
 Import Monoid.MonoidNotations.
 Open Scope monoid_scope.
@@ -1148,29 +2901,11 @@ Module Product.
   #[program]
   Definition Prod (C D: Category): Category := {|
     Obj := C * D ;
-    Mor A B := (fst A ~> fst B) * (snd A ~> snd B) /~ {| equiv x y := fst x == fst y ∧ snd x == snd y |} ;
+    Mor A B := (fst A ~> fst B) * (snd A ~> snd B) ;
 
     id _ := (id, id) ;
     compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g) ;
   |}.
-
-  Next Obligation.
-  Proof.
-    cbn.
-    exists.
-    - split.
-      all: reflexivity.
-    - split.
-      all: symmetry.
-      all: apply H.
-    - split.
-      + destruct H, H0.
-        rewrite H, H0.
-        reflexivity.
-      + destruct H, H0.
-        rewrite H1, H2.
-        reflexivity.
-  Qed.
 
   Next Obligation.
   Proof.
@@ -1182,7 +2917,7 @@ Module Product.
   Qed.
 
   #[program]
-  Definition fst {A B}: Funct (Prod A B) A := limit (λ (x: Prod _ _), fst x) (λ _ _ x, fst x).
+  Definition fst {A B}: Funct (Prod A B) A := limit (λ (x: Prod _ _), fst x) (λ _ _, fst).
 
   Next Obligation.
   Proof.
@@ -1190,8 +2925,6 @@ Module Product.
     all: Tactics.program_simpl;cbn.
     all: reflexivity.
   Qed.
-
-  Print fst.
 
   #[program]
   Definition snd {A B}: Funct (Prod A B) B := limit (snd: Prod _ _ → _) (λ _ _, snd).
@@ -1208,6 +2941,130 @@ Module Product.
   End ProdNotations.
 End Product.
 
+Module MonCircle.
+  Import Mon.
+  Import Presheaf.
+
+  Definition Circle_Spec: Space Mon := proj1_sig (Yo Mon) S¹₊.
+  Definition Circle: Quantity Mon := proj1_sig (CoYo Mon) S¹₊.
+
+   #[program]
+   Definition twist: Circle ~> Circle := λ _ k n, k (n · n).
+
+   Next Obligation.
+   Proof.
+     cbn in *.
+     intros ? ? p.
+     rewrite p.
+     reflexivity.
+   Qed.
+
+   Next Obligation.
+   Proof.
+     exists.
+     - rewrite (@map_unit _ _ _ H).
+       rewrite <- Monoid.app_unit_right.
+       reflexivity.
+     - intros.
+       repeat rewrite <- (@map_app _ _ _ H).
+       cbn in *.
+       destruct k.
+       cbn in *.
+       apply b.
+       cbn.
+       lia.
+   Qed.
+
+   Next Obligation.
+   Proof.
+     intros ? ? p ?.
+     cbn in *.
+     rewrite (p _).
+     reflexivity.
+   Qed.
+End MonCircle.
+
+Module GrpCircle.
+  Import Grp.
+
+  Open Scope Z.
+
+  Definition Circle_Spec: Space Grp := proj1_sig (Yo Grp) S¹.
+
+  Definition Circle: Quantity Grp := proj1_sig (CoYo Grp) S¹.
+
+    #[program]
+   Definition twist: Circle ~> Circle := λ _ k n, k (n · n).
+
+   Next Obligation.
+   Proof.
+     cbn in *.
+     intros ? ? p.
+     rewrite p.
+     reflexivity.
+   Qed.
+
+   Next Obligation.
+   Proof.
+     exists.
+     - rewrite (@map_unit _ _ _ H).
+       reflexivity.
+     - intros.
+       repeat rewrite <- (@map_app _ _ _ H).
+       cbn in *.
+       destruct k.
+       cbn in *.
+       apply b.
+       cbn.
+       lia.
+     - intros.
+       reflexivity.
+   Qed.
+
+   Next Obligation.
+   Proof.
+     intros ? ? p ?.
+     cbn in *.
+     rewrite (p _).
+     reflexivity.
+   Qed.
+
+   #[program]
+    Definition negate: Circle ~> Circle := λ _ k n, k (Group.invert n).
+
+   Next Obligation.
+   Proof.
+     intros ? ? p.
+     rewrite p.
+     reflexivity.
+   Qed.
+
+   Next Obligation.
+   Proof.
+     exists.
+     - rewrite (@map_unit _ _ _ H).
+       reflexivity.
+     - intros.
+       repeat rewrite <- (@map_app _ _ _ H).
+       cbn in *.
+       destruct k.
+       cbn in *.
+       apply b.
+       cbn.
+       lia.
+     - intros.
+       reflexivity.
+   Qed.
+
+   Next Obligation.
+   Proof.
+     intros ? ? p ?.
+     cbn in *.
+     rewrite (p _).
+     reflexivity.
+   Qed.
+End GrpCircle.
+
 Definition Arr := Funct I₊.
 Definition Endos := Funct (𝑩₊ S¹₊).
 Definition Cylinder := Product.Prod I₊.
@@ -1216,103 +3073,7 @@ Definition Iso := Funct Interval.
 Definition Autos := Funct (𝑩 S¹).
 Definition Cylinder' := Product.Prod Interval.
 
-Module Import Monomorphism.
-  #[program]
-  Definition Monomorphism (C: Category): Category := {|
-    Obj := C ;
-    Mor A B := {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
-    id := @id _ ;
-    compose := @compose _ ;
-  |}.
 
-  Next Obligation.
-  Proof.
-    exists.
-    - intro.
-      reflexivity.
-    - intros ? ? ?.
-      symmetry.
-      auto.
-    - intros ? ? ? p q.
-      rewrite p, q.
-      reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite compose_id_left in H.
-    assumption.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite <- compose_assoc in H.
-    apply (H0 _ _ _ (H1 _ _ _ H)).
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H, H0.
-    reflexivity.
-  Qed.
-
-  Module MonomorphismNotations.
-    Notation "C ₊" := (Monomorphism C).
-  End MonomorphismNotations.
-End Monomorphism.
-
-Import MonomorphismNotations.
-
-Module Import Over.
-  #[universes(cumulative)]
-   Record bundle [C: Category] (t: C) := supremum { s: C ; π: C s t ; }.
-
-  Arguments s [C] [t] _.
-  Arguments π [C] [t] _.
-
-  Section over.
-    Variables (C: Category) (t: C).
-
-    #[program]
-    Definition Over: Category := {|
-      Obj := bundle t ;
-      Mor A B :=  {f: s A ~> s B | π B ∘ f == π A } /~ {| equiv f g := (f :>) == (g :>) |} ;
-
-      id A := @id _ (s A) ;
-      compose A B C := @compose _ (s A) (s B) (s C) ;
-    |}.
-
-    Next Obligation.
-    Proof.
-      exists.
-      all: unfold Reflexive, Symmetric, Transitive.
-      - reflexivity.
-      - symmetry.
-        assumption.
-      - intros ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      rewrite compose_assoc.
-      rewrite H0, H.
-      reflexivity.
-    Qed.
-
-    Next Obligation.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-  End over.
-
-  Module Export OverNotations.
-    Notation "'lub' A , P" := {| s := A ; π := P |}.
-    Infix "/" := Over.
-  End OverNotations.
-End Over.
 
 Module Import Under.
   #[universes(cumulative)]
@@ -1366,74 +3127,6 @@ Module Import Under.
 End Under.
 
 Definition PointedSet := Bishop\Bishops.True.
-
-Module Import Arrow.
-  #[universes(cumulative)]
-  Record arrow (K: Category) := arr { s: K ; t: K ; π: s ~> t ; }.
-
-  Arguments arr [K s t].
-  Arguments s [K].
-  Arguments t [K].
-  Arguments π [K].
-
-  #[universes(cumulative)]
-  Record Arr_Mor [K] (A B: arrow K) := arr_Mor {
-    s_Mor: s A ~> s B ;
-    t_Mor: t A ~> t B ;
-    π_Mor: t_Mor ∘ π A == π B ∘ s_Mor ;
-  }.
-
-  Arguments arr_Mor [K A B].
-  Arguments s_Mor [K A B].
-  Arguments t_Mor [K A B].
-  Arguments π_Mor [K A B].
-
-  #[program]
-  Definition Arr (K: Category): Category := {|
-    Obj := arrow K ;
-    Mor A B := Arr_Mor A B /~ {| equiv f g := (t_Mor f == t_Mor g) ∧ (s_Mor f == s_Mor g) |} ;
-
-    id _ := arr_Mor id id _ ;
-    compose _ _ _ f g := {| t_Mor := t_Mor f ∘ t_Mor g ;
-                            s_Mor := s_Mor f ∘ s_Mor g |} ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    all:unfold Reflexive, Symmetric, Transitive; cbn.
-    - split.
-      all:reflexivity.
-    - split.
-      all: destruct H.
-      all: symmetry.
-      all: assumption.
-    - intros ? ? ? p q.
-      destruct p as [p p'], q as [q q'].
-      split.
-      1: rewrite p, q.
-      2: rewrite p', q'.
-      all: reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite <- compose_assoc.
-    rewrite (π_Mor g).
-    rewrite compose_assoc.
-    rewrite compose_assoc.
-    rewrite (π_Mor f).
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    split.
-    1: rewrite H, H0.
-    2: rewrite H1, H2.
-    all:reflexivity.
-  Qed.
-End Arrow.
 
 Module Import Isomorphism.
   Import Groupoid.
@@ -2646,35 +4339,6 @@ Module Import Monoid.
   End MonoidNotations.
 End Monoid.
 
-Module Import Elements.
-  Record elem [C] (P: Functor C Bishop) := {
-    base: C ;
-    pick: P base ;
-  }.
-
-  Arguments base [C] [P] _.
-  Arguments pick [C] [P] _.
-
-  Section elem.
-    Context [C: Category].
-    Variable P: Functor C Bishop.
-
-    Instance Elements: Category := {
-      object := elem P ;
-      mor A B := base A ~> base B ;
-
-      id _ := id ;
-      compose _ _ _ := @compose _ _ _ _ ;
-    }.
-
-    Next Obligation.
-    Proof.
-      apply compose_compat.
-      all: auto.
-    Qed.
-  End elem.
-End Elements.
-
 
 Module Import Hom.
    Definition Hom S: Functor S (Functor (op S) Bishop) := {|
@@ -3494,89 +5158,6 @@ Module Import Span.
   Definition trace_forget [X] (f: Span X X): Functor (trace f) (Product.Product (dom f) (dom f)) := forget (Product.snd ∘ proj f) (Product.fst ∘ proj f).
 End Span.
 
-Module Import Algebra.
-  Module Import Algebra.
-    #[universes(cumulative)]
-    Record Algebra [C:Category] (F: functor C C) := {
-      elem: C ;
-      assoc: F elem ~> elem
-    }.
-
-    Arguments elem [C F] _.
-    Arguments assoc [C F] _.
-  End Algebra.
-
-  Section algebra.
-    Context [C: Category].
-    Variable F: functor C C.
-
-    #[local]
-     Definition mor (A B: Algebra F) :=
-      {m: elem A ~> elem B | m ∘ assoc A == assoc B ∘ map F m }
-        /~
-        {| equiv x y := (x :>) == (y :>) |}.
-
-    Obligation 1.
-    Proof.
-      exists.
-      all: unfold Reflexive, Symmetric, Transitive.
-      - intros.
-        reflexivity.
-      - intros.
-        symmetry.
-        auto.
-      - intros ? ? ? p q.
-        rewrite p, q.
-        reflexivity.
-    Qed.
-
-    Instance Algebra: Category := {
-      object := Algebra F ;
-      mor := mor ;
-
-      id A := @id _ (elem A) ;
-      compose A B C := @compose _ (elem A) (elem B) (elem C) ;
-    }.
-
-    Obligation 1.
-    Proof.
-      rewrite map_id, compose_id_left, compose_id_right.
-      reflexivity.
-    Qed.
-
-    Obligation 2.
-    Proof.
-      rewrite <- map_composes.
-      rewrite compose_assoc.
-      rewrite <- H0.
-      rewrite <- compose_assoc.
-      rewrite H.
-      rewrite compose_assoc.
-      reflexivity.
-    Qed.
-
-    Obligation 3.
-    Proof.
-      apply compose_assoc.
-    Qed.
-
-    Obligation 4.
-    Proof.
-      apply compose_id_left.
-    Qed.
-
-    Obligation 5.
-    Proof.
-      apply compose_id_right.
-    Qed.
-
-    Obligation 6.
-    Proof.
-      rewrite H, H0.
-      reflexivity.
-    Qed.
-  End algebra.
-End Algebra.
 
 
 
