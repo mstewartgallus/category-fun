@@ -1,0 +1,28 @@
+-R theories/ Blech
+-arg -w
+-arg all
+theories/Defaults.v
+theories/Some.v
+theories/Truncate.v
+theories/Bishop.v
+theories/Category.v
+theories/Reflect.v
+theories/Algebra.v
+theories/Bsh.v
+theories/Bishops.v
+theories/Functor.v
+theories/Monoid.v
+theories/Mon.v
+theories/Monic.v
+theories/Pointed.v
+theories/Unit.v
+theories/Product.v
+theories/Groupoid.v
+theories/Discrete.v
+theories/Core.v
+theories/Over.v
+theories/Opposite.v
+theories/Monoids.v
+theories/Categories.v
+theories/Elements.v
+theories/Infinity.v
