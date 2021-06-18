@@ -38,7 +38,10 @@ Definition Interval: Category := {|
 
 Next Obligation.
 Proof.
-  destruct b1, b2, b, b0.
+  destruct X.
+  destruct A as [A A'].
+  destruct B as [B B'].
+  destruct A, A', B, B'.
   all: cbn in *.
   all: try contradiction.
   all: exists.

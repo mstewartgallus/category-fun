@@ -18,6 +18,8 @@ Arguments head [A P].
 Arguments tail [A P].
 
 Module Export SomeNotations.
+  Add Printing Let someT.
+
   Notation "'some' x .. y , P" := (someT (λ x, .. (someT (λ y,  P)) .. )) : type_scope.
   Notation "'Σ' x .. y , P" := (someT (λ x, .. (someT (λ y,  P)) .. )) : type_scope.
   Infix "&" := some_intro.
