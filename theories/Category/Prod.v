@@ -44,7 +44,7 @@ Proof.
 Qed.
 
 #[program]
-Definition fanout [A B C] (F: Funct C A) (G: Funct C B): Funct C (Prod A B) := {|
+Definition fanout [A B C] (F: Functor C A) (G: Functor C B): Functor C (Prod A B) := {|
   op x := (F x, G x) ;
   map _ _ x := (map F x, map G x) ;
 |}.
@@ -69,13 +69,13 @@ Proof.
 Qed.
 
 #[program]
-Definition fst {A B}: Funct (Prod A B) A := {|
+Definition fst {A B}: Functor (Prod A B) A := {|
   op := fst ;
   map _ _ := Bishops.fst ;
 |}.
 
 #[program]
- Definition snd {A B}: Funct (Prod A B) B := {|
+ Definition snd {A B}: Functor (Prod A B) B := {|
   op := snd ;
   map _ _ := Bishops.snd ;
 |}.

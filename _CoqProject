@@ -6,8 +6,9 @@ theories/Truncate.v
 theories/Some.v
 theories/Bishop.v
 theories/Category.v
-theories/Reflect.v
 theories/Functor.v
+theories/Reflect.v
+theories/Category/Funct.v
 
 theories/Category/Bsh.v
 theories/Bishops.v
@@ -45,12 +46,14 @@ theories/Group/Trv.v
 theories/Group/Circle.v
 theories/Group/Auto.v
 
+theories/Groupoid/Core.v
+theories/Groupoid/Dis.v
+theories/Groupoid/One.v
+theories/Groupoid/Interval.v
+
 theories/Path.v
 theories/Monoidal.v
-theories/Core.v
 theories/Functors.v
 theories/Poly.v
-theories/Discrete.v
 theories/Monoidals.v
-theories/Groupoids.v
 theories/Infinity.v

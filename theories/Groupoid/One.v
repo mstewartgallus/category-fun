@@ -30,18 +30,6 @@ Open Scope monoid_scope.
 Open Scope group_scope.
 
 #[program]
-Definition Interval: Groupoid := {|
-  C := {|
-        Obj := bool ;
-        Mor _ _ := Bishops.True ;
-
-        id _ := I ;
-        compose _ _ _ _ _ := I ;
-      |} ;
-  Groupoid.invert _ _ _ := I ;
-|}.
-
-#[program]
 Definition 𝑩 (G: Group): PointedGroupoid.Groupoid := {|
   PointedGroupoid.G := {|
                         C := 𝑩₊ G ;

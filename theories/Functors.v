@@ -6,6 +6,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Functor.
+Require Import Blech.Category.Funct.
 Require Import Blech.Category.Prod.
 Require Blech.Reflect.
 
@@ -23,7 +24,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 (* FIXME figure out some form of HOAS ? *)
 #[program]
- Definition curry [A B C] (f: Funct (A * B) C): Funct A (Funct B C) := {|
+ Definition curry [A B C] (f: Functor (A * B) C): Functor A (Funct B C) := {|
   op (a: A) := {|
                 op (b: B) := f (a, b) ;
                 map _ _ b := map f ((id a, b): Prod A B (a, _) (a, _)) ;
@@ -84,14 +85,14 @@ Proof.
 Qed.
 
 #[program]
- Definition id A: Funct A A :=
+ Definition id A: Functor A A :=
   {|
   op x := x ;
   map _ _ x := x ;
   |}.
 
 #[program]
- Definition compose [A B C] (f: Funct B C) (g: Funct A B): Funct A C :=
+ Definition compose [A B C] (f: Functor B C) (g: Functor A B): Functor A C :=
   {|
   op x := f (g x) ;
   map _ _ x := map f (map g x)

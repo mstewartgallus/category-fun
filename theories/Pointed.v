@@ -5,12 +5,12 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
-Require Import Blech.Functor.
-Require Blech.Reflect.
+Require Blech.Functor.
+Require Import Blech.Category.Funct.
 
 Import CategoryNotations.
 Import BishopNotations.
-Import FunctorNotations.
+Import Functor.FunctorNotations.
 
 Open Scope category_scope.
 Open Scope bishop_scope.
@@ -23,8 +23,8 @@ Class Category := Point {
 }.
 
 #[universes(cumulative)]
-Class funct (A B: Category) := {
-  F: functor (@C A) (@C B) ;
+Class Functor (A B: Category) := {
+  F: Functor.Functor (@C A) (@C B) ;
   F_pt: F (@pt A) ~> @pt B ;
 }.
 
@@ -32,14 +32,14 @@ Module Import PointedNotations.
   Coercion C: Category >-> Category.Category.
   Existing Instance C.
 
-  Coercion F: funct >-> functor.
+  Coercion F: Functor >-> Functor.Functor.
   Existing Instance F.
 End PointedNotations.
 
 #[program]
 Definition Funct (K L: Category): Category := {|
   C := {|
-    Obj := functor K L ;
+    Obj := Functor K L ;
     Mor A B := Funct K L A B ;
 
     id _ := id _ ;
@@ -48,8 +48,8 @@ Definition Funct (K L: Category): Category := {|
 
   pt := {|
     F := {|
-      op _ := pt ;
-      map _ _ _ := id _ ;
+      Functor.op _ := pt ;
+      Functor.map _ _ _ := id _ ;
         |} ;
     F_pt := id _ ;
    |} ;

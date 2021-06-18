@@ -6,6 +6,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Blech.Bishop.
 Require Import Blech.Functor.
 Require Import Blech.Category.
+Require Import Blech.Category.Funct.
 Require Import Blech.Category.Prod.
 
 Import BishopNotations.
@@ -25,15 +26,15 @@ Class Category := {
   C: Category.Category ;
 
   pt: C ;
-  app: Functor.functor (C * C) C ;
+  app: Functor.Functor (C * C) C ;
 
   (* FIXME add laws *)
 }.
 (* Lax monoidal functor *)
 
 #[universes(cumulative)]
-Class functor (M N: Category) := {
-  F: Functor.functor (@C M) (@C N) ;
+Class Functor (M N: Category) := {
+  F: Functor.Functor (@C M) (@C N) ;
   mon_pt: C pt (F pt) ;
   mon_app {A B}: C (app (F A, F B)) (F (app (A, B)));
 }.
@@ -48,12 +49,12 @@ Module Import MonoidalNotations.
   Notation "x ⊗ y" := (app (x, y)).
 
   Existing Instance F.
-  Coercion F: functor >-> Functor.functor.
+  Coercion F: Functor >-> Functor.Functor.
 End MonoidalNotations.
 
 #[program]
 Definition Funct (K L: Category): Category.Category := {|
-  Obj := functor K L ;
+  Obj := Functor K L ;
   Mor A B := Funct _ _ (F A) (F B) ;
 
   id _ := id _ ;

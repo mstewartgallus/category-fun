@@ -13,17 +13,18 @@ Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Groupoid.
 Require Import Blech.Reflect.
-Require Import Blech.Core.
 Require Import Blech.Functor.
+Require Import Blech.Category.Funct.
 Require Import Blech.Category.Op.
 Require Import Blech.Category.Bsh.
 Require Import Blech.Category.El.
 Require Import Blech.Category.Over.
+Require Import Blech.Groupoid.Core.
+Require Import Blech.Groupoid.Dis.
 Require Blech.Category.Prod.
 Require Blech.PointedGroupoid.
 Require Blech.Group.
 Require Blech.Pointed.
-Require Blech.Groupoids.
 Require Blech.Functors.
 Require Blech.Bishops.
 Require Psatz.

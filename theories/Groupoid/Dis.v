@@ -16,9 +16,6 @@ Open Scope category_scope.
 Open Scope bishop_scope.
 
 
-Reserved Notation "C ₊" (at level 1).
-
-
 Obligation Tactic := Reflect.category_simpl.
 
 
