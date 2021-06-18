@@ -27,7 +27,6 @@ Require Blech.Pointed.
 Require Blech.Groupoids.
 Require Blech.Functors.
 Require Blech.Bishops.
-Require Blech.Monoids.
 Require Psatz.
 
 Import CategoryNotations.
