@@ -17,20 +17,46 @@ Open Scope bishop_scope.
 
 
 #[universes(cumulative)]
-Record Category := Point {
+Class Category := Point {
   C: Category.Category ;
   pt: C ;
 }.
 
 #[universes(cumulative)]
-Record funct (A B: Category) := {
-  F: Funct (C A) (C B) ;
-  F_pt: F (pt A) ~> pt B ;
+Class funct (A B: Category) := {
+  F: functor (@C A) (@C B) ;
+  F_pt: F (@pt A) ~> @pt B ;
 }.
 
-Module PointedNotations.
+Module Import PointedNotations.
   Coercion C: Category >-> Category.Category.
   Existing Instance C.
 
-  Coercion F: funct >-> Obj.
+  Coercion F: funct >-> functor.
+  Existing Instance F.
 End PointedNotations.
+
+#[program]
+Definition Funct (K L: Category): Category := {|
+  C := {|
+    Obj := functor K L ;
+    Mor A B := Funct K L A B ;
+
+    id _ := id _ ;
+    compose _ _ _ := @compose _ _ _ _ ;
+  |} ;
+
+  pt := {|
+    F := {|
+      op _ := pt ;
+      map _ _ _ := id _ ;
+        |} ;
+    F_pt := id _ ;
+   |} ;
+|}.
+
+Next Obligation.
+Proof.
+  rewrite (H x), (H0 x).
+  reflexivity.
+Qed.

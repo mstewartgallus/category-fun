@@ -13,14 +13,141 @@ Require Import Blech.Truncate.
 Require Import Blech.Some.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
+Require Import Blech.Categories.
 Require Import Blech.Groupoid.
 Require Import Blech.Reflect.
 Require Import Blech.Core.
 Require Import Blech.Functor.
+Require Blech.Pointed.
+Require Blech.Bishops.
+Require Psatz.
 
 Import CategoryNotations.
+Import CategoriesNotations.
 Import BishopNotations.
+Import Bishops.BishopsNotations.
 Import GroupoidNotations.
+Import Pointed.PointedNotations.
+
+Require Import Blech.Monoidal.
+Require Blech.Monoidals.
+Require Import Blech.Bsh.
+
+Import MonoidalNotations.
+
+Definition slice C c :=
+  Pointed.Funct
+    (Pointed.Point I₊ true)
+    (Pointed.Point C c).
+
+#[program]
+Definition foo: slice Bsh (Bishops.simple nat) := {|
+  op x := if x then Bishops.True else (Bishops.simple nat) ;
+  map A B f := _ ;
+|}.
+
+Next Obligation.
+  destruct A, B.
+  all: cbn in *.
+  1,4: apply (id _: Bsh _ _).
+  all: try contradiction.
+  apply (Bishops.const).
+  cbn.
+  apply 5.
+Defined.
+
+Next Obligation.
+  destruct X, Y, Z.
+  all: cbn in *.
+  all: try contradiction.
+  all: auto.
+Qed.
+
+Next Obligation.
+  destruct A.
+  all: cbn in *.
+  all: auto.
+Qed.
+Next Obligation.
+  destruct A, B.
+  all: cbn in *.
+  all: try contradiction.
+  all: auto.
+Qed.
+
+#[program]
+Definition prod :=  {|
+                         C := Bsh ;
+                         pt := Bishops.True ;
+                         app := {|
+                                 op xy := Bishops.prod (fst xy) (snd xy) ;
+                                 map _ _ '(f, g) '(x, y):= (f x, g y) ;
+                         |}
+                       |}.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  destruct p as [p q].
+  destruct x, y.
+  cbn in *.
+  rewrite p, q.
+  split.
+  all: reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  cbn in *.
+  split.
+  - rewrite H.
+    reflexivity.
+  - rewrite H0.
+    reflexivity.
+Qed.
+
+
+#[program]
+ Definition bar: Funct Monoidals.Interval prod := {|
+  F := {| op x := if x then Bishops.True else Bishops.simple nat ; |} ;
+|}.
+
+Next Obligation.
+Proof.
+  destruct A, B.
+  all: cbn in *.
+  1,4: apply (id _: Bsh _ _).
+  all: try contradiction.
+  apply Bishops.const.
+  apply 0.
+Defined.
+
+Next Obligation.
+Proof.
+  destruct X, Y, Z.
+  all: cbn in *.
+  all: try contradiction.
+  all: auto.
+Qed.
+
+Next Obligation.
+Proof.
+  destruct A.
+  all: cbn in *.
+  all: auto.
+Qed.
+
+Next Obligation.
+Proof.
+  destruct A, B.
+  all: cbn in *.
+  all: auto.
+Qed.
+
+Next Obligation.
+Proof.
+  apply (id _: Bsh _ _).
+Defined.
 
 
 Reserved Notation "'lim' A , P" (right associativity, at level 200).
@@ -34,11 +161,6 @@ Reserved Notation "C // c" (at level 40, left associativity).
 
 
 Reserved Notation "X \ Y" (at level 30).
-
-Reserved Notation "X × Y" (at level 30, right associativity).
-Reserved Notation "'π₁'".
-Reserved Notation "'π₂'".
-
 
 Obligation Tactic := auto; cbn; Tactics.program_simpl; try reflexivity.
 
@@ -118,80 +240,6 @@ Module w.
   Arguments sup [X Y Z f g h].
 End w.
 
-
-Module Group.
-  Import Monoid.
-
-  Class Group := {
-    M: Monoid ;
-    invert: M → M  where "f ⁻¹" := (invert f) ;
-
-    app_invert_left (f: M):
-      f ⁻¹ · f == ∅;
-    app_invert_right (f: M):
-      f · f ⁻¹ == ∅;
-
-    invert_compat (f f': M):
-      f == f' → f ⁻¹ == f' ⁻¹ ;
-  }.
-
-  Add Parametric Morphism [G: Group] : (@invert G)
-      with signature equiv ==> equiv as group_mor.
-  Proof.
-    intros ? ? p.
-    apply invert_compat.
-    apply p.
-  Qed.
-
-  Module Export GroupNotations.
-    Declare Scope group_scope.
-    Delimit Scope group_scope with group.
-
-    Bind Scope group_scope with Group.
-    Bind Scope group_scope with M.
-
-    Coercion M: Group >-> Monoid.
-    Existing Instance M.
-
-    Notation "f ⁻¹" := (invert f) : monoid_scope.
-  End GroupNotations.
-End Group.
-
-Import Group.GroupNotations.
-Open Scope group_scope.
-
-Module Import Grp.
-  Import Group.
-
-  Class Grp_Mor [A B: Group] (F: A → B) := {
-    map_unit: F ∅ == ∅ ;
-    map_app x y: F (x · y) == F x · F y ;
-    map_invert x: F (x ⁻¹) == F x ⁻¹ ;
-  }.
-  #[program]
-  Definition Grp: Category := {|
-    Obj := Group ;
-    Mor A B := {f: Bishop A B | Grp_Mor f} /~ {| equiv x y := proj1_sig x == proj1_sig y |};
-
-    id _ := exist _ (id _) _ ;
-    compose _ _ _ f g := exist _ (proj1_sig f ∘ g) _ ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-End Grp.
 
 Module PointedGroupoid.
   Import Groupoid.
@@ -2061,185 +2109,6 @@ Module CatArrow.
   Definition Pushout [A B C] (F: Functor C A) (G: Functor C B) := Arrow (arr F) (arr G).
 End CatArrow.
 
-Module Cartesian.
-  #[universes(cumulative)]
-   Class Cartesian := {
-    Cartesian_Category: Category ;
-
-    pt: Cartesian_Category ;
-    prod: Cartesian_Category → Cartesian_Category → Cartesian_Category ;
-
-    bang {A}: A ~> pt ;
-    fanout [A B C]: C ~> A → C ~> B → C ~> prod A B ;
-    fst {A B}: prod A B ~> A ;
-    snd {A B}: prod A B ~> B ;
-  }.
-
-  Existing Instance Cartesian_Category.
-
-  Coercion Cartesian_Category: Cartesian >-> Category.
-
-  Module CartesianNotations.
-    Notation "!" := bang.
-    Notation "·" := pt.
-
-    Infix "×" := prod.
-    Notation "⟨ A , B ⟩" := (fanout A B).
-    Notation "'π₁'" := fst.
-    Notation "'π₂'" := snd.
-  End CartesianNotations.
-End Cartesian.
-
-
-#[program]
-Definition Empty: Category := {|
-  object := False ;
-  mor x := match x with end ;
-  id x := match x with end ;
-  compose x := match x with end ;
-|}.
-
-Solve All Obligations with contradiction.
-
-#[program]
-Definition Trivial: Monoid := {|
-  M := Bishops.True ;
-  unit := I ;
-  app _ _ := I ;
-|}.
-
-
-
-
-Module Import Thin.
-End Thin.
-
-
-
-
-Module Polynomial.
-  Inductive poly := X | add (_ _: poly) | mul (_ _:poly) | O | I.
-
-  Section eval.
-    Variable x: nat.
-
-    Fixpoint eval p :=
-      match p with
-      | X => x
-      | add L R => eval L + eval R
-      | mul L R => eval L * eval R
-      | O => 0
-      | I => 1
-      end.
-  End eval.
-
-  #[program]
-  Instance poly_Setoid: Setoid poly := {|
-    equiv x y := ∀ t, eval t x = eval t y ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    exists.
-    - intro.
-      reflexivity.
-    - intro.
-      symmetry.
-      apply (H t).
-    - intro.
-      symmetry.
-      rewrite (H t), (H0 t).
-      reflexivity.
-  Qed.
-
-  Add Parametric Morphism : add with signature (@equiv poly _ ==> @equiv poly _ ==> @equiv poly _) as add_mor.
-    intros.
-    intro t.
-    cbn.
-    rewrite (H t), (H0 t).
-    reflexivity.
-  Qed.
-
-  Add Parametric Morphism : mul with signature (@equiv poly _ ==> @equiv poly _ ==> @equiv poly _) as mul_mor.
-    intros.
-    intro t.
-    cbn.
-    rewrite (H t), (H0 t).
-    reflexivity.
-  Qed.
-
-  Definition poly_semi_ring: semi_ring_theory O I add mul (@equiv _ poly_Setoid).
-  Proof.
-    cbn.
-    exists.
-    all: intros; cbn; lia.
-  Qed.
-
-  Add Ring poly_semi : poly_semi_ring (abstract).
-
-  Section substitute.
-    Variable x: poly.
-
-    Fixpoint substitute p :=
-      match p with
-      | X => x
-      | add L R => add (substitute L) (substitute R)
-      | mul L R => mul (substitute L) (substitute R)
-      | O => O
-      | I => I
-      end.
-  End substitute.
-
-  Fixpoint D p :=
-    match p with
-    | X => I
-    | mul L R => add (mul (D L) R) (mul L (D R))
-    | add L R => add (D L) (D R)
-    | O => O
-    | I => O
-    end.
-
-  Module Import PolynomialNotations.
-    Notation "p \ q" := (substitute q p).
-    Notation "0" := O.
-    Notation "1" := I.
-    Notation "p + q" := (add p q).
-    Notation "p * q" := (mul p q).
-  End PolynomialNotations.
-
-  Add Parametric Morphism : substitute with signature (@equiv poly _ ==> @equiv poly _ ==> @equiv poly _) as substitute_mor.
-    admit.
-  Admitted.
-
-  #[program]
-  Definition Polynomial: Category := {|
-    object := True ;
-    mor A B := poly /~ poly_Setoid ;
-
-    id _ := X ;
-    compose _ _ _ p q := p \ q ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    induction f.
-    all: cbn.
-    all: auto.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    induction f.
-    all: cbn.
-    all: auto.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply substitute_mor.
-    all: assumption.
-  Qed.
-End Polynomial.
 
 Module Import Pullback.
   #[universes(cumulative)]
@@ -2333,84 +2202,6 @@ Module Import Pullback.
 End Pullback.
 
 
-Module Import Monoidal.
-  Import Cartesian.
-  Import CartesianNotations.
-
-  #[universes(cumulative)]
-  Record monoidal (C D: Cartesian) := {
-    mon: functor C D ;
-    mon_pt: mon · <~> · ;
-    mon_prod {A B}: mon (A × B) <~> mon A × mon B ;
-  }.
-
-  Arguments mon [C D].
-
-  Module Export MonoidalNotations.
-    Coercion mon: monoidal >-> functor.
-  End MonoidalNotations.
-
-  #[program]
-  Definition Monoidal (K L: Cartesian): Cartesian := {|
-    Cartesian_Category := {|
-      object := monoidal K L ;
-      mor A B := Functor _ _ (mon A) (mon B) ;
-      id _ := id ;
-      compose _ _ _ := @compose _ _ _ _ ;
-    |} ;
-
-    pt := {| mon := {| fobj _ := pt ; map _ _ _ := id |} |} ;
-    prod A B := {| mon := {| fobj x := A x × B x ; map _ _ f := ⟨map A f ∘ π₁, map B f ∘ π₂ ⟩ |} ;  |} ;
-
-    bang _ _ := ! ;
-    fanout _ _ _ f g t := ⟨ f t , g t ⟩ ;
-    fst _ _ _ := π₁ ;
-    snd _ _ _ := π₂ ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    rewrite (H x), (H0 x).
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply (id: Isomorphism _ · ·).
-  Defined.
-
-  Next Obligation.
-  Proof.
-    exists ⟨ ! , ! ⟩ !.
-    - admit.
-    - admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-
-  Next Obligation.
-  Proof.
-    admit.
-  Admitted.
-End Monoidal.
 
 Module DiscreteCartesian.
   Import Cartesian.
@@ -2792,39 +2583,6 @@ Module Monoid.
 End Monoid.
 
 
-Module Import Monoid.
-  Class Monoid := {
-    M: Bishop ;
-
-    unit: M ;
-    app: M → M → M
-    where "f ⊗ g" := (app f g) ;
-
-    app_assoc (f: M) (g: M) (h: M):
-      (f ⊗ (g ⊗ h)) == ((f ⊗ g) ⊗ h );
-    app_unit_left (f: M): (unit ⊗ f) == f ;
-    app_unit_right (f: M): (f ⊗ unit) == f ;
-
-    app_compat (f f': M) (g g': M):
-      f == f' → g == g' → f ⊗ g == f' ⊗ g' ;
-  }.
-
-  Add Parametric Morphism [K: Monoid] : (@app K)
-      with signature equiv ==> equiv ==> equiv as app_mor.
-  Proof.
-    intros ? ? p ? ? q.
-    apply app_compat.
-    - apply p.
-    - apply q.
-  Qed.
-
-  Module Export MonoidNotations.
-    Coercion M: Monoid >-> Bishop.
-
-    Notation "f ⊗ g" := (app f g).
-  End MonoidNotations.
-End Monoid.
-
 Module Import Hom.
    Definition Hom S: Functor S (Functor (op S) Bishop) := {|
     fobj A := {|
@@ -2859,28 +2617,6 @@ Module Import Hom.
   Qed.
 End Hom.
 
-
-Module Complex.
-  Local Open Scope Z_scope.
-
-  Definition Complex: Monoid := {|
-    M := (Z * Z)%type /~ {| equiv x y := fst x = fst y ∧ snd x = snd y |} ;
-
-    unit := (0, 0) ;
-    app x y := (fst x + fst y, snd x + snd y) ;
- |}.
-
-  Obligation 1.
-  Proof.
-    exists.
-    all: split.
-    all: lia.
-  Qed.
-
-  Solve All Obligations with cbn; lia.
-End Complex.
-
-
 Module Import Arrow.
   Module Export Directed.
     Import Interval.Directed.
@@ -2889,33 +2625,6 @@ Module Import Arrow.
   End Directed.
 End Arrow.
 
-Module Import Finite.
-  Definition Finite: Category := {|
-    object := nat ;
-    mor A B := ({x | x ≤ A} → {x | x ≤ B }) /~ {| equiv x y := ∀ t, proj1_sig (x t) = proj1_sig (y t) |};
-
-    id _ x := x ;
-    compose _ _ _ f g x := f (g x) ;
-  |}.
-
-  Obligation 1.
-  Proof.
-    exists.
-    - intros ? ?.
-      reflexivity.
-    - intros ? ? p.
-      symmetry.
-      apply (p t).
-    - intros ? ? ? p q t.
-      rewrite (p t), (q t).
-      reflexivity.
-  Defined.
-
-  Obligation 5.
-  Proof.
-    admit.
-  Admitted.
-End Finite.
 
 
 
@@ -3319,86 +3028,6 @@ Module Import Span.
   Definition trace_forget [X] (f: Span X X): Functor (trace f) (Product.Product (dom f) (dom f)) := forget (Product.snd ∘ proj f) (Product.fst ∘ proj f).
 End Span.
 
-
-
-
-Module Import Finite.
- (* Define finite totally ordered sets *)
-  #[local]
-  Definition mor (A B: nat) := (A ≤ B) /~ {| equiv _ _ := True |}.
-
-  Obligation 1.
-  Proof.
-    exists.
-    all: exists.
-  Qed.
-
-  #[local]
-  Definition id {A}: mor A A := le_n A.
-
-  #[local]
-   Definition compose {A B C}: mor B C → mor A B → mor A C.
-  Proof.
-    cbn.
-    intros f g.
-    rewrite g, f.
-    reflexivity.
-  Defined.
-
-  #[local]
-   Instance le: Category := {
-    object := nat ;
-    mor := mor ;
-    id := @id ;
-    compose := @compose ;
-  }.
-
-  Definition finite (N:nat) := le/N.
-
-  Module Export FiniteNotations.
-    (* FIXME Isolate notations *)
-    Notation "[ N ]" := (finite N).
-  End FiniteNotations.
-
-  #[local]
-  Definition any_gt_0 C: 0 ≤ C.
-  Proof.
-    induction C.
-    - auto.
-    - auto.
-  Qed.
-
-  Definition source C: [C] := {| dom := 0 |}.
-  Definition target C: [C] := {| dom := C |}.
-
-  Obligation 1 of source.
-  Proof.
-    apply any_gt_0.
-  Qed.
-
-  Definition walk {C}: source C ~> target C := any_gt_0 C.
-End Finite.
-
-Definition const {C A:Category} (x: A): Functor C A := {|
-  fobj _ := x ;
-  map _ _ _ := id ;
-|}.
-
-Obligation 1.
-Proof.
-  apply compose_id_left.
-Qed.
-
-Obligation 2.
-Proof.
-  reflexivity.
-Qed.
-
-Obligation 3.
-
-Proof.
-  reflexivity.
-Qed.
 
 (* Define the simplex category *)
 Module Import Simplex.

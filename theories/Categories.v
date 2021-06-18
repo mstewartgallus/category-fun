@@ -86,7 +86,17 @@ Proof.
   all: exists.
 Defined.
 
-Module Export CategoriesNotation.
+Module CategoriesNotations.
   Notation "'I₊'" := Interval.
   Notation "'𝑩₊'" := One.
-End CategoriesNotation.
+End CategoriesNotations.
+
+#[program]
+Definition Empty: Category := {|
+  Obj := False ;
+  Mor x := match x with end ;
+  id x := match x with end ;
+  compose x := match x with end ;
+|}.
+
+Solve All Obligations with contradiction.
