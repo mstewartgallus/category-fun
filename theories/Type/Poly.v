@@ -4,12 +4,7 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 Require Import Coq.setoid_ring.Ring_theory.
 
-Require Import Blech.Bishop.
 Require Psatz.
-
-Import BishopNotations.
-
-Open Scope bishop_scope.
 
 Reserved Notation "A \ B" (at level 30, right associativity).
 

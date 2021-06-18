@@ -7,8 +7,8 @@ Require Import Coq.Bool.Bool.
 Require Coq.Program.Basics.
 Require Coq.Program.Tactics.
 
-Require Import Blech.Truncate.
-Require Import Blech.Some.
+Require Import Blech.Type.Truncate.
+Require Import Blech.Type.Some.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Groupoid.
@@ -35,6 +35,7 @@ Import Group.GroupNotations.
 Import GroupoidNotations.
 Import FunctorNotations.
 Import Prod.ProdNotations.
+Import SomeNotations.
 Import Pointed.PointedNotations.
 Import PointedGroupoid.PointedNotations.
 Import OverNotations.

@@ -3,8 +3,8 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
+Require Import Blech.Type.Some.
 Require Import Blech.Bishop.
-Require Import Blech.Some.
 Require Import Blech.Category.
 Require Import Blech.Functor.
 Require Import Blech.Category.Bsh.

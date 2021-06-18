@@ -2,8 +2,10 @@
 -arg -w
 -arg all
 theories/Defaults.v
-theories/Truncate.v
-theories/Some.v
+
+theories/Type/Truncate.v
+theories/Type/Some.v
+theories/Type/Poly.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
@@ -60,6 +62,5 @@ theories/Groupoid/Interval.v
 theories/Path.v
 theories/Monoidal.v
 theories/Functors.v
-theories/Poly.v
 theories/Monoidals.v
 theories/Infinity.v

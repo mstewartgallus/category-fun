@@ -17,7 +17,7 @@ Arguments some_intro [A P].
 Arguments head [A P].
 Arguments tail [A P].
 
-Module Export SomeNotations.
+Module SomeNotations.
   Add Printing Let someT.
 
   Notation "'some' x .. y , P" := (someT (λ x, .. (someT (λ y,  P)) .. )) : type_scope.
