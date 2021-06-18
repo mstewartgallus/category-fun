@@ -17,6 +17,7 @@ Open Scope category_scope.
 Close Scope nat.
 
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 

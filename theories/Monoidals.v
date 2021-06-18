@@ -22,6 +22,7 @@ Import ProdNotations.
 Open Scope bishop_scope.
 Open Scope category_scope.
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]

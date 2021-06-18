@@ -16,7 +16,7 @@ Open Scope bishop_scope.
 
 Reserved Notation "C ₊" (at level 1).
 
-
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 

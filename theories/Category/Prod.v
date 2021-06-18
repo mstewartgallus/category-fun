@@ -22,6 +22,7 @@ Close Scope nat.
 Reserved Notation "A # B" (at level 80, right associativity).
 
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 

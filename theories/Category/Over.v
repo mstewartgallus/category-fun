@@ -16,6 +16,8 @@ Open Scope bishop_scope.
 
 Reserved Notation "'lub' A , P" (right associativity, at level 200).
 
+#[local]
+Obligation Tactic := Reflect.category_simpl.
 
 #[universes(cumulative)]
 Record bundle (C: Category) (t: C) := supremum { s: C ; π: C s t ; }.
@@ -23,8 +25,6 @@ Record bundle (C: Category) (t: C) := supremum { s: C ; π: C s t ; }.
 Arguments s [C] [t] _.
 Arguments π [C] [t] _.
 
-
-Obligation Tactic := Reflect.category_simpl.
 
 #[program]
 Definition Over (C: Category) (t: C): Category := {|

@@ -17,6 +17,7 @@ Open Scope category_scope.
 Open Scope bishop_scope.
 Open Scope monoid_scope.
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 Class Mon_Mor [A B: Monoid] (f: A → B): Prop := {

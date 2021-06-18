@@ -53,6 +53,7 @@ Reserved Notation "C // c" (at level 40, left associativity).
 
 Reserved Notation "X \ Y" (at level 30).
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 Open Scope bishop_scope.

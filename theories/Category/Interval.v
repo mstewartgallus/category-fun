@@ -17,6 +17,7 @@ Open Scope category_scope.
 
 Reserved Notation "'I₊'".
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]

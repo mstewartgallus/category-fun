@@ -26,6 +26,9 @@ Open Scope bishop_scope.
 Open Scope monoid_scope.
 Open Scope group_scope.
 
+#[local]
+Obligation Tactic := Reflect.category_simpl.
+
 #[program]
 Definition Λ (C: PointedGroupoid.Groupoid): Group := {|
   M := {|

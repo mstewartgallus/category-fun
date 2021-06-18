@@ -17,8 +17,8 @@ Open Scope category_scope.
 Open Scope bishop_scope.
 
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
-
 
 Definition bishop_mor [A B:Bishop] (op: A → B) := ∀ x y, x == y → op x == op y.
 Existing Class bishop_mor.

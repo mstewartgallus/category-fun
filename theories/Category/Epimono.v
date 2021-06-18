@@ -17,6 +17,7 @@ Import MonicNotations.
 Open Scope category_scope.
 Open Scope bishop_scope.
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 Record zigzag [K: Category] [A B: K] (F: K A B) := {

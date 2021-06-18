@@ -19,6 +19,7 @@ Open Scope category_scope.
 Open Scope bishop_scope.
 Open Scope monoid_scope.
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 Class Grp_Mor [A B: Group] (F: A → B) := {

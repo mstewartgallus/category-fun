@@ -16,6 +16,7 @@ Import FunctorNotations.
 Open Scope category_scope.
 Open Scope bishop_scope.
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 Reserved Notation "·".

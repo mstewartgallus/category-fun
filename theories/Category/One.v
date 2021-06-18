@@ -21,6 +21,7 @@ Open Scope monoid_scope.
 Reserved Notation "'𝑩₊'".
 
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]

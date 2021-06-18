@@ -29,6 +29,7 @@ Arguments to_from [K A B] _.
 Arguments from_to [K A B] _.
 
 
+#[local]
 Obligation Tactic := Reflect.category_simpl.
 
 
