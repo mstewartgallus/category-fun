@@ -80,7 +80,7 @@ Definition fst {A B}: Funct (Prod A B) A := {|
   map _ _ := Bishops.snd ;
 |}.
 
-Module Export ProductNotations.
+Module Export ProdNotations.
   Infix "#" := fanout.
   Infix "*" := Prod : category_scope.
-End ProductNotations.
+End ProdNotations.

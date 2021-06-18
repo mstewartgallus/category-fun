@@ -5,8 +5,8 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
-Require Import Blech.Monic.
-Require Import Blech.Epic.
+Require Import Blech.Categories.Monic.
+Require Import Blech.Categories.Epic.
 
 Require Blech.Reflect.
 

@@ -21,7 +21,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 
 #[program]
-Definition Opposite (K: Category): Category := {|
+Definition Op (K: Category): Category := {|
   Obj := K ;
   Mor A B := K B A ;
 
@@ -34,6 +34,6 @@ Definition Opposite (K: Category): Category := {|
 |}.
 
 
-Module OppositeNotations.
-  Notation "C 'ᵒᵖ'" := (Opposite C).
-End OppositeNotations.
+Module OpNotations.
+  Notation "C 'ᵒᵖ'" := (Op C).
+End OpNotations.

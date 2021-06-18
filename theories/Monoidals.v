@@ -7,7 +7,7 @@ Require Import Coq.Bool.Bool.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Functor.
-Require Import Blech.Product.
+Require Import Blech.Categories.Prod.
 Require Import Blech.Monoidal.
 Require Import Blech.Categories.
 
@@ -18,7 +18,7 @@ Import FunctorNotations.
 Import CategoryNotations.
 Import CategoriesNotations.
 Import MonoidalNotations.
-Import ProductNotations.
+Import ProdNotations.
 
 Open Scope bishop_scope.
 Open Scope category_scope.

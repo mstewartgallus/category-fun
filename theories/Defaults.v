@@ -24,4 +24,4 @@ Add Printing Let prod.
 
 Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
 #[global]
-Hint Resolve pair inl inr: core.
+Hint Resolve pair: core.

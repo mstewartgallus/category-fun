@@ -16,28 +16,29 @@ Require Import Blech.Groupoid.
 Require Import Blech.Reflect.
 Require Import Blech.Core.
 Require Import Blech.Functor.
-Require Import Blech.Opposite.
-Require Import Blech.Bsh.
-Require Import Blech.Elements.
-Require Import Blech.Over.
-Require Blech.Product.
+Require Import Blech.Categories.Op.
+Require Import Blech.Categories.Bsh.
+Require Import Blech.Categories.El.
+Require Import Blech.Categories.Over.
+Require Blech.Categories.Prod.
 Require Blech.PointedGroupoid.
 Require Blech.Group.
 Require Blech.Pointed.
 Require Blech.Groupoids.
+Require Blech.Functors.
 Require Blech.Bishops.
 Require Blech.Monoids.
 Require Psatz.
 
 Import CategoryNotations.
 Import CategoriesNotations.
-Import OppositeNotations.
+Import OpNotations.
 Import BishopNotations.
 Import Bishops.BishopsNotations.
 Import Group.GroupNotations.
 Import GroupoidNotations.
 Import FunctorNotations.
-Import Product.ProductNotations.
+Import Prod.ProdNotations.
 Import Pointed.PointedNotations.
 Import PointedGroupoid.PointedNotations.
 Import OverNotations.
@@ -59,69 +60,6 @@ Obligation Tactic := Reflect.category_simpl.
 Open Scope bishop_scope.
 
 Definition slice_cat [C D: Category] A B := Pointed.Funct (Pointed.Point (I₊ * C) (true, A)) (Pointed.Point D B).
-
-#[program]
- Definition bar [C D: Category] (c: C) (d: D) (a: D)
-    (F: Pointed.Funct (Pointed.Point C c) (Pointed.Point D d))
-    (G: Pointed.Funct (Pointed.Point C c) (Pointed.Point D d))
-    (f: forall x, F x ~> G x): slice_cat c d := {|
-  Pointed.F := {|
-                op (x: Prod Groupoids.Interval C) := if fst x then F (snd x) else G (snd x) ;
-                map _ _ _ := _ ;
-              |} : functor (I₊ * C) D ;
-|}.
-
-Next Obligation.
-  destruct H, H0.
-  cbn in *.
-  destruct H1.
-  cbn in *.
-  destruct fst, fst0.
-  all: cbn in *.
-  all: try contradiction.
-  1: apply (map F snd1).
-  2: apply (map G snd1).
-  refine (_ ∘ map F snd1).
-  apply f.
-Defined.
-
-Next Obligation.
-Proof.
-  destruct X, Y, Z.
-  cbn in *.
-  destruct x, y.
-  destruct fst, fst0, fst1.
-  all: cbn in *.
-  all: try contradiction.
-  1,4: rewrite map_composes; reflexivity.
-  - rewrite <- compose_assoc.
-    rewrite map_composes.
-    reflexivity.
-  - admit.
-Admitted.
-
-Next Obligation.
-Proof.
-  destruct A.
-  cbn in *.
-  destruct fst.
-  all: cbn in *.
-  all: apply map_id.
-Qed.
-
-Next Obligation.
-Proof.
-  destruct A, B.
-  cbn in *.
-  destruct f0, f'.
-  cbn in *.
-  destruct fst, fst0.
-  all: cbn in *.
-  all: try contradiction.
-  1,3: apply map_compat;auto.
-  rewrite H0.
-  reflexivity.
-Qed.
 
 Module Import Profunctor.
   Definition Prof C D := Funct (C * D ᵒᵖ) Bsh.
@@ -260,10 +198,10 @@ Module Presheaf.
   #[program]
   Definition pop_obj [C: Category] (P: Funct (C ᵒᵖ) Bsh) (F: Funct ((El P) ᵒᵖ) Bsh):=
   lub ({|
-      op (A: C ᵒᵖ) := (Σ (p: P A), F (A & p)) /~ {| equiv := eq |} : Bishop;
-      map _ _ (f: C ᵒᵖ _ _) '(c & x) := map P f c & map F _ x ;
+      op (A: C ᵒᵖ) := (Σ (p: P A), F ⟨ A , p ⟩) /~ {| equiv := eq |} : Bishop;
+      map _ _ (f: C ᵒᵖ _ _) '⟨ c , x ⟩ := ⟨ map P f c , map F _ x ⟩ ;
     |}: Funct (C ᵒᵖ) Bsh),
-  λ _ '(c & _), c.
+  λ _ '⟨ c , _ ⟩, c.
 
   Next Obligation.
   Proof.
@@ -356,7 +294,7 @@ Module Presheaf.
       all: reflexivity.
   Qed.
 
-  Import Product.
+  Import Prod.
 
   Definition pullback_op'
              [C: Category] [c: C]

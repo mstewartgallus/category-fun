@@ -17,7 +17,7 @@ Open Scope bishop_scope.
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]
-Definition Unit: Category := {|
+Definition Triv: Category := {|
   Obj := True ;
   Mor _ _ := Bishops.True  ;
 

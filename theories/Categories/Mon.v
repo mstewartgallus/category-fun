@@ -4,7 +4,7 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
-Require Import Blech.Bsh.
+Require Import Blech.Categories.Bsh.
 Require Import Blech.Category.
 Require Import Blech.Monoid.
 Require Blech.Reflect.

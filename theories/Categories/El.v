@@ -7,7 +7,7 @@ Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Some.
 Require Import Blech.Functor.
-Require Import Blech.Bsh.
+Require Import Blech.Categories.Bsh.
 Require Blech.Reflect.
 Require Blech.Bishops.
 

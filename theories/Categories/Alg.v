@@ -17,19 +17,17 @@ Open Scope bishop_scope.
 
 Obligation Tactic := Reflect.category_simpl.
 
-Module Import Algebra.
-  #[universes(cumulative)]
-   Record Algebra [C:Category] (F: Funct C C) := {
-    s: C ;
-    π: F s ~> s
-   }.
+#[universes(cumulative)]
+ Record Algebra [C:Category] (F: Funct C C) := {
+  s: C ;
+  π: F s ~> s
+}.
 
-  Arguments s [C F] _.
-  Arguments π [C F] _.
-End Algebra.
+Arguments s [C F] _.
+Arguments π [C F] _.
 
 #[program]
-Definition Algebra [C: Category] (F: Funct C C): Category := {|
+Definition Alg [C: Category] (F: Funct C C): Category := {|
   Obj := Algebra F ;
   Mor A B:=  {m: s A ~> s B | m ∘ π A == π B ∘ map F m }
                /~
