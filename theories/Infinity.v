@@ -24,6 +24,7 @@ Require Blech.Product.
 Require Blech.PointedGroupoid.
 Require Blech.Group.
 Require Blech.Pointed.
+Require Blech.Groupoids.
 Require Blech.Bishops.
 Require Blech.Monoids.
 Require Psatz.
@@ -56,164 +57,75 @@ Reserved Notation "X \ Y" (at level 30).
 Obligation Tactic := Reflect.category_simpl.
 
 Open Scope bishop_scope.
-(* Dumb name but I don't really know a better name for single sorted
-categories and I had to give *some* name *)
-Module Import Path.
-  #[universes(cumulative)]
-  Class Path := {
-    P: Bishop ;
 
-    s: P → P ;
-    t: P → P ;
+Definition slice_cat [C D: Category] A B := Pointed.Funct (Pointed.Point (I₊ * C) (true, A)) (Pointed.Point D B).
 
-    glue: { '(x, y) | s x = t y } -> P ;
+#[program]
+ Definition bar [C D: Category] (c: C) (d: D) (a: D)
+    (F: Pointed.Funct (Pointed.Point C c) (Pointed.Point D d))
+    (G: Pointed.Funct (Pointed.Point C c) (Pointed.Point D d))
+    (f: forall x, F x ~> G x): slice_cat c d := {|
+  Pointed.F := {|
+                op (x: Prod Groupoids.Interval C) := if fst x then F (snd x) else G (snd x) ;
+                map _ _ _ := _ ;
+              |} : functor (I₊ * C) D ;
+|}.
 
-    glue_assoc f g h p q r s:
-      glue (exist _ (f, glue (exist _ (g, h) p)) q) == glue (exist _ (glue (exist _ (f, g) r), h) s) ;
+Next Obligation.
+  destruct H, H0.
+  cbn in *.
+  destruct H1.
+  cbn in *.
+  destruct fst, fst0.
+  all: cbn in *.
+  all: try contradiction.
+  1: apply (map F snd1).
+  2: apply (map G snd1).
+  refine (_ ∘ map F snd1).
+  apply f.
+Defined.
 
-    s_s x: s (s x) == s x ;
-    t_s x: t (s x) == s x ;
+Next Obligation.
+Proof.
+  destruct X, Y, Z.
+  cbn in *.
+  destruct x, y.
+  destruct fst, fst0, fst1.
+  all: cbn in *.
+  all: try contradiction.
+  1,4: rewrite map_composes; reflexivity.
+  - rewrite <- compose_assoc.
+    rewrite map_composes.
+    reflexivity.
+  - admit.
+Admitted.
 
-    s_t x: s (t x) == t x ;
-    t_t x: t (t x) == t x ;
+Next Obligation.
+Proof.
+  destruct A.
+  cbn in *.
+  destruct fst.
+  all: cbn in *.
+  all: apply map_id.
+Qed.
 
-    s_glue x y p: t (glue (exist _ (x, y) p)) == t x ;
-    t_glue x y p: s (glue (exist _ (x, y) p)) == s y ;
-
-    s_compat x x': x == x' → s x == s x' ;
-    t_compat x x': x == x' → t x == t x' ;
-    glue_compat f f' g g' p q:
-      f == f' → g == g' → glue (exist _ (f, g) p) == glue (exist _ (f', g') q) ;
-   }.
-
-  Arguments P: clear implicits.
-
-  Module Export PathNotations.
-    Declare Scope path_scope.
-    Delimit Scope path_scope with path.
-
-    Bind Scope path_scope with P.
-
-    Coercion P: Path >-> Bishop.
-    Notation "f ∘ g" := (glue (exist _ (f, g) _)) (only parsing) : path_scope.
-  End PathNotations.
-
-  Add Parametric Morphism (P:Path) : (@s P)
-      with signature equiv ==> equiv as s_mor.
-  Proof.
-    apply s_compat.
-  Qed.
-
-  Add Parametric Morphism (P:Path) : (@t P)
-      with signature equiv ==> equiv as t_mor.
-  Proof.
-    apply t_compat.
-  Qed.
-End Path.
-
+Next Obligation.
+Proof.
+  destruct A, B.
+  cbn in *.
+  destruct f0, f'.
+  cbn in *.
+  destruct fst, fst0.
+  all: cbn in *.
+  all: try contradiction.
+  1,3: apply map_compat;auto.
+  rewrite H0.
+  reflexivity.
+Qed.
 
 Module Import Profunctor.
   Definition Prof C D := Funct (C * D ᵒᵖ) Bsh.
 End Profunctor.
-
-Module Functors.
-  Import Product.
-
-  (* FIXME figure out some form of HOAS ? *)
-  #[program]
-   Definition curry [A B C] (f: Funct (A * B) C): Funct A (Funct B C) := {|
-    op (a: A) := {|
-                  op (b: B) := f (a, b) ;
-                  map _ _ b := map f ((id a, b): Prod A B (a, _) (a, _)) ;
-                |} ;
-    map _ _ a b := map f ((a, id b): Prod A B (_, b) (_, b))  ;
-  |}.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite map_composes.
-    apply map_compat.
-    cbn in *.
-    split.
-    2: reflexivity.
-    category.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite map_id.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply map_compat.
-    cbn.
-    split.
-    1: reflexivity.
-    assumption.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite map_composes.
-    apply map_compat.
-    cbn in *.
-    split.
-    1: reflexivity.
-    category.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite map_id.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    apply map_compat.
-    cbn.
-    split.
-    2: reflexivity.
-    assumption.
-  Qed.
-
-  #[program]
-   Definition id A: Funct A A :=
-    {|
-     op x := x ;
-     map _ _ x := x ;
-   |}.
-
-  #[program]
-   Definition compose [A B C] (f: Funct B C) (g: Funct A B): Funct A C :=
-    {|
-     op x := f (g x) ;
-     map _ _ x := map f (map g x)
-   |}.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite map_composes.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    repeat rewrite map_id.
-    reflexivity.
-  Qed.
-
-  Next Obligation.
-  Proof.
-    rewrite H.
-    reflexivity.
-  Qed.
-End Functors.
-
 
 (* IDK a better name for this comma like gadget *)
 Module Import Heteromorphisms.

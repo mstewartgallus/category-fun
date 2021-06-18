@@ -7,6 +7,7 @@ theories/Some.v
 theories/Bishop.v
 theories/Category.v
 theories/Reflect.v
+theories/Path.v
 theories/Pointed.v
 theories/Functor.v
 theories/Monoidal.v
@@ -22,6 +23,7 @@ theories/Bishops.v
 theories/FinSet.v
 theories/Unit.v
 theories/Product.v
+theories/Functors.v
 theories/Monoids.v
 theories/Group.v
 theories/Grp.v
