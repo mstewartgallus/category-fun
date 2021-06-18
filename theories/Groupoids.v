@@ -7,10 +7,10 @@ Require Import Coq.Bool.Bool.
 Require Import Blech.Bishop.
 Require Import Blech.Bishops.
 Require Import Blech.Category.
-Require Import Blech.Categories.
 Require Import Blech.Groupoid.
 Require Import Blech.Monoid.
 Require Import Blech.Group.
+Require Import Blech.Category.One.
 Require Blech.PointedGroupoid.
 Require Blech.Pointed.
 
@@ -22,7 +22,7 @@ Import GroupoidNotations.
 Import Pointed.PointedNotations.
 Import MonoidNotations.
 Import GroupNotations.
-Import CategoriesNotations.
+Import OneNotations.
 
 Open Scope bishop_scope.
 Open Scope category_scope.

@@ -5,43 +5,47 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Bool.Bool.
 
 Require Import Blech.Bishop.
-Require Import Blech.Functor.
-Require Import Blech.Monoidal.
 Require Import Blech.Category.
-Require Import Blech.Category.Interval.
-Require Import Blech.Category.Prod.
 
 Require Blech.Reflect.
 
 Import BishopNotations.
-Import FunctorNotations.
 Import CategoryNotations.
-Import MonoidalNotations.
-Import ProdNotations.
 
 Open Scope bishop_scope.
 Open Scope category_scope.
+
+Reserved Notation "'I₊'".
 
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]
 Definition Interval: Category := {|
-  C := Interval ;
-
-  pt := true ;
-  app :=
-    {|
-      op '(x, y) := andb x y ;
-    |} ;
+  Obj := bool ;
+  Mor A B := Is_true (implb B A) /~ {| equiv _ _ := True |} ;
 |}.
 
 Next Obligation.
 Proof.
-  destruct X.
-  destruct A as [A A'].
-  destruct B as [B B'].
-  destruct A, A', B, B'.
+  exists.
+  all: exists.
+Qed.
+
+Next Obligation.
+Proof.
+  destruct A.
+  all: cbn.
+  all: exists.
+Defined.
+
+Next Obligation.
+Proof.
+  destruct A, B, C.
   all: cbn in *.
   all: try contradiction.
   all: exists.
-Qed.
+Defined.
+
+Module IntervalNotations.
+  Notation "'I₊'" := Interval.
+End IntervalNotations.

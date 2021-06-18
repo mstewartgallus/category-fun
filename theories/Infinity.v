@@ -11,16 +11,15 @@ Require Import Blech.Truncate.
 Require Import Blech.Some.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
-Require Import Blech.Categories.
 Require Import Blech.Groupoid.
 Require Import Blech.Reflect.
 Require Import Blech.Core.
 Require Import Blech.Functor.
-Require Import Blech.Categories.Op.
-Require Import Blech.Categories.Bsh.
-Require Import Blech.Categories.El.
-Require Import Blech.Categories.Over.
-Require Blech.Categories.Prod.
+Require Import Blech.Category.Op.
+Require Import Blech.Category.Bsh.
+Require Import Blech.Category.El.
+Require Import Blech.Category.Over.
+Require Blech.Category.Prod.
 Require Blech.PointedGroupoid.
 Require Blech.Group.
 Require Blech.Pointed.
@@ -30,7 +29,6 @@ Require Blech.Bishops.
 Require Psatz.
 
 Import CategoryNotations.
-Import CategoriesNotations.
 Import OpNotations.
 Import BishopNotations.
 Import Bishops.BishopsNotations.
@@ -58,7 +56,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 Open Scope bishop_scope.
 
-Definition slice_cat [C D: Category] A B := Pointed.Funct (Pointed.Point (I₊ * C) (true, A)) (Pointed.Point D B).
+(* Definition slice_cat [C D: Category] A B := Pointed.Funct (Pointed.Point (I₊ * C) (true, A)) (Pointed.Point D B). *)
 
 Module Import Profunctor.
   Definition Prof C D := Funct (C * D ᵒᵖ) Bsh.

@@ -2,7 +2,6 @@ Require Import Blech.Defaults.
 
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
-Require Import Coq.Bool.Bool.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
@@ -19,9 +18,7 @@ Open Scope bishop_scope.
 Open Scope category_scope.
 Open Scope monoid_scope.
 
-
-Reserved Notation "'I₊'".
-Reserved Notation "'S₁₊'".
+Reserved Notation "'𝑩₊'".
 
 
 Obligation Tactic := Reflect.category_simpl.
@@ -59,44 +56,7 @@ Proof.
   reflexivity.
 Qed.
 
-#[program]
- Definition Interval: Category := {|
-  Obj := bool ;
-  Mor A B := Is_true (implb B A) /~ {| equiv _ _ := True |} ;
-|}.
 
-Next Obligation.
-Proof.
-  exists.
-  all: exists.
-Qed.
-
-Next Obligation.
-Proof.
-  destruct A.
-  all: cbn.
-  all: exists.
-Defined.
-
-Next Obligation.
-Proof.
-  destruct A, B, C.
-  all: cbn in *.
-  all: try contradiction.
-  all: exists.
-Defined.
-
-Module CategoriesNotations.
-  Notation "'I₊'" := Interval.
+Module OneNotations.
   Notation "'𝑩₊'" := One.
-End CategoriesNotations.
-
-#[program]
-Definition Empty: Category := {|
-  Obj := False ;
-  Mor x := match x with end ;
-  id x := match x with end ;
-  compose x := match x with end ;
-|}.
-
-Solve All Obligations with contradiction.
+End OneNotations.

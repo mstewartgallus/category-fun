@@ -24,3 +24,8 @@ Definition Trv: Category := {|
   id _ := I ;
   compose _ _ _ _ _ := I ;
 |}.
+
+
+Module TrvNotations.
+  Notation "·" := Trv.
+End TrvNotations.

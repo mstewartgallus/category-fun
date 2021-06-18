@@ -4,10 +4,10 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
-Require Import Blech.Category.
 Require Import Blech.Some.
+Require Import Blech.Category.
 Require Import Blech.Functor.
-Require Import Blech.Categories.Bsh.
+Require Import Blech.Category.Bsh.
 Require Blech.Reflect.
 Require Blech.Bishops.
 
