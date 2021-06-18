@@ -4,14 +4,14 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
+Require Blech.Bishop.Prod.
 Require Import Blech.Category.
 Require Import Blech.Functor.
-Require Blech.Bishops.
 Require Blech.Reflect.
 
 Import CategoryNotations.
 Import BishopNotations.
-Import Bishops.BishopsNotations.
+Import Prod.ProdNotations.
 Import FunctorNotations.
 
 Open Scope category_scope.
@@ -72,13 +72,13 @@ Qed.
 #[program]
 Definition fst {A B}: Functor (Prod A B) A := {|
   op := fst ;
-  map _ _ := Bishops.fst ;
+  map _ _ := Prod.fst ;
 |}.
 
 #[program]
  Definition snd {A B}: Functor (Prod A B) B := {|
   op := snd ;
-  map _ _ := Bishops.snd ;
+  map _ _ := Prod.snd ;
 |}.
 
 Module Export ProdNotations.

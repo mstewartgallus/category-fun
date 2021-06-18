@@ -4,14 +4,20 @@
 theories/Defaults.v
 theories/Truncate.v
 theories/Some.v
+
 theories/Bishop.v
+theories/Bishop/Exp.v
+theories/Bishop/Prod.v
+theories/Bishop/Mt.v
+theories/Bishop/Sum.v
+theories/Bishop/Trv.v
+
 theories/Category.v
 theories/Functor.v
 theories/Reflect.v
 theories/Category/Funct.v
-
 theories/Category/Bsh.v
-theories/Bishops.v
+
 theories/Monoid.v
 theories/Groupoid.v
 theories/Group.v
@@ -33,7 +39,7 @@ theories/Category/Op.v
 theories/Category/Over.v
 theories/Category/Prod.v
 theories/Category/Trv.v
-theories/Category/Empty.v
+theories/Category/Mt.v
 theories/Category/Interval.v
 
 theories/Monoid/Trv.v

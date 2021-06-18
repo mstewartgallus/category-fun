@@ -7,7 +7,6 @@ Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Monoid.
 Require Blech.Pointed.
-Require Blech.Bishops.
 
 Require Blech.Reflect.
 

@@ -19,14 +19,16 @@ Class Bishop := bishop_intro { T: Type ; Bishop_Setoid: Setoid T ; }.
 
 Arguments T: clear implicits.
 
-
-Module BishopNotations.
+Module Import BishopNotations.
   Declare Scope bishop_scope.
   Delimit Scope bishop_scope with bishop.
 
   Bind Scope bishop_scope with Bishop.
 
+  Add Printing Let Bishop.
   Existing Instance Bishop_Setoid.
   Coercion T: Bishop >-> Sortclass.
   Infix "/~" := bishop_intro: bishop_scope.
 End BishopNotations.
+
+Definition type (A: Type) := bishop_intro A {| equiv := eq |}.

@@ -5,7 +5,6 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Bool.Bool.
 
 Require Import Blech.Bishop.
-Require Import Blech.Bishops.
 Require Import Blech.Category.
 Require Import Blech.Groupoid.
 Require Import Blech.Monoid.

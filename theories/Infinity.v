@@ -26,13 +26,11 @@ Require Blech.PointedGroupoid.
 Require Blech.Group.
 Require Blech.Pointed.
 Require Blech.Functors.
-Require Blech.Bishops.
 Require Psatz.
 
 Import CategoryNotations.
 Import OpNotations.
 Import BishopNotations.
-Import Bishops.BishopsNotations.
 Import Group.GroupNotations.
 Import GroupoidNotations.
 Import FunctorNotations.

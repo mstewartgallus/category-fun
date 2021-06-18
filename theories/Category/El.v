@@ -8,8 +8,8 @@ Require Import Blech.Some.
 Require Import Blech.Category.
 Require Import Blech.Functor.
 Require Import Blech.Category.Bsh.
+Require Import Blech.Bishop.Trv.
 Require Blech.Reflect.
-Require Blech.Bishops.
 
 Import CategoryNotations.
 Import BishopNotations.
@@ -32,7 +32,7 @@ Definition Obj [C] (P: Functor C Bsh) := Σ c: C, P c.
  #[program]
  Definition Mor [C] (P: Functor C Bsh) (A B: Obj P) :=
   { u: head A ~> head B |
-    map P u ∘ Bishops.const (tail A) == Bishops.const (tail B) }
+    map P u ∘ const (tail A) == const (tail B) }
     /~ {|
       equiv x y := proj1_sig x == y ;
     |}.

@@ -9,7 +9,6 @@ Require Import Blech.Group.
 Require Import Blech.Monoid.
 Require Import Blech.Monoid.Trv.
 Require Blech.Pointed.
-Require Blech.Bishops.
 
 Require Blech.Reflect.
 

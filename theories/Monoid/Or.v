@@ -5,9 +5,6 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Monoid.
-Require Blech.Bishops.
-
-Require Blech.Reflect.
 
 Import BishopNotations.
 Import MonoidNotations.
@@ -17,7 +14,7 @@ Open Scope monoid_scope.
 
 #[program]
  Definition Or: Monoid := {|
-  S := Bishops.simple bool ;
+  S := type bool ;
 
   unit := false ;
   app := orb ;

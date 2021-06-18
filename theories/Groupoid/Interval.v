@@ -5,7 +5,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Coq.Bool.Bool.
 
 Require Import Blech.Bishop.
-Require Import Blech.Bishops.
+Require Import Blech.Bishop.Trv.
 Require Import Blech.Category.
 Require Import Blech.Groupoid.
 Require Import Blech.Group.
@@ -26,7 +26,7 @@ Open Scope group_scope.
 Definition Interval: Groupoid := {|
   C := {|
         Obj := bool ;
-        Mor _ _ := Bishops.True ;
+        Mor _ _ := Trv ;
 
         id _ := I ;
         compose _ _ _ _ _ := I ;

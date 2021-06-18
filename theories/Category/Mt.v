@@ -3,14 +3,12 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
-Require Import Blech.Bishop.
 Require Import Blech.Category.
 
-Import BishopNotations.
 Import CategoryNotations.
 
 #[program]
-Definition Empty: Category := {|
+Definition Mt: Category := {|
   Obj := False ;
   Mor x := match x with end ;
 
@@ -20,6 +18,6 @@ Definition Empty: Category := {|
 
 Solve All Obligations with contradiction.
 
-Module EmptyNotations.
-  Notation "∅" := Empty.
-End EmptyNotations.
+Module MtNotations.
+  Notation "∅" := Mt : category_scope.
+End MtNotations.

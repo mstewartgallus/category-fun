@@ -5,7 +5,6 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Monoid.
-Require Blech.Bishops.
 
 Require Import Psatz.
 
@@ -17,7 +16,7 @@ Open Scope monoid_scope.
 
 #[program]
 Definition Circle: Monoid := {|
-  S := Bishops.simple nat ;
+  S := type nat ;
 
   unit := 0 ;
   app f g := f + g ;

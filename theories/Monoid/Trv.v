@@ -4,8 +4,8 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
+Require Import Blech.Bishop.Trv.
 Require Import Blech.Monoid.
-Require Blech.Bishops.
 
 Import BishopNotations.
 Import MonoidNotations.
@@ -15,7 +15,7 @@ Open Scope monoid_scope.
 
 #[program]
 Definition Trv: Monoid := {|
-  S := Bishops.True ;
+  S := Trv ;
   unit := I ;
   app _ _ := I ;
 |}.
