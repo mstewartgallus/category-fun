@@ -43,19 +43,8 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite (H _).
+  rewrite (H (proj1_sig g x)).
   apply (proj2_sig f').
-  rewrite (H0 _).
+  rewrite (H0 x).
   reflexivity.
 Qed.
-
-Add Parametric Morphism {A B} (f: Bsh A B) : (proj1_sig f)
-    with signature equiv ==> equiv as fn_mor.
-Proof.
-  intros.
-  destruct f.
-  cbn.
-  auto.
-Qed.
-
-Definition simple (t:Type): Bsh := t /~ {| equiv := eq |}.

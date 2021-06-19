@@ -13,7 +13,7 @@ Import PointedNotations.
 #[program]
  Definition exp (A B: Pointed): Pointed :=
   point
-    ({f:exp A B | f pt == pt} /~ {| equiv f g := proj1_sig f == g |})
+    (hom A B /~ {| equiv f g := ∀ t, f t == g t |})
     (λ _, pt).
 
 Next Obligation.

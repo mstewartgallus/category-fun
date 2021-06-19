@@ -49,12 +49,16 @@ Proof.
   - rewrite p.
     reflexivity.
   - destruct p.
-    rewrite H1, H2.
     rewrite H0, H.
+    destruct f, g.
+    cbn in *.
+    rewrite e, e0.
     reflexivity.
   - destruct p.
-    rewrite H1, H2.
     rewrite H, H0.
+    destruct f, g.
+    cbn in *.
+    rewrite e, e0.
     reflexivity.
   - rewrite p.
     reflexivity.
@@ -65,8 +69,16 @@ Definition inl {A B: Pointed}: exp A (sum A B) := inl.
 
 Next Obligation.
 Proof.
-  intros ? ? p.
+  destruct f, g.
   cbn.
+  rewrite e.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  cbn in *.
   assumption.
 Qed.
 
@@ -80,8 +92,9 @@ Qed.
 Definition inr {A B: Pointed}: exp B (sum A B) := inr.
 
 Next Obligation.
+Proof.
   intros ? ? p.
-  cbn.
+  cbn in *.
   assumption.
 Qed.
 
@@ -93,5 +106,5 @@ Proof.
 Qed.
 
 Module SumNotations.
-  Infix "+" := sum : bishop_scope.
+  Infix "+" := sum : pointed_scope.
 End SumNotations.

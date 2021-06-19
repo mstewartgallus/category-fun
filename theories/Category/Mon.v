@@ -26,7 +26,7 @@ Class Mon_Mor [A B: Monoid] (f: A → B): Prop := {
 }.
 
 #[program]
- Definition Mon: Category := {|
+Definition Mon: Category := {|
   Obj := Monoid ;
   Mor A B := { f: Bsh A B | Mon_Mor f} /~ {| equiv x y := proj1_sig x == (y :>) |} ;
 
@@ -66,6 +66,8 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite (H _), (H0 _).
+  rewrite (H (g x)).
+  apply (proj2_sig f').
+  rewrite (H0 _).
   reflexivity.
 Qed.
