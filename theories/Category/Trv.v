@@ -19,7 +19,7 @@ Obligation Tactic := Reflect.category_simpl.
 #[program]
 Definition Trv: Category := {|
   Obj := True ;
-  Mor _ _ := Trv  ;
+  Mor _ _ := trv  ;
 
   id _ := I ;
   compose _ _ _ _ _ := I ;

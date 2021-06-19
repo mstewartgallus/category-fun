@@ -26,7 +26,7 @@ Open Scope group_scope.
 Definition Interval: Groupoid := {|
   C := {|
         Obj := bool ;
-        Mor _ _ := Trv ;
+        Mor _ _ := trv ;
 
         id _ := I ;
         compose _ _ _ _ _ := I ;

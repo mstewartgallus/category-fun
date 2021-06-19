@@ -17,12 +17,15 @@ Definition sum_eqv (A B: Bishop) (x y: A + B) :=
   | _ => False
   end.
 
+Hint Unfold sum_eqv: bishop.
+
 #[program]
 Definition sum (A B: Bishop): Bishop := (A + B) /~ {| equiv := sum_eqv A B |}.
 
 Next Obligation.
 Proof.
-  admit.
+  exists.
+  all: admit.
 Admitted.
 
 #[program]

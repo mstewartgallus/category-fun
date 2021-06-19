@@ -44,6 +44,15 @@ Proof.
   auto.
 Qed.
 
+Definition type (A: Type) := bishop_intro A {| equiv := eq |}.
+
+Create HintDb bishop discriminated.
+
+#[global]
+Hint Resolve proj2_hom: bishop.
+#[global]
+Hint Unfold homomorphic hom proj1_hom proj2_hom type: bishop.
+
 Module Import BishopNotations.
   Declare Scope bishop_scope.
   Delimit Scope bishop_scope with bishop.
@@ -52,5 +61,3 @@ Module Import BishopNotations.
 
   Infix "/~" := bishop_intro: bishop_scope.
 End BishopNotations.
-
-Definition type (A: Type) := bishop_intro A {| equiv := eq |}.

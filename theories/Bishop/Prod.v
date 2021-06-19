@@ -22,9 +22,11 @@ Proof.
   all: unfold Reflexive, Symmetric, Transitive.
   - split.
     all: reflexivity.
-  - split.
+  - intros ? ? p.
+    destruct p.
+    split.
     all: symmetry.
-    all: apply H.
+    all: assumption.
   - intros ? ? ? p q.
     destruct p as [p p'], q as [q q'].
     rewrite p, q, p', q'.
@@ -37,9 +39,12 @@ Definition fanout {C A B: Bishop} (f: exp C A) (g: exp C B): exp C (prod A B) :=
 
 Next Obligation.
 Proof.
-  admit.
-Admitted.
-
+  intros ? ? p.
+  cbn.
+  split.
+  all: rewrite p.
+  all: reflexivity.
+Qed.
 
 #[program]
 Definition fst {A B: Bishop}: exp (prod A B) A := fst.

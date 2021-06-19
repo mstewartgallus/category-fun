@@ -11,7 +11,7 @@ Import BishopNotations.
 Close Scope nat.
 
 #[program]
-Definition Trv: Bishop := True /~ {| equiv _ _ := True |}.
+Definition trv: Bishop := True /~ {| equiv _ _ := True |}.
 
 Next Obligation.
 Proof.
@@ -20,7 +20,7 @@ Proof.
 Qed.
 
 #[program]
- Definition bang {A}: exp A Trv := λ _, I.
+ Definition bang {A}: exp A trv := λ _, I.
 
 Next Obligation.
 Proof.
@@ -29,7 +29,7 @@ Proof.
 Qed.
 
 #[program]
- Definition const {A: Bishop} (x: A): exp Trv A := λ _, x.
+ Definition const {A: Bishop} (x: A): exp trv A := λ _, x.
 
 Next Obligation.
 Proof.
@@ -38,5 +38,5 @@ Proof.
 Qed.
 
 Module TrvNotations.
-  Notation "·" := Trv : bishop_scope.
+  Notation "·" := trv : bishop_scope.
 End TrvNotations.

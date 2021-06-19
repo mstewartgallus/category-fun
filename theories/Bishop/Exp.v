@@ -24,6 +24,9 @@ Proof.
     reflexivity.
 Qed.
 
+#[global]
+Hint Unfold exp: bishop.
+
 Add Parametric Morphism {A B} (f: exp A B) : (proj1_hom f)
     with signature equiv ==> equiv as exp_mor.
 Proof.
