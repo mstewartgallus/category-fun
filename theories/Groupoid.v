@@ -30,6 +30,8 @@ Class Groupoid := {
     f == f' → f ⁻¹ ==  f' ⁻¹ ;
 }.
 
+Existing Instance C.
+Coercion C: Groupoid >-> Category.
 
 Add Parametric Morphism [G: Groupoid] A B : (@invert G A B)
     with signature equiv ==> equiv as invert_mor.
@@ -40,9 +42,6 @@ Proof.
 Qed.
 
 Module GroupoidNotations.
-  Existing Instance C.
-  Coercion C: Groupoid >-> Category.
-
   Notation "f ⁻¹" := (invert f).
   Notation "A ↔ B" := (C A B) : category_scope.
   Notation "A <~> B" := (C A B) : category_scope.

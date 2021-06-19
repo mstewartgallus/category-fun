@@ -25,6 +25,7 @@ theories/Functor/Curry.v
 theories/Category/Funct.v
 theories/Category/Bsh.v
 
+theories/Bicategory.v
 theories/Monoid.v
 theories/Groupoid.v
 theories/Group.v

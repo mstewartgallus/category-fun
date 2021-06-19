@@ -1233,31 +1233,6 @@ End Under.
 Definition PointedSet := Bishop\Bishops.True.
 
 
-Module Bicategory.
-  Import Product.
-
-  Class Bicategory := {
-    Obj: Type ;
-    Mor: Obj → Obj → Category ;
-
-    id {A}: Mor A A ;
-    compose {A B C}: Funct (Prod (Mor B C) (Mor A B)) (Mor A C) where
-    "A ∘ B" := (proj1_sig compose (A, B)) ;
-
-    compose_id_left [A B] (F: Mor A B): (id ∘ F) <~> F ;
-    compose_id_right [A B] (F: Mor A B): F ∘ id <~> F ;
-
-    compose_assoc [A B C D] (f: Mor C D) (g: Mor B C) (h: Mor A B):
-      f ∘ (g ∘ h) <~> (f ∘ g) ∘ h;
-  }.
-
-  Module Export BicategoryNotations.
-    Coercion Obj: Bicategory >-> Sortclass.
-    Coercion Mor: Bicategory >-> Funclass.
-  End BicategoryNotations.
-End Bicategory.
-
-Import Bicategory.BicategoryNotations.
 
 
 

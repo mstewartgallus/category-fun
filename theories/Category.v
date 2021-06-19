@@ -33,23 +33,8 @@ Class Category := {
 Arguments Obj: clear implicits.
 Arguments Mor: clear implicits.
 
-
-Module Import CategoryNotations.
-  Declare Scope category_scope.
-  Delimit Scope category_scope with category.
-
-  Bind Scope category_scope with Category.
-  Bind Scope category_scope with Obj.
-  Bind Scope category_scope with Mor.
-
-  Coercion Obj: Category >-> Sortclass.
-  Coercion Mor: Category >-> Funclass.
-
-  Notation "f ∘ g" := (compose f g) : category_scope.
-  Notation "A → B" := (Mor _ A B) (only parsing) : category_scope.
-  Notation "A ~> B" := (Mor _ A B) (only parsing) : category_scope.
-End CategoryNotations.
-
+Coercion Obj: Category >-> Sortclass.
+Coercion Mor: Category >-> Funclass.
 
 Add Parametric Morphism [K:Category] (A B C: K) : (@compose K A B C)
     with signature equiv ==> equiv ==> equiv as compose_mor.
@@ -59,3 +44,16 @@ Proof.
   - apply p.
   - apply q.
 Qed.
+
+Module Import CategoryNotations.
+  Declare Scope category_scope.
+  Delimit Scope category_scope with category.
+
+  Bind Scope category_scope with Category.
+  Bind Scope category_scope with Obj.
+  Bind Scope category_scope with Mor.
+
+  Notation "f ∘ g" := (compose f g) : category_scope.
+  Notation "A → B" := (Mor _ A B) (only parsing) : category_scope.
+  Notation "A ~> B" := (Mor _ A B) (only parsing) : category_scope.
+End CategoryNotations.
