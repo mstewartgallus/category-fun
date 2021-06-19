@@ -36,6 +36,7 @@ theories/PointedGroupoid.v
 theories/Category/Alg.v
 theories/Category/Arr.v
 theories/Category/El.v
+theories/Category/Opt.v
 theories/Category/FinSet.v
 theories/Category/Epic.v
 theories/Category/Monic.v

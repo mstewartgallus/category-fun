@@ -33,6 +33,7 @@ Proof.
   assumption.
 Qed.
 
+Coercion op: Functor >-> Funclass.
+
 Module FunctorNotations.
-  Coercion op: Functor >-> Funclass.
 End FunctorNotations.
