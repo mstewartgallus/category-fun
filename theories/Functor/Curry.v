@@ -61,6 +61,19 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? ?.
+  cbn in *.
+  repeat rewrite map_composes.
+  cbn in *.
+  apply map_compat.
+  cbn in *.
+  split.
+  all: Reflect.category.
+  all: reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
   repeat rewrite map_composes.
   apply map_compat.
   cbn in *.

@@ -19,12 +19,28 @@ Open Scope bishop_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
+Definition Natural [C D: Category] [F G: Functor C D] (α: ∀ {x}, D (F x) (G x)) :=
+  ∀ {x y} (m: C x y), map G m ∘ α == α ∘ map F m.
+Existing Class Natural.
+
+Definition NatTrans [C D: Category] (F G: Functor C D) :=
+  { α: ∀ x, D (F x) (G x) | Natural α }.
+
+Definition proj1_NatTrans [C D: Category] [F G: Functor C D]
+  : NatTrans F G → ∀ x, D (F x) (G x) := @proj1_sig _ _.
+
+Definition proj2_NatTrans [C D: Category] [F G: Functor C D]
+  : ∀ (α:NatTrans F G), Natural (proj1_NatTrans α) := @proj2_sig _ _.
+
+Existing Instance proj2_NatTrans.
+Coercion proj1_NatTrans: NatTrans >-> Funclass.
+
 #[program]
 Definition Funct (K L: Category): Category := {|
   Obj := Functor K L ;
-  Mor A B := (∀ x, L (op x) (op x)) /~ {| equiv f g := ∀ x, f x == g x |} ;
-  id _ _ := id _ ;
-  compose _ _ _ f g _ := f _ ∘ g _ ;
+  Mor A B := (NatTrans A B) /~ {| equiv f g := ∀ x, f x == g x |} ;
+  id A _ := id _ ;
+  compose _ _ _ f g _ := f _  ∘ g _  ;
 |}.
 
 Next Obligation.
@@ -33,16 +49,37 @@ Proof.
   all: unfold Reflexive, Symmetric, Transitive; cbn.
   - intros.
     reflexivity.
-  - intros ? ? p t.
+  - intros ? ? p ?.
     symmetry.
-    apply (p t).
-  - intros ? ? ? p q t.
-    rewrite (p t), (q t).
+    apply (p _).
+  - intros ? ? ? p q ?.
+    rewrite (p _), (q _).
     reflexivity.
 Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? ?.
+  Reflect.category.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  intros ? ? ?.
+  destruct f, g.
+  cbn in *.
+  repeat rewrite compose_assoc.
+  rewrite n.
+  repeat rewrite <- compose_assoc.
   apply compose_compat.
-  all:auto.
+  1: reflexivity.
+  rewrite n0.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  rewrite (H x), (H0 x).
+  reflexivity.
 Qed.

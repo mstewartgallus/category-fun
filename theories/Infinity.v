@@ -43,8 +43,6 @@ Import OverNotations.
 Reserved Notation "'lim' A , P" (right associativity, at level 200).
 Reserved Notation "'glb' A , P" (right associativity, at level 200).
 
-Reserved Notation "A <: B" (at level 80).
-
 Reserved Notation "F 'ᵀ'" (at level 1).
 
 Reserved Notation "C // c" (at level 40, left associativity).
