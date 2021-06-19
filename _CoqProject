@@ -7,6 +7,8 @@ theories/Type/Truncate.v
 theories/Type/Some.v
 theories/Type/Poly.v
 
+theories/Proset.v
+
 theories/Bishop.v
 theories/Bishop/Exp.v
 theories/Bishop/Prod.v
@@ -43,6 +45,7 @@ theories/Category/Grp.v
 theories/Category/Mon.v
 theories/Category/Op.v
 theories/Category/Over.v
+theories/Category/PreOrd.v
 theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v

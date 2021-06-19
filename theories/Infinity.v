@@ -2088,69 +2088,6 @@ End Hom.
 
 
 Module Proset.
-  #[universes(cumulative)]
-  Class proset := {
-    type: Type ;
-    preorder: relation type ;
-    Proset_PreOrder: PreOrder preorder ;
-  }.
-
-  Arguments type: clear implicits.
-  Existing Instance Proset_PreOrder.
-
-  Instance Proset_Setoid (C: proset): Setoid (type C) := {
-    equiv x y := preorder x y ∧ preorder y x ;
-  }.
-
-  Obligation 1.
-  Proof.
-    admit.
-  Admitted.
-
-  Definition to_bishop (p: proset): Bishop := type p /~ Proset_Setoid _.
-
-  Module Import ProsetNotations.
-    Coercion type: proset >-> Sortclass.
-    Infix "<:" := preorder.
-  End ProsetNotations.
-
-  Definition Proset: Category := {|
-    object := proset ;
-    mor A B :=
-      {op: Preset A B | ∀ x y, x <: y → op x <: op y}
-       /~ {| equiv x y := ∀ t, x t == y t |} ;
-    id A := @id Preset _ ;
-    compose A B C := @compose Preset _ _ _ ;
-  |}.
-
-  Obligation 1.
-  Proof.
-    admit.
-  Admitted.
-
-
-  Obligation 4.
-  Proof.
-    split.
-    all: reflexivity.
-  Qed.
-
-  Obligation 5.
-  Proof.
-    split.
-    all: reflexivity.
-  Qed.
-
-  Obligation 6.
-  Proof.
-    split.
-    all: reflexivity.
-  Qed.
-
-  Obligation 7.
-  Proof.
-    admit.
-  Admitted.
 End Proset.
 
 
