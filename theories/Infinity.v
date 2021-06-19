@@ -21,11 +21,11 @@ Require Import Blech.Category.El.
 Require Import Blech.Category.Over.
 Require Import Blech.Groupoid.Core.
 Require Import Blech.Groupoid.Dis.
+Require Import Blech.Functor.Curry.
 Require Blech.Category.Prod.
 Require Blech.PointedGroupoid.
 Require Blech.Group.
 Require Blech.Pointed.
-Require Blech.Functors.
 Require Psatz.
 
 Import CategoryNotations.
@@ -91,7 +91,7 @@ Module Presheaf.
   Definition Quantity C := Funct C Bsh.
 
   #[program]
-   Definition Yo C: Funct C (Space C) := Functors.curry {|
+   Definition Yo C: Funct C (Space C) := curry {|
     op (ab: C * (C ᵒᵖ)) := C (snd ab) (fst ab) : Bsh ;
     map _ _ '(a, b) (f: C _ _) :=
       (a: C _ _) ∘ f ∘ (b: C _ _) ;
@@ -113,7 +113,7 @@ Module Presheaf.
   Qed.
 
   #[program]
-   Definition CoYo C: Funct (C ᵒᵖ) (Quantity C) := Functors.curry {|
+   Definition CoYo C: Funct (C ᵒᵖ) (Quantity C) := curry {|
     op (ab: (C ᵒᵖ) * C) := C (fst ab) (snd ab): Bsh ;
     map _ _ ab (f: C _ _) :=
       let a := fst ab : C _ _ in

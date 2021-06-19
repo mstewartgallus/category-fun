@@ -84,35 +84,3 @@ Proof.
   2: reflexivity.
   assumption.
 Qed.
-
-#[program]
- Definition id A: Functor A A :=
-  {|
-  op x := x ;
-  map _ _ x := x ;
-  |}.
-
-#[program]
- Definition compose [A B C] (f: Functor B C) (g: Functor A B): Functor A C :=
-  {|
-  op x := f (g x) ;
-  map _ _ x := map f (map g x)
-  |}.
-
-Next Obligation.
-Proof.
-  repeat rewrite map_composes.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  repeat rewrite map_id.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  rewrite H.
-  reflexivity.
-Qed.

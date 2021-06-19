@@ -19,6 +19,9 @@ theories/Bishop/Trv.v
 theories/Category.v
 theories/Functor.v
 theories/Reflect.v
+theories/Functor/Id.v
+theories/Functor/Compose.v
+theories/Functor/Curry.v
 theories/Category/Funct.v
 theories/Category/Bsh.v
 
@@ -69,6 +72,5 @@ theories/Groupoid/Interval.v
 
 theories/Path.v
 theories/Monoidal.v
-theories/Functors.v
 theories/Monoidals.v
 theories/Infinity.v

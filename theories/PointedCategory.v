@@ -5,12 +5,11 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
-Require Blech.Functor.
+Require Import Blech.Functor.
 Require Import Blech.Category.Funct.
 
 Import CategoryNotations.
 Import BishopNotations.
-Import Functor.FunctorNotations.
 
 Open Scope category_scope.
 Open Scope bishop_scope.
