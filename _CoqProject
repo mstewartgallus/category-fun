@@ -25,6 +25,10 @@ theories/Groupoid.v
 theories/Group.v
 
 theories/Pointed.v
+theories/Pointed/Exp.v
+theories/Pointed/Sum.v
+
+theories/PointedCategory.v
 theories/PointedGroupoid.v
 
 theories/Category/Alg.v

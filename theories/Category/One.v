@@ -6,7 +6,7 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Monoid.
-Require Blech.Pointed.
+Require Blech.PointedCategory.
 
 Require Blech.Reflect.
 
@@ -25,15 +25,15 @@ Reserved Notation "'𝑩₊'".
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]
- Definition One (M: Monoid): Pointed.Category := {|
-  Pointed.C := {|
+ Definition One (M: Monoid): PointedCategory.Category := {|
+  PointedCategory.C := {|
                 Obj := True ;
                 Mor _ _ := M ;
 
                 id _ := ∅ ;
                 compose _ _ _ := app ;
               |} ;
-  Pointed.pt := I ;
+  PointedCategory.pt := I ;
 |}.
 
 Next Obligation.

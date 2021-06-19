@@ -3,62 +3,22 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
-Require Import Blech.Bishop.
-Require Import Blech.Category.
-Require Blech.Functor.
-Require Import Blech.Category.Funct.
+Require Import Bishop.
 
-Import CategoryNotations.
 Import BishopNotations.
-Import Functor.FunctorNotations.
-
-Open Scope category_scope.
-Open Scope bishop_scope.
-
-#[local]
-Obligation Tactic := Reflect.category_simpl.
 
 #[universes(cumulative)]
-Class Category := Point {
-  C: Category.Category ;
-  pt: C ;
-}.
+Class Pointed := point { S: Bishop ; pt: S; }.
 
-#[universes(cumulative)]
-Class Functor (A B: Category) := {
-  F: Functor.Functor (@C A) (@C B) ;
-  F_pt: F (@pt A) ~> @pt B ;
-}.
+Arguments S: clear implicits.
 
 Module Import PointedNotations.
-  Coercion C: Category >-> Category.Category.
-  Existing Instance C.
+  Declare Scope pointed_scope.
+  Delimit Scope pointed_scope with pointed.
 
-  Coercion F: Functor >-> Functor.Functor.
-  Existing Instance F.
+  Bind Scope pointed_scope with Pointed.
+
+  Add Printing Let Pointed.
+  Existing Instance S.
+  Coercion S: Pointed >-> Bishop.
 End PointedNotations.
-
-#[program]
-Definition Funct (K L: Category): Category := {|
-  C := {|
-    Obj := Functor K L ;
-    Mor A B := Funct K L A B ;
-
-    id _ := id _ ;
-    compose _ _ _ := @compose _ _ _ _ ;
-  |} ;
-
-  pt := {|
-    F := {|
-      Functor.op _ := pt ;
-      Functor.map _ _ _ := id _ ;
-        |} ;
-    F_pt := id _ ;
-   |} ;
-|}.
-
-Next Obligation.
-Proof.
-  rewrite (H x), (H0 x).
-  reflexivity.
-Qed.

@@ -11,14 +11,14 @@ Require Import Blech.Monoid.
 Require Import Blech.Group.
 Require Import Blech.Category.One.
 Require Blech.PointedGroupoid.
-Require Blech.Pointed.
+Require Blech.PointedCategory.
 
 Require Blech.Reflect.
 
 Import BishopNotations.
 Import CategoryNotations.
 Import GroupoidNotations.
-Import Pointed.PointedNotations.
+Import PointedCategory.PointedNotations.
 Import MonoidNotations.
 Import GroupNotations.
 Import OneNotations.
