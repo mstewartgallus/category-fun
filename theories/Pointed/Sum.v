@@ -44,23 +44,30 @@ Definition fanin {C A B: Pointed} (f: exp A C) (g: exp B C): exp (sum A B) C := 
 Next Obligation.
 Proof.
   intros x y p.
-  destruct x, y.
-  all: cbn in *.
-  - rewrite p.
-    reflexivity.
-  - destruct p.
-    rewrite H0, H.
-    destruct f, g.
-    cbn in *.
-    rewrite e, e0.
-    reflexivity.
-  - destruct p.
-    rewrite H, H0.
-    destruct f, g.
-    cbn in *.
-    rewrite e, e0.
-    reflexivity.
-  - rewrite p.
+  rewrite p.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  rewrite p.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  exists.
+  - intros ? ? p.
+    destruct x, y.
+    all: cbn in *.
+    all: try destruct p as [p q].
+    all: try rewrite p.
+    all: try rewrite q.
+    all: repeat rewrite map_pt.
+    all: reflexivity.
+  - cbn.
+    rewrite map_pt.
     reflexivity.
 Qed.
 
@@ -69,23 +76,12 @@ Definition inl {A B: Pointed}: exp A (sum A B) := inl.
 
 Next Obligation.
 Proof.
-  destruct f, g.
-  cbn.
-  rewrite e.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  cbn in *.
-  assumption.
-Qed.
-
-Next Obligation.
-Proof.
-  unfold pt_eqv.
-  reflexivity.
+  exists.
+  - intros ? ? p.
+    cbn.
+    assumption.
+  - cbn.
+    reflexivity.
 Qed.
 
 #[program]
@@ -93,16 +89,13 @@ Definition inr {A B: Pointed}: exp B (sum A B) := inr.
 
 Next Obligation.
 Proof.
-  intros ? ? p.
-  cbn in *.
-  assumption.
-Qed.
-
-Next Obligation.
-Proof.
-  unfold pt_eqv.
-  split.
-  all: reflexivity.
+  exists.
+  - intros ? ? p.
+    cbn.
+    assumption.
+  - cbn.
+    split.
+    all: reflexivity.
 Qed.
 
 Module SumNotations.

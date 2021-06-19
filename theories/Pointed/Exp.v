@@ -32,13 +32,10 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros ? ? ?.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  reflexivity.
+  exists.
+  - intros ? ? ?.
+    reflexivity.
+  - reflexivity.
 Qed.
 
 Module ExpNotations.
