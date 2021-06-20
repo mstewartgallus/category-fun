@@ -17,11 +17,10 @@ Existing Instance S.
 Coercion S: Pointed >-> Bishop.
 
 Class Homomorphic [A B: Pointed] (F: A → B): Prop := Homomorphic_intro {
-  Bishop_Homomorphic: Bishop.homomorphic F ;
+  Bishop_Homomorphic: Proper (equiv ==> equiv) F ;
   map_pt: F pt == pt ;
 }.
 
-Coercion Bishop_Homomorphic: Homomorphic >-> Bishop.homomorphic.
 Existing Instance Bishop_Homomorphic.
 
 #[program]

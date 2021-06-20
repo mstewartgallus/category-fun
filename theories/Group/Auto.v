@@ -41,22 +41,10 @@ Definition Λ (C: PointedGroupoid.Groupoid): Group := {|
 
 Next Obligation.
 Proof.
-  rewrite H, H0.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
   apply compose_invert_left.
 Qed.
 
 Next Obligation.
 Proof.
   apply compose_invert_right.
-Qed.
-
-Next Obligation.
-Proof.
-  rewrite H.
-  reflexivity.
 Qed.

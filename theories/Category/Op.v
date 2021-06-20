@@ -31,7 +31,7 @@ Definition Op (K: Category): Category := {|
 
   compose_id_left _ _ := @compose_id_right K _ _ ;
   compose_id_right _ _ := @compose_id_left K _ _ ;
-  compose_compat _ _ _ f f' g g' p q := compose_compat _ _ _ _ q p ;
+  compose_compat _ _ _ _ _ p _ _ q := compose_compat _ _ q _ _ p ;
 |}.
 
 

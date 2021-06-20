@@ -76,8 +76,10 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p ? ? q.
+  cbn.
+  destruct p as [p p'], q as [q q'].
+  rewrite p, p', q, q'.
   split.
-  1: rewrite H, H0.
-  2: rewrite H1, H2.
   all:reflexivity.
 Qed.

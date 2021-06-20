@@ -52,6 +52,7 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p.
   apply map_compat.
   cbn.
   split.
@@ -91,6 +92,8 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p ?.
+  cbn.
   apply map_compat.
   cbn.
   split.

@@ -83,10 +83,11 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p ? ? q.
   destruct A, B, C0.
   all: cbn in *.
   all: try contradiction.
   2: apply I.
-  rewrite H, H0.
+  rewrite p, q.
   reflexivity.
 Qed.

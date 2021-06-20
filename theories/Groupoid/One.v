@@ -46,9 +46,3 @@ Next Obligation.
 Proof.
   apply app_invert_right.
 Qed.
-
-Next Obligation.
-Proof.
-  rewrite H.
-  reflexivity.
-Qed.

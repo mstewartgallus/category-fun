@@ -26,8 +26,7 @@ Class Category := {
   compose_id_left [A B] (f: Mor A B): (id B ∘ f) == f ;
   compose_id_right [A B] (f: Mor A B): (f ∘ id A) == f ;
 
-  compose_compat [A B C] (f f': Mor B C) (g g': Mor A B):
-    f == f' → g == g' → f ∘ g == f' ∘ g' ;
+  compose_compat [A B C]: Proper (equiv ==> equiv ==> equiv) (@compose A B C) ;
 }.
 
 Arguments Obj: clear implicits.
@@ -35,15 +34,7 @@ Arguments Mor: clear implicits.
 
 Coercion Obj: Category >-> Sortclass.
 Coercion Mor: Category >-> Funclass.
-
-Add Parametric Morphism [K:Category] (A B C: K) : (@compose K A B C)
-    with signature equiv ==> equiv ==> equiv as compose_mor.
-Proof.
-  intros ? ? p ? ? q.
-  apply compose_compat.
-  - apply p.
-  - apply q.
-Qed.
+Existing Instance compose_compat.
 
 Module Import CategoryNotations.
   Declare Scope category_scope.

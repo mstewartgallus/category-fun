@@ -43,8 +43,10 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite (H (proj1_sig g x)).
-  apply (proj2_sig f').
-  rewrite (H0 x).
+  intros f g p f' g' q x.
+  cbn in *.
+  destruct f, g, f', g'.
+  cbn in *.
+  rewrite (p _), (q _).
   reflexivity.
 Qed.

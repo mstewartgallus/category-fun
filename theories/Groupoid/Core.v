@@ -96,6 +96,8 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p ? ? q.
+  destruct p, q.
   split.
   + apply compose_compat.
     all:assumption.
@@ -113,4 +115,13 @@ Next Obligation.
 Proof.
   split.
   all: apply to_from.
+Qed.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  cbn.
+  destruct p.
+  split.
+  all: assumption.
 Qed.

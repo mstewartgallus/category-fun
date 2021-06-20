@@ -26,3 +26,9 @@ Obligation Tactic := Reflect.category_simpl.
   op x := x ;
   map _ _ x := x ;
 |}.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  auto.
+Qed.

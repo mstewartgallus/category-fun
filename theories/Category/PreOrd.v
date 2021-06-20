@@ -20,17 +20,12 @@ Open Scope proset_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
-Definition homomorphic [A B: Proset] (f: A → B): Prop :=
-  ∀ x y, x ⊑ y → f x ⊑ f y.
-Existing Class homomorphic.
-
-Definition hom (A B: Proset) := { f: A → B | homomorphic f }.
+Definition hom (A B: Proset) := { f: A → B | Proper (preorder ==> preorder) f }.
 
 Definition proj1_hom [A B]: hom A B → A → B := @proj1_sig _ _.
-Definition proj2_hom [A B]: ∀ (f: hom A B), homomorphic (proj1_hom f) := @proj2_sig _ _.
+Definition proj2_hom [A B]: ∀ (f: hom A B), Proper (preorder ==> preorder) (proj1_hom f) := @proj2_sig _ _.
 
 Coercion proj1_hom: hom >-> Funclass.
-Coercion proj2_hom: hom >-> homomorphic.
 Existing Instance proj2_hom.
 
 #[program]
@@ -78,16 +73,17 @@ Qed.
 
 Next Obligation.
 Proof.
-  destruct (H0 t) as [p p'].
+  intros f g p f' g' q t.
+  cbn in *.
+  destruct f, g, f', g'.
+  cbn in *.
   split.
-  + destruct (H (g t)) as [q q'].
-    rewrite q.
-    apply proj2_hom.
-    rewrite p.
-    reflexivity.
-  + destruct (H (g' t)) as [q q'].
-    rewrite q'.
-    apply proj2_hom.
-    rewrite p'.
-    reflexivity.
+  + destruct (p (x1 t)).
+    rewrite H.
+    apply p1.
+    apply (q _).
+  + destruct (p (x2 t)).
+    rewrite H0.
+    apply p0.
+    apply (q _).
 Qed.

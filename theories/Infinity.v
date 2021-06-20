@@ -105,8 +105,10 @@ Module Presheaf.
 
   Next Obligation.
   Proof.
+    intros ? ? p ?.
+    destruct p as [p q].
     cbn in *.
-    rewrite H, H0.
+    rewrite p, q.
     reflexivity.
   Qed.
 
@@ -129,7 +131,10 @@ Module Presheaf.
 
   Next Obligation.
   Proof.
-    rewrite H, H0.
+    intros ? ? p ?.
+    destruct p as [p q].
+    cbn in *.
+    rewrite p, q.
     reflexivity.
   Qed.
 
@@ -145,6 +150,13 @@ Module Presheaf.
     rewrite p.
     reflexivity.
   Qed.
+
+  Next Obligation.
+  Proof.
+    intros ? ? p ?.
+    cbn in *.
+    admit.
+  Admitted.
 
   Next Obligation.
   Proof.

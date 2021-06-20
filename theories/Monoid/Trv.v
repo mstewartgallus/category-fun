@@ -19,3 +19,9 @@ Definition Trv: Monoid := {|
   unit := I ;
   app _ _ := I ;
 |}.
+
+Next Obligation.
+Proof.
+  intros ? ? ? ? ? ?.
+  exists.
+Qed.

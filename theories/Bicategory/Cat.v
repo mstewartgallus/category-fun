@@ -50,6 +50,7 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p.
   apply map_compat.
   apply map_compat.
   assumption.
@@ -96,6 +97,9 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p ?.
+  destruct p.
+  cbn.
   apply compose_compat.
   - apply map_compat.
     apply (H0 _).

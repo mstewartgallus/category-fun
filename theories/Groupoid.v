@@ -26,20 +26,13 @@ Class Groupoid := {
   compose_invert_left [A B] (f: C A B): f ⁻¹ ∘ f == id _ ;
   compose_invert_right [A B] (f: C A B): f ∘ f ⁻¹ == id _ ;
 
-  invert_compat [A B] (f f': C A B):
-    f == f' → f ⁻¹ ==  f' ⁻¹ ;
+  invert_compat [A B]: Proper (equiv ==> equiv) (@invert A B);
 }.
 
 Existing Instance C.
 Coercion C: Groupoid >-> Category.
 
-Add Parametric Morphism [G: Groupoid] A B : (@invert G A B)
-    with signature equiv ==> equiv as invert_mor.
-Proof.
-  intros ? ? p.
-  apply invert_compat.
-  auto.
-Qed.
+Existing Instance invert_compat.
 
 Module GroupoidNotations.
   Notation "f ⁻¹" := (invert f).

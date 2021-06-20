@@ -51,13 +51,6 @@ Proof.
   apply app_unit_right.
 Qed.
 
-Next Obligation.
-Proof.
-  rewrite H, H0.
-  reflexivity.
-Qed.
-
-
 Module OneNotations.
   Notation "'𝑩₊'" := One.
 End OneNotations.

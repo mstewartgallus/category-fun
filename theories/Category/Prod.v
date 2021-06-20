@@ -37,11 +37,12 @@ Obligation Tactic := Reflect.category_simpl.
 
 Next Obligation.
 Proof.
+  intros ? ? p ? ? q.
+  destruct p as [p p'], q as [q q'].
+  cbn in *.
+  rewrite p, p', q, q'.
   split.
-  - rewrite H0, H.
-    reflexivity.
-  - rewrite H1, H2.
-    reflexivity.
+  all: reflexivity.
 Qed.
 
 #[program]
@@ -64,8 +65,10 @@ Qed.
 
 Next Obligation.
 Proof.
+  intros ? ? p.
+  cbn.
+  rewrite p.
   split.
-  all: rewrite H.
   all: reflexivity.
 Qed.
 

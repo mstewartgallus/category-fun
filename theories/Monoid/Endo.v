@@ -30,12 +30,6 @@ Definition Endo (C: PointedCategory.Category): Monoid := {|
   app := @compose _ _ _ _ ;
 |}.
 
-Next Obligation.
-Proof.
-  rewrite H, H0.
-  reflexivity.
-Qed.
-
 Module EndoNotations.
   Notation "Λ₊" := Endo.
 End EndoNotations.

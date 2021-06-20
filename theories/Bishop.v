@@ -23,26 +23,14 @@ Add Printing Let Bishop.
 Existing Instance Bishop_Setoid.
 Coercion T: Bishop >-> Sortclass.
 
-Definition homomorphic [A B:Bishop] (f: T A → T B) := ∀ x y, x == y → f x == f y.
-Existing Class homomorphic.
-
-Definition hom (A B: Bishop) := { f: A → B | homomorphic f }.
+Definition hom (A B: Bishop) := { f: A → B | Proper (equiv ==> equiv) f }.
 
 Definition proj1_hom [A B]: hom A B → A → B := @proj1_sig _ _.
-Definition proj2_hom [A B]: ∀ (f:hom A B), homomorphic (proj1_hom f) := @proj2_sig _ _.
+Definition proj2_hom [A B]: ∀ (f:hom A B), Proper (equiv ==> equiv) (proj1_hom f) := @proj2_sig _ _.
 
 Coercion proj1_hom: hom >-> Funclass.
-Coercion proj2_hom: hom >-> homomorphic.
 
 Existing Instance proj2_hom.
-
-Add Parametric Morphism {A B} (f: hom A B) : (proj1_hom f)
-    with signature equiv ==> equiv as hom_mor.
-Proof.
-  intros.
-  apply proj2_hom.
-  auto.
-Qed.
 
 Definition type (A: Type) := bishop_intro A {| equiv := eq |}.
 
@@ -51,7 +39,7 @@ Create HintDb bishop discriminated.
 #[global]
 Hint Resolve proj2_hom: bishop.
 #[global]
-Hint Unfold homomorphic hom proj1_hom proj2_hom type: bishop.
+Hint Unfold hom proj1_hom proj2_hom type: bishop.
 
 Module Import BishopNotations.
   Declare Scope bishop_scope.

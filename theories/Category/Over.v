@@ -56,12 +56,15 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite H, H0.
+  intros ? ? p ? ? q.
+  cbn.
+  rewrite p, q.
   reflexivity.
 Qed.
+
+Coercion s: bundle >-> Obj.
 
 Module OverNotations.
   Notation "'lub' A , P" := {| s := A ; π := P |}.
   Infix "/" := Over : category_scope.
-  Coercion s: bundle >-> Obj.
 End OverNotations.

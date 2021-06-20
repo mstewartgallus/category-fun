@@ -61,9 +61,3 @@ Definition Funct (K L: Category): Category.Category := {|
   id _ := id _ ;
   compose _ _ _ := @compose _ _ _ _ ;
 |}.
-
-Next Obligation.
-Proof.
-  rewrite (H x), (H0 x).
-  reflexivity.
-Qed.

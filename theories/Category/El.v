@@ -85,6 +85,8 @@ Definition El [A: Category] (P: Functor A Bsh) := {|
 
 Next Obligation.
 Proof.
-  rewrite H, H0.
+  intros ? ? p ? ? q.
+  cbn in *.
+  rewrite p, q.
   reflexivity.
 Qed.

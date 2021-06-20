@@ -26,16 +26,13 @@ Class Group := {
   app_invert_left (f: M): f ⁻¹ · f == ∅ ;
   app_invert_right (f: M): f · f ⁻¹ == ∅;
 
-  invert_compat (f f': M): f == f' → f ⁻¹ == f' ⁻¹ ;
+  invert_compat: Proper (equiv ==> equiv) invert ;
 }.
 
-Add Parametric Morphism [G: Group] : (@invert G)
-    with signature equiv ==> equiv as group_mor.
-Proof.
-  intros ? ? p.
-  apply invert_compat.
-  apply p.
-Qed.
+Coercion M: Group >-> Monoid.
+Existing Instance M.
+
+Existing Instance invert_compat.
 
 Module Import GroupNotations.
   Declare Scope group_scope.
@@ -43,9 +40,6 @@ Module Import GroupNotations.
 
   Bind Scope group_scope with Group.
   Bind Scope group_scope with M.
-
-  Coercion M: Group >-> Monoid.
-  Existing Instance M.
 
   Notation "f ⁻¹" := (invert f) : monoid_scope.
 End GroupNotations.

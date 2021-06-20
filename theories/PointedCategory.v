@@ -58,6 +58,6 @@ Definition Funct (K L: Category): Category := {|
 
 Next Obligation.
 Proof.
-  rewrite (H x), (H0 x).
+  intros ? ? ?.
   reflexivity.
 Qed.

@@ -21,25 +21,21 @@ Open Scope monoid_scope.
 Obligation Tactic := Reflect.category_simpl.
 
 Class Mon_Mor [A B: Monoid] (f: A → B): Prop := {
+  prp: Proper (equiv ==> equiv) f ;
   map_unit: f ∅ == ∅ ;
   map_app x y: f (x · y) == f x · f y ;
 }.
 
+Existing Instance prp.
+
 #[program]
 Definition Mon: Category := {|
   Obj := Monoid ;
-  Mor A B := { f: Bsh A B | Mon_Mor f} /~ {| equiv x y := proj1_sig x == (y :>) |} ;
+  Mor A B := { f: A → B | Mon_Mor f} /~ {| equiv x y := ∀ t, x t == y t |} ;
 
-  id _ := exist _ (id _) _ ;
-  compose _ _ _ f g := exist _ (proj1_sig f ∘ g) _ ;
+  id _  x := x ;
+  compose _ _ _ f g x := f (g x) ;
 |}.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  rewrite p.
-  reflexivity.
-Qed.
 
 Next Obligation.
 Proof.
@@ -57,6 +53,9 @@ Qed.
 Next Obligation.
 Proof.
   exists.
+  - intros ? ? p.
+    rewrite p.
+    reflexivity.
   - repeat rewrite map_unit.
     reflexivity.
   - intros.
@@ -66,8 +65,24 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite (H (g x)).
-  apply (proj2_sig f').
-  rewrite (H0 _).
+  exists.
+  - intros ? ? p.
+    rewrite p.
+    reflexivity.
+  - repeat rewrite map_unit.
+    reflexivity.
+  - intros.
+    repeat rewrite map_app.
+    reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  intros f g p f' g' q x.
+  cbn in *.
+  destruct f, g, f', g'.
+  cbn in *.
+  rewrite (q _).
+  rewrite (p _).
   reflexivity.
 Qed.

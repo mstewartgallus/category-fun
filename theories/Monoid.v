@@ -32,18 +32,13 @@ Class Monoid := {
   app_unit_left (f: S): (unit · f) == f ;
   app_unit_right (f: S): (f · unit) == f ;
 
-  app_compat (f f': S) (g g': S):
-    f == f' → g == g' → f · g == f' · g' ;
+  app_compat: Proper (equiv ==> equiv ==> equiv) app ;
 }.
 
-Add Parametric Morphism [M: Monoid] : (@app M)
-    with signature equiv ==> equiv ==> equiv as app_mor.
-Proof.
-  intros ? ? p ? ? q.
-  apply app_compat.
-  - apply p.
-  - apply q.
-Qed.
+Coercion S: Monoid >-> Bishop.Bishop.
+Existing Instance S.
+
+Existing Instance app_compat.
 
 Module MonoidNotations.
   Declare Scope monoid_scope.
@@ -51,9 +46,6 @@ Module MonoidNotations.
 
   Bind Scope monoid_scope with Monoid.
   Bind Scope monoid_scope with S.
-
-  Coercion S: Monoid >-> Bishop.Bishop.
-  Existing Instance S.
 
   Notation "∅" := unit : monoid_scope.
   Notation "f · g" := (app f g) : monoid_scope.

@@ -80,6 +80,9 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite (H x), (H0 x).
+  intros ? ? p ? ? q ?.
+  destruct x, y, x0, y0.
+  cbn in *.
+  rewrite (p _), (q _).
   reflexivity.
 Qed.
