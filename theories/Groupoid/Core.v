@@ -125,3 +125,7 @@ Proof.
   split.
   all: assumption.
 Qed.
+
+Module CoreNotations.
+  Notation "A <~> B" := (Core _ A B) : category_scope.
+End CoreNotations.

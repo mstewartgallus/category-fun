@@ -37,5 +37,4 @@ Existing Instance invert_compat.
 Module GroupoidNotations.
   Notation "f ⁻¹" := (invert f).
   Notation "A ↔ B" := (C A B) : category_scope.
-  Notation "A <~> B" := (C A B) : category_scope.
 End GroupoidNotations.
