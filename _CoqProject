@@ -48,6 +48,7 @@ theories/Category/Grp.v
 theories/Category/Mon.v
 theories/Category/Op.v
 theories/Category/Over.v
+theories/Category/Under.v
 theories/Category/PreOrd.v
 theories/Category/Prod.v
 theories/Category/Trv.v
