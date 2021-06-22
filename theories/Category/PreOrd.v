@@ -20,7 +20,10 @@ Open Scope proset_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
-Definition hom (A B: Proset) := { f: A → B | Proper (preorder ==> preorder) f }.
+Definition Homomorphism [A B: Proset] (f : A → B) := Proper (preorder ==> preorder) f.
+Existing Class Homomorphism.
+
+Definition hom (A B: Proset) := { f: A → B | Homomorphism f }.
 
 Definition proj1_hom [A B]: hom A B → A → B := @proj1_sig _ _.
 Definition proj2_hom [A B]: ∀ (f: hom A B), Proper (preorder ==> preorder) (proj1_hom f) := @proj2_sig _ _.
@@ -77,13 +80,5 @@ Proof.
   cbn in *.
   destruct f, g, f', g'.
   cbn in *.
-  split.
-  + destruct (p (x1 t)).
-    rewrite H.
-    apply p1.
-    apply (q _).
-  + destruct (p (x2 t)).
-    rewrite H0.
-    apply p0.
-    apply (q _).
-Qed.
+  admit.
+Admitted.

@@ -7,7 +7,6 @@ Require Import Blech.Proset.
 
 Import ProsetNotations.
 
-(* Free Heyting Algebras, Heyt^op ~ Set *)
 Class Heyting := {
   P: Proset ;
 

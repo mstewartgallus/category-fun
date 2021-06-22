@@ -8,6 +8,7 @@ theories/Type/Some.v
 theories/Type/Poly.v
 
 theories/Proset.v
+theories/Proset/Complete.v
 theories/Proset/Heyting.v
 theories/Proset/Heyting/Free.v
 
@@ -53,6 +54,7 @@ theories/Category/Over.v
 theories/Category/Under.v
 theories/Category/Ptd.v
 theories/Category/PreOrd.v
+theories/Category/CABA.v
 theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
