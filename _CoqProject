@@ -25,6 +25,7 @@ theories/Category.v
 theories/Functor.v
 theories/Reflect.v
 theories/Functor/Id.v
+theories/Functor/Compose.v
 theories/Functor/Curry.v
 theories/Category/Funct.v
 theories/Category/Bsh.v
@@ -61,7 +62,6 @@ theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
 theories/Category/Interval.v
-theories/Category/Heyt.v
 
 theories/Bicategory.v
 theories/Bicategory/Cat.v

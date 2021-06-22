@@ -13,6 +13,8 @@ Require Import Blech.Functor.
 Require Import Blech.Category.Funct.
 Require Blech.Reflect.
 Require Blech.Functor.Id.
+Require Blech.Functor.Curry.
+Require Blech.Functor.Compose.
 
 Import BishopNotations.
 Import CategoryNotations.
@@ -26,85 +28,82 @@ Obligation Tactic := Reflect.category_simpl.
 
 #[program]
  #[local]
-Definition godement {X Y Z}: Functor (Funct Y Z * Funct X Y) (Funct X Z) :=
+Definition godement {X Y Z}: Functor (Funct Y Z * Funct X Y * X) Z :=
  {|
-  op '(F, G) := {|
-                 op x := F (G x) ;
-                 map _ _ x := map F (map G x) ;
-               |} ;
-  map '(A, C) '(B, D) '(F, G) x := map B (G x) ∘ F _ ;
-  |}.
+  op '(F, G, x) := F (G x) ;
+  map '(A, B, C) '(X, Y, Z) '(F, G, x) := F _ ∘ map A (G _ ∘ map B x) ;
+ |}.
 
 Next Obligation.
 Proof.
+  destruct X0, Y0, Z0.
+  cbn in *.
+  destruct fst, fst0, fst1.
+  cbn in *.
+  destruct x, y.
+  cbn in *.
+  destruct fst2, fst3.
+  cbn in *.
+  repeat rewrite <- Category.compose_assoc.
+  apply compose_compat.
+  1: reflexivity.
   repeat rewrite <- map_composes.
-  Reflect.category.
+  repeat rewrite Category.compose_assoc.
+  apply compose_compat.
+  2: reflexivity.
+  repeat rewrite map_composes.
+  rewrite (proj2_NatTrans fst3).
+  repeat rewrite <- Category.compose_assoc.
+  repeat rewrite map_composes.
+  apply compose_compat.
+  1: reflexivity.
+  apply map_compat.
+  repeat rewrite <- Category.compose_assoc.
+  apply compose_compat.
+  1: reflexivity.
+  rewrite (proj2_NatTrans snd8).
   reflexivity.
 Qed.
 
 Next Obligation.
 Proof.
+  destruct A.
+  destruct fst.
+  cbn in *.
+  repeat rewrite <- map_composes.
   repeat rewrite map_id.
+  repeat rewrite Category.compose_id_right.
   reflexivity.
 Qed.
 
 Next Obligation.
 Proof.
   intros ? ? p.
-  apply map_compat.
-  apply map_compat.
-  assumption.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? ?.
+  destruct A, B.
+  destruct fst, fst0.
   cbn in *.
-  repeat rewrite Category.compose_assoc.
-  repeat rewrite map_composes.
-  repeat rewrite (proj2_sig F).
-  repeat rewrite <- Category.compose_assoc.
-  apply compose_compat.
-  1: reflexivity.
-  repeat rewrite map_composes.
-  apply map_compat.
-  repeat rewrite (proj2_sig G).
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  destruct X0, Y0, Z0.
   destruct x, y.
   cbn in *.
+  destruct p.
+  destruct H.
+  cbn in *.
+  destruct fst1, fst2.
+  cbn in *.
+  rewrite H0.
   repeat rewrite <- map_composes.
-  repeat rewrite <- Category.compose_assoc.
-  apply compose_compat.
-  1: reflexivity.
   repeat rewrite Category.compose_assoc.
   apply compose_compat.
   2: reflexivity.
-  rewrite (proj2_sig fst2).
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  rewrite map_id.
-  Reflect.category.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p ?.
-  destruct p.
-  cbn.
+  rewrite <- (proj2_NatTrans fst1).
+  rewrite <- (proj2_NatTrans fst2).
+  rewrite (H _).
+  repeat rewrite (proj2_NatTrans fst2).
   apply compose_compat.
-  - apply map_compat.
-    apply (H0 _).
-  - apply (H _).
+  1: reflexivity.
+  apply map_compat.
+  apply H1.
 Qed.
+
 
 #[program]
 Definition Cat: Bicategory := {|
@@ -112,7 +111,7 @@ Definition Cat: Bicategory := {|
   Mor := Funct ;
 
   id := Id.id ;
-  compose := @godement ;
+  compose A B C := Curry.curry (@godement A B C) ;
 
   compose_id_left A B F :=
     {|
@@ -152,7 +151,8 @@ Next Obligation.
 Proof.
   intros ? ? m.
   cbn in *.
-  Reflect.category.
+  repeat rewrite Category.compose_id_right.
+  repeat rewrite Category.compose_id_left.
   reflexivity.
 Qed.
 
@@ -160,7 +160,8 @@ Next Obligation.
 Proof.
   intros ? ? m.
   cbn in *.
-  Reflect.category.
+  repeat rewrite Category.compose_id_right.
+  repeat rewrite Category.compose_id_left.
   reflexivity.
 Qed.
 
@@ -168,7 +169,8 @@ Next Obligation.
 Proof.
   intros ? ? m.
   cbn in *.
-  Reflect.category.
+  repeat rewrite Category.compose_id_right.
+  repeat rewrite Category.compose_id_left.
   reflexivity.
 Qed.
 
@@ -176,6 +178,7 @@ Next Obligation.
 Proof.
   intros ? ? m.
   cbn in *.
-  Reflect.category.
+  repeat rewrite Category.compose_id_right.
+  repeat rewrite Category.compose_id_left.
   reflexivity.
 Qed.
