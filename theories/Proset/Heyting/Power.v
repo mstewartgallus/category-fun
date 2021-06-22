@@ -9,9 +9,6 @@ Require Import Blech.Proset.Heyting.
 
 Import ProsetNotations.
 
-(* Ostensibly, a first order system of logic is a free heyting algebra over the
-set of free variables *)
-
 #[program]
 Definition Power (S: Bishop) : Heyting := {|
   P := {|

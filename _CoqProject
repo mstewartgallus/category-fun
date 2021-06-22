@@ -10,7 +10,6 @@ theories/Type/Poly.v
 theories/Proset.v
 theories/Proset/Heyting.v
 theories/Proset/Heyting/Free.v
-theories/Proset/Heyting/Power.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
