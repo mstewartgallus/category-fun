@@ -27,6 +27,7 @@ theories/Reflect.v
 theories/Functor/Id.v
 theories/Functor/Compose.v
 theories/Functor/Curry.v
+
 theories/Category/Funct.v
 theories/Category/Bsh.v
 
@@ -55,6 +56,8 @@ theories/Category/Mon.v
 theories/Category/Op.v
 theories/Category/Over.v
 theories/Category/Under.v
+theories/Category/PSh.v
+theories/Category/CoPSh.v
 theories/Category/Ptd.v
 theories/Category/PreOrd.v
 theories/Category/CABA.v
@@ -62,6 +65,11 @@ theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
 theories/Category/Interval.v
+
+theories/Functor/Yo.v
+theories/Functor/CoYo.v
+theories/Functor/Spec.v
+theories/Functor/CoSpec.v
 
 theories/Bicategory.v
 theories/Bicategory/Cat.v
