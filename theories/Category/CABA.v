@@ -9,6 +9,7 @@ Require Import Blech.Proset.Complete.
 Require Import Blech.Proset.Op.
 Require Import Blech.Category.
 Require Import Blech.Category.PreOrd.
+Require Import Blech.Proset.Prp.
 Require Blech.Reflect.
 
 Import BishopNotations.

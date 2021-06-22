@@ -9,6 +9,8 @@ theories/Type/Poly.v
 
 theories/Proset.v
 theories/Proset/Complete.v
+theories/Proset/Prp.v
+theories/Proset/Funct.v
 theories/Proset/Heyting.v
 theories/Proset/Heyting/Free.v
 
