@@ -8,6 +8,8 @@ theories/Type/Some.v
 theories/Type/Poly.v
 
 theories/Proset.v
+theories/Proset/Heyting.v
+theories/Proset/Heyting/Free.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
@@ -55,6 +57,7 @@ theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
 theories/Category/Interval.v
+theories/Category/Heyt.v
 
 theories/Bicategory.v
 theories/Bicategory/Cat.v

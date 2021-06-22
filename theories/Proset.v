@@ -40,6 +40,13 @@ Proof.
       reflexivity.
 Qed.
 
+Instance subrelation_equiv_preorder `(Proset) : subrelation equiv preorder.
+Proof.
+  intros ? ? p.
+  destruct p.
+  auto.
+Qed.
+
 Module Import ProsetNotations.
   Infix "⊑" := preorder.
 
