@@ -23,41 +23,40 @@ Class Category := Point {
   pt: C ;
 }.
 
-#[universes(cumulative)]
-Class Functor (A B: Category) := {
-  F: Functor.Functor (@C A) (@C B) ;
-  F_pt: F (@pt A) ~> @pt B ;
+Definition Functor (A B: Category) := {
+  F: Functor.Functor (@C A) (@C B) |
+  F (@pt A) = @pt B
 }.
 
 Module Import PointedNotations.
   Coercion C: Category >-> Category.Category.
   Existing Instance C.
 
-  Coercion F: Functor >-> Functor.Functor.
-  Existing Instance F.
+  (* Coercion F: Functor >-> Functor.Functor. *)
+  (* Existing Instance F. *)
 End PointedNotations.
 
-#[program]
-Definition Funct (K L: Category): Category := {|
-  C := {|
-    Obj := Functor K L ;
-    Mor A B := Funct K L A B ;
+(* #[program] *)
+(* Definition Funct (K L: Category): Category := {| *)
+(*   C := {| *)
+(*     Obj := Functor K L ; *)
+(*     Mor A B := Funct K L A B ; *)
 
-    id _ := id _ ;
-    compose _ _ _ := @compose _ _ _ _ ;
-  |} ;
+(*     id _ := id _ ; *)
+(*     compose _ _ _ := @compose _ _ _ _ ; *)
+(*   |} ; *)
 
-  pt := {|
-    F := {|
-      Functor.op _ := pt ;
-      Functor.map _ _ _ := id _ ;
-        |} ;
-    F_pt := id _ ;
-   |} ;
-|}.
+(*   pt := {| *)
+(*     F := {| *)
+(*       Functor.op _ := pt ; *)
+(*       Functor.map _ _ _ := id _ ; *)
+(*         |} ; *)
+(*     F_pt := id _ ; *)
+(*    |} ; *)
+(* |}. *)
 
-Next Obligation.
-Proof.
-  intros ? ? ?.
-  reflexivity.
-Qed.
+(* Next Obligation. *)
+(* Proof. *)
+(*   intros ? ? ?. *)
+(*   reflexivity. *)
+(* Qed. *)
