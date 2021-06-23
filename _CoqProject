@@ -11,8 +11,10 @@ theories/Proset.v
 theories/Proset/Complete.v
 theories/Proset/Prp.v
 theories/Proset/Funct.v
+theories/Proset/Sub.v
 theories/Proset/Heyting.v
 theories/Proset/Heyting/Free.v
+theories/Proset/Trv.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
@@ -45,6 +47,7 @@ theories/PointedGroupoid.v
 theories/Category/Alg.v
 theories/Category/Arr.v
 theories/Category/El.v
+theories/Category/ElPreOrd.v
 theories/Category/Opt.v
 theories/Category/FinSet.v
 theories/Category/Epic.v
@@ -64,6 +67,7 @@ theories/Category/CABA.v
 theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
+theories/Category/Sub.v
 theories/Category/Interval.v
 
 theories/Functor/Yo.v
