@@ -68,6 +68,7 @@ theories/Proset/Heyting/Free.v
 theories/Proset/Trv.v
 theories/Category/ElPreOrd.v
 
+theories/Bishop/Power.v
 
 theories/Functor/Id.v
 theories/Functor/Compose.v
