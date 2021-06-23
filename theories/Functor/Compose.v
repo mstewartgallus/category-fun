@@ -6,7 +6,6 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Functor.
-Require Import Blech.Category.Funct.
 Require Blech.Reflect.
 
 Import CategoryNotations.

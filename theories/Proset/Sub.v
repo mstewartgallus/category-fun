@@ -7,14 +7,15 @@ Require Import Blech.Bishop.
 Require Import Blech.Proset.
 Require Import Blech.Category.
 Require Import Blech.Category.Over.
-Require Import Blech.Category.Monic.
+Require Import Blech.Monic.
+Require Import Blech.Monic.Mono.
 Require Import Blech.Type.Truncate.
 
 Import CategoryNotations.
 Import BishopNotations.
 Import ProsetNotations.
 Import TruncateNotations.
-Import MonicNotations.
+Import MonoNotations.
 Import OverNotations.
 
 (* The partially ordered set of subobjects *)

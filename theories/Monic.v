@@ -5,29 +5,19 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
-Require Import Blech.Functor.
-Require Blech.Reflect.
 
 Import CategoryNotations.
-Import FunctorNotations.
 Import BishopNotations.
 
 Open Scope category_scope.
 Open Scope bishop_scope.
 
+#[universes(cumulative)]
+Class Monic := {
+  C: Category ;
 
-#[local]
-Obligation Tactic := Reflect.category_simpl.
+  monic [X Y Z] (f: C Y Z) (x y: C X Y): f ∘ x == f ∘ y → x == y ;
+}.
 
-#[program]
- Definition id A: Functor A A :=
-{|
-  op x := x ;
-  map _ _ x := x ;
-|}.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  auto.
-Qed.
+Existing Instance C.
+Coercion C: Monic >-> Category.

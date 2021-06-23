@@ -7,14 +7,6 @@ theories/Type/Truncate.v
 theories/Type/Some.v
 theories/Type/Poly.v
 
-theories/Proset.v
-theories/Proset/Complete.v
-theories/Proset/Prp.v
-theories/Proset/Funct.v
-theories/Proset/Sub.v
-theories/Proset/Heyting.v
-theories/Proset/Heyting/Free.v
-theories/Proset/Trv.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
@@ -26,14 +18,13 @@ theories/Bishop/Trv.v
 theories/Category.v
 theories/Functor.v
 theories/Reflect.v
-theories/Functor/Id.v
-theories/Functor/Compose.v
-theories/Functor/Curry.v
 
 theories/Category/Funct.v
 theories/Category/Bsh.v
 
 theories/Monoid.v
+theories/Monic.v
+theories/Monic/Mono.v
 theories/Groupoid.v
 theories/Group.v
 
@@ -47,11 +38,9 @@ theories/PointedGroupoid.v
 theories/Category/Alg.v
 theories/Category/Arr.v
 theories/Category/El.v
-theories/Category/ElPreOrd.v
 theories/Category/Opt.v
 theories/Category/FinSet.v
 theories/Category/Epic.v
-theories/Category/Monic.v
 theories/Category/Epimono.v
 theories/Category/One.v
 theories/Category/Grp.v
@@ -62,14 +51,27 @@ theories/Category/Under.v
 theories/Category/PSh.v
 theories/Category/CoPSh.v
 theories/Category/Ptd.v
-theories/Category/PreOrd.v
 theories/Category/CABA.v
 theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
-theories/Category/Sub.v
 theories/Category/Interval.v
 
+theories/Proset.v
+theories/Category/PreOrd.v
+theories/Proset/Complete.v
+theories/Proset/Prp.v
+theories/Proset/Funct.v
+theories/Proset/Sub.v
+theories/Proset/Heyting.v
+theories/Proset/Heyting/Free.v
+theories/Proset/Trv.v
+theories/Category/ElPreOrd.v
+
+
+theories/Functor/Id.v
+theories/Functor/Compose.v
+theories/Functor/Curry.v
 theories/Functor/Yo.v
 theories/Functor/CoYo.v
 theories/Functor/Spec.v

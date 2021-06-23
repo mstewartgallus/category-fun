@@ -5,6 +5,7 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
+Require Import Blech.Monic.
 Require Blech.Reflect.
 
 Import CategoryNotations.
@@ -19,13 +20,15 @@ Reserved Notation "C ₊" (at level 1).
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
-
 #[program]
-Definition Monic (C: Category): Category := {|
-  Obj := C ;
-  Mor A B := {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
-  id := @id _ ;
-  compose := @compose _ ;
+ Definition Mono (C: Category): Monic :=
+  {|
+  C := {|
+    Obj := C ;
+    Mor A B := {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
+    id := @id _ ;
+    compose := @compose _ ;
+  |} ;
 |}.
 
 Next Obligation.
@@ -61,6 +64,6 @@ Proof.
   reflexivity.
 Qed.
 
-Module MonicNotations.
-  Notation "C ₊" := (Monic C) : category_scope.
-End MonicNotations.
+Module MonoNotations.
+  Notation "C ₊" := (Mono C) : category_scope.
+End MonoNotations.
