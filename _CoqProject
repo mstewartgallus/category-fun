@@ -80,6 +80,8 @@ theories/Functor/CoSpec.v
 
 theories/Bicategory.v
 theories/Bicategory/Cat.v
+theories/Bicategory/Interval.v
+theories/Bicategory/UndirectedInterval.v
 
 theories/Monoid/Trv.v
 theories/Monoid/And.v
