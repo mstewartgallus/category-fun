@@ -56,7 +56,6 @@ theories/Category/Prod.v
 theories/Category/Trv.v
 theories/Category/Mt.v
 theories/Category/Interval.v
-theories/Category/CABA/Powerset.v
 
 theories/Proset.v
 theories/Category/PreOrd.v
@@ -67,6 +66,7 @@ theories/Proset/Sub.v
 theories/Proset/Heyting.v
 theories/Proset/Heyting/Free.v
 theories/Proset/Trv.v
+theories/Category/Complete/Powerset.v
 theories/Category/ElPreOrd.v
 
 theories/Bishop/Power.v
