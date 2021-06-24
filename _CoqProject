@@ -42,6 +42,7 @@ theories/Category/Opt.v
 theories/Category/FinSet.v
 theories/Category/Epic.v
 theories/Category/Epimono.v
+theories/Category/Fiber.v
 theories/Category/One.v
 theories/Category/Grp.v
 theories/Category/Mon.v
