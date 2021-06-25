@@ -67,17 +67,3 @@ Qed.
 Module MonoNotations.
   Notation "C ₊" := (Mono C) : category_scope.
 End MonoNotations.
-
-Require Import Blech.Functor.
-
-#[program]
-Definition U C : Functor (Mono C) C := {|
-  op x := x ;
-  map _ _ f := f ;
-|}.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  assumption.
-Qed.
