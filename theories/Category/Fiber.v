@@ -35,9 +35,9 @@ Obligation Tactic := Reflect.category_simpl.
  *)
 #[program]
 Definition Fiber [E B: Category] (P: Functor E B) (c: B): Category := {|
-  Obj := Σ e, c ~> P e ;
+  Obj := Σ e, P e ~> c ;
   Mor '⟨e1, f1⟩ '⟨e2, f2⟩
-  := { u: e1 ~> e2 | f2 == map P u ∘ f1 }
+  := { u: e1 ~> e2 | f2 ∘ map P u == f1 }
        /~ {| equiv x y := proj1_sig x == proj1_sig y |} ;
 
   id _ := exist _ (id _) _ ;
@@ -60,14 +60,14 @@ Qed.
 Next Obligation.
 Proof.
   rewrite map_id.
-  rewrite compose_id_left.
+  rewrite compose_id_right.
   reflexivity.
 Qed.
 
 Next Obligation.
 Proof.
   rewrite <- map_composes.
-  rewrite <- compose_assoc.
+  rewrite compose_assoc.
   rewrite <- H.
   rewrite H0.
   reflexivity.

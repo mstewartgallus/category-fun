@@ -35,6 +35,8 @@ theories/Pointed/Sum.v
 theories/PointedCategory.v
 theories/PointedGroupoid.v
 
+theories/Category/Tw.v
+theories/Category/Typ.v
 theories/Category/Alg.v
 theories/Category/Arr.v
 theories/Category/El.v

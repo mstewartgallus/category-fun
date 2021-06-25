@@ -19,34 +19,10 @@ Open Scope bishop_scope.
 Obligation Tactic := Reflect.category_simpl.
 
 #[program]
-Definition Bsh: Category := {|
-  Obj := Bishop ;
-  Mor := exp;
+Definition Typ: Category := {|
+  Obj := Type ;
+  Mor A B := (A -> B) /~ {| equiv := eq |};
 
   id _ x := x ;
-  compose _ _ _ f g x := f (g x) ;
+  compose _ _ _ f g x := f (g  x) ;
 |}.
-
-Next Obligation.
-Proof.
-  intros ? ? ?.
-  assumption.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? ?.
-  apply (proj2_sig f).
-  apply (proj2_sig g).
-  assumption.
-Qed.
-
-Next Obligation.
-Proof.
-  intros f g p f' g' q x.
-  cbn in *.
-  destruct f, g, f', g'.
-  cbn in *.
-  rewrite (p _), (q _).
-  reflexivity.
-Qed.
