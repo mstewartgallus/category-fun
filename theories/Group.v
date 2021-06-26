@@ -41,5 +41,5 @@ Module Import GroupNotations.
   Bind Scope group_scope with Group.
   Bind Scope group_scope with M.
 
-  Notation "f ⁻¹" := (invert f) : monoid_scope.
+  Notation "f ⁻¹" := (invert f) : group_scope.
 End GroupNotations.

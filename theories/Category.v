@@ -11,7 +11,6 @@ Import BishopNotations.
 Reserved Notation "A ~> B" (at level 80, right associativity).
 Reserved Notation "A ∘ B" (at level 30).
 
-
 #[universes(cumulative)]
 Class Category := {
   Obj: Type ;
@@ -38,13 +37,18 @@ Existing Instance compose_compat.
 
 Module Import CategoryNotations.
   Declare Scope category_scope.
+  Declare Scope object_scope.
+  Declare Scope morphism_scope.
+
   Delimit Scope category_scope with category.
+  Delimit Scope object_scope with object.
+  Delimit Scope morphism_scope with morphism.
 
   Bind Scope category_scope with Category.
-  Bind Scope category_scope with Obj.
-  Bind Scope category_scope with Mor.
+  Bind Scope object_scope with Obj.
+  Bind Scope morphism_scope with Mor.
 
-  Notation "f ∘ g" := (compose f g) : category_scope.
-  Notation "A → B" := (Mor _ A B) (only parsing) : category_scope.
-  Notation "A ~> B" := (Mor _ A B) (only parsing) : category_scope.
+  Notation "f ∘ g" := (compose f g) : morphism_scope.
+  Notation "A → B" := (Mor _ A B) (only parsing) : bishop_scope.
+  Notation "A ~> B" := (Mor _ A B) (only parsing) : bishop_scope.
 End CategoryNotations.
