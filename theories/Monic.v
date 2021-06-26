@@ -9,7 +9,7 @@ Require Import Blech.Category.
 Import CategoryNotations.
 Import BishopNotations.
 
-Open Scope category_scope.
+Open Scope morphism_scope.
 Open Scope bishop_scope.
 
 #[universes(cumulative)]

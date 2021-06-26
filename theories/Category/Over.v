@@ -12,7 +12,7 @@ Import BishopNotations.
 
 Open Scope category_scope.
 Open Scope bishop_scope.
-
+Open Scope morphism_scope.
 
 Reserved Notation "'lub' A , P" (right associativity, at level 200).
 
@@ -65,6 +65,6 @@ Qed.
 Coercion s: bundle >-> Obj.
 
 Module OverNotations.
-  Notation "'lub' A , P" := {| s := A ; π := P |}.
+  Notation "'lub' A , P" := {| s := A ; π := P |} : object_scope.
   Infix "/" := Over : category_scope.
 End OverNotations.

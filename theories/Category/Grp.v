@@ -15,7 +15,8 @@ Import MonoidNotations.
 Import GroupNotations.
 Import BishopNotations.
 
-Open Scope category_scope.
+Open Scope morphism_scope.
+Open Scope group_scope.
 Open Scope bishop_scope.
 Open Scope monoid_scope.
 

@@ -10,7 +10,7 @@ Require Blech.Reflect.
 Import CategoryNotations.
 Import BishopNotations.
 
-Open Scope category_scope.
+Open Scope morphism_scope.
 Open Scope bishop_scope.
 
 #[local]

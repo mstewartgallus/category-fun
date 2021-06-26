@@ -9,7 +9,7 @@ Require Import Blech.Category.
 Import CategoryNotations.
 Import BishopNotations.
 
-Open Scope category_scope.
+Open Scope morphism_scope.
 Open Scope bishop_scope.
 
 
@@ -35,6 +35,6 @@ Coercion C: Groupoid >-> Category.
 Existing Instance invert_compat.
 
 Module GroupoidNotations.
-  Notation "f ⁻¹" := (invert f).
-  Notation "A ↔ B" := (C A B) : category_scope.
+  Notation "f ⁻¹" := (invert f) : morphism_scope.
+  Notation "A ↔ B" := (C A B) : bishop_scope.
 End GroupoidNotations.

@@ -69,7 +69,7 @@ theories/Proset/Sub.v
 theories/Proset/Heyting.v
 theories/Proset/Heyting/Free.v
 theories/Proset/Trv.v
-theories/Category/Complete/Powerset.v
+theories/Proset/Complete/Powerset.v
 theories/Category/ElPreOrd.v
 
 theories/Bishop/Power.v

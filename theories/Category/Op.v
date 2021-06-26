@@ -10,9 +10,8 @@ Require Blech.Reflect.
 Import CategoryNotations.
 Import BishopNotations.
 
-Open Scope category_scope.
+Open Scope morphism_scope.
 Open Scope bishop_scope.
-
 
 Reserved Notation "C 'ᵒᵖ'" (at level 1).
 
@@ -36,5 +35,5 @@ Definition Op (K: Category): Category := {|
 
 
 Module OpNotations.
-  Notation "C 'ᵒᵖ'" := (Op C).
+  Notation "C 'ᵒᵖ'" := (Op C) : category_scope.
 End OpNotations.

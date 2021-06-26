@@ -14,6 +14,8 @@ Import CategoryNotations.
 Import BishopNotations.
 Import OverNotations.
 
+Open Scope object_scope.
+
 Definition Power (S: Bishop): Bishop := Sub Bsh S /~ Proset_Setoid _.
 
 #[program]
