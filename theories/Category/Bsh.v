@@ -3,6 +3,7 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
+Require Import Blech.Type.Predicate.
 Require Import Blech.Bishop.
 Require Import Blech.Bishop.Exp.
 Require Import Blech.Category.
@@ -44,8 +45,6 @@ Qed.
 Next Obligation.
 Proof.
   intros f g p f' g' q x.
-  cbn in *.
-  destruct f, g, f', g'.
   cbn in *.
   rewrite (p _), (q _).
   reflexivity.

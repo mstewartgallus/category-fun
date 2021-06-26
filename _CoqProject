@@ -3,10 +3,10 @@
 -arg all
 theories/Defaults.v
 
+theories/Type/Predicate.v
 theories/Type/Truncate.v
 theories/Type/Some.v
 theories/Type/Poly.v
-
 
 theories/Bishop.v
 theories/Bishop/Exp.v
