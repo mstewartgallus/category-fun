@@ -56,6 +56,7 @@ theories/Category/CoPSh.v
 theories/Category/Ptd.v
 theories/Category/CABA.v
 theories/Category/Prod.v
+theories/Category/Sum.v
 theories/Category/Trv.v
 theories/Category/Mt.v
 theories/Category/Interval.v
