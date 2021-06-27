@@ -3,6 +3,7 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
+Require Import Blech.Type.Predicate.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Category.Prod.
@@ -52,7 +53,7 @@ Proof.
   apply compose_compat.
   2: reflexivity.
   repeat rewrite map_composes.
-  rewrite (proj2_NatTrans fst3).
+  rewrite (proj2_sig fst3).
   repeat rewrite <- Category.compose_assoc.
   repeat rewrite map_composes.
   apply compose_compat.
@@ -61,7 +62,7 @@ Proof.
   repeat rewrite <- Category.compose_assoc.
   apply compose_compat.
   1: reflexivity.
-  rewrite (proj2_NatTrans snd8).
+  rewrite (proj2_sig snd8).
   reflexivity.
 Qed.
 
@@ -94,10 +95,10 @@ Proof.
   repeat rewrite Category.compose_assoc.
   apply compose_compat.
   2: reflexivity.
-  rewrite <- (proj2_NatTrans fst1).
-  rewrite <- (proj2_NatTrans fst2).
+  rewrite <- (proj2_sig fst1).
+  rewrite <- (proj2_sig fst2).
   rewrite (H _).
-  repeat rewrite (proj2_NatTrans fst2).
+  repeat rewrite (proj2_sig fst2).
   apply compose_compat.
   1: reflexivity.
   apply map_compat.
