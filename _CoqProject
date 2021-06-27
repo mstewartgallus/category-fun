@@ -60,6 +60,7 @@ theories/Category/Sum.v
 theories/Category/Trv.v
 theories/Category/Mt.v
 theories/Category/Interval.v
+theories/Category/Cograph.v
 
 theories/Proset.v
 theories/Category/PreOrd.v
