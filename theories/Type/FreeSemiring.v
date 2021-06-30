@@ -11,7 +11,9 @@ Import ListNotations.
 Reserved Notation "A \ x , B" (at level 100, right associativity, x ident).
 
 (* Unfortunately the builtin solver cannot be used because it expects
-semirings to have commutative multiplication which is wrong *)
+semirings to have commutative multiplication.
+
+ALMOST a polynomial *)
 
 Definition poly C := list (list C).
 

@@ -6,7 +6,6 @@ theories/Defaults.v
 theories/Type/Predicate.v
 theories/Type/Truncate.v
 theories/Type/Some.v
-theories/Type/Poly.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
@@ -94,6 +93,10 @@ theories/Monoid/And.v
 theories/Monoid/Or.v
 theories/Monoid/Circle.v
 theories/Monoid/Endo.v
+theories/Monoid/Monomial.v
+
+theories/Type/FreeSemiring.v
+theories/Type/Polynomial.v
 
 theories/Group/Trv.v
 theories/Group/Circle.v
