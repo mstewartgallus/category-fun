@@ -20,7 +20,7 @@ Open Scope bishop_scope.
 Obligation Tactic := Reflect.category_simpl.
 
 Reserved Notation "·".
-Reserved Notation "X ⊗ Y" (at level 30, right associativity).
+Reserved Notation "X ⊗ Y" (at level 50, left associativity).
 
 #[universes(cumulative)]
 Class Category := {

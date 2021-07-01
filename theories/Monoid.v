@@ -17,8 +17,7 @@ Import BishopNotations.
 
 
 Reserved Notation "∅".
-Reserved Notation "X · Y" (at level 30, right associativity).
-
+Reserved Notation "X · Y" (at level 50, left associativity).
 
 Class Monoid := {
   S: Bishop.Bishop ;
