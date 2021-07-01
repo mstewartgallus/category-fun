@@ -26,10 +26,12 @@ theories/Monoid/Free.v
 theories/Monoid/List.v
 theories/Monoid/Reflect.v
 
+theories/Group.v
+theories/Group/Free.v
+
 theories/Monic.v
 theories/Monic/Mono.v
 theories/Groupoid.v
-theories/Group.v
 
 theories/Pointed.v
 theories/Pointed/Exp.v
