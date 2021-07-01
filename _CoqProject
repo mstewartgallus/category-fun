@@ -22,6 +22,9 @@ theories/Category/Funct.v
 theories/Category/Bsh.v
 
 theories/Monoid.v
+theories/Monoid/List.v
+theories/Monoid/Reflect.v
+
 theories/Monic.v
 theories/Monic/Mono.v
 theories/Groupoid.v
@@ -88,7 +91,6 @@ theories/Bicategory/Cat.v
 theories/Bicategory/Interval.v
 theories/Bicategory/UndirectedInterval.v
 
-theories/Monoid/List.v
 theories/Monoid/Trv.v
 theories/Monoid/And.v
 theories/Monoid/Or.v

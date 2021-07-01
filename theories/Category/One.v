@@ -8,7 +8,7 @@ Require Import Blech.Category.
 Require Import Blech.Monoid.
 Require Blech.PointedCategory.
 
-Require Blech.Reflect.
+Require Blech.Monoid.Reflect.
 
 Import BishopNotations.
 Import CategoryNotations.
@@ -20,9 +20,8 @@ Open Scope monoid_scope.
 
 Reserved Notation "'𝑩₊'".
 
-
 #[local]
-Obligation Tactic := Reflect.category_simpl.
+Obligation Tactic := Reflect.monoid_simpl.
 
 #[program]
  Definition One (M: Monoid): PointedCategory.Category := {|
@@ -35,21 +34,6 @@ Obligation Tactic := Reflect.category_simpl.
               |} ;
   PointedCategory.pt := I ;
 |}.
-
-Next Obligation.
-Proof.
-  apply app_assoc.
-Qed.
-
-Next Obligation.
-Proof.
-  apply app_e_left.
-Qed.
-
-Next Obligation.
-Proof.
-  apply app_e_right.
-Qed.
 
 Module OneNotations.
   Notation "'𝑩₊'" := One.

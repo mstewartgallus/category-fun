@@ -72,3 +72,21 @@ Proof.
   apply Forall2_app.
   all: assumption.
 Qed.
+
+
+Fixpoint ε {M: Monoid} (p: List M): M :=
+  match p with
+  | nil => e
+  | cons H T => H · ε T
+  end.
+
+Theorem counit_app {M: Monoid} (x y: List M): ε (x ++ y) == ε x · ε y.
+Proof.
+  induction x.
+  - rewrite app_e_left.
+    reflexivity.
+  - cbn.
+    rewrite IHx.
+    rewrite app_assoc.
+    reflexivity.
+Qed.
