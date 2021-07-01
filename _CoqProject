@@ -88,6 +88,7 @@ theories/Bicategory/Cat.v
 theories/Bicategory/Interval.v
 theories/Bicategory/UndirectedInterval.v
 
+theories/Monoid/List.v
 theories/Monoid/Trv.v
 theories/Monoid/And.v
 theories/Monoid/Or.v
@@ -101,6 +102,8 @@ theories/Type/Polynomial.v
 theories/Group/Trv.v
 theories/Group/Circle.v
 theories/Group/Auto.v
+
+theories/Semiring.v
 
 theories/Groupoid/Core.v
 theories/Groupoid/Dis.v
