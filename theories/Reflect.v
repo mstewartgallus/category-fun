@@ -8,44 +8,13 @@ Set Default Proof Mode "Classic".
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
+Require Blech.Category.Free.
 
 Import CategoryNotations.
 Import BishopNotations.
 
 Open Scope morphism_scope.
 Open Scope bishop_scope.
-
-
-#[universes(cumulative)]
-Inductive ast {K: Category}: K → K → Type :=
-| ast_id A: ast A A
-| ast_compose {A B C}: ast B C → ast A B → ast A C
-| ast_var {A B}: K A B → ast A B
-.
-
-#[local]
-Fixpoint denote [K: Category] [A B] (p: ast A B): K A B :=
-  match p with
-  | ast_id _ => id _
-  | ast_compose f g => denote f ∘ denote g
-  | ast_var f => f
-  end.
-
-#[program]
-Definition Ast {K: Category} (A B: K) := ast A B /~ {| equiv x y := denote x == denote y |}.
-
-Next Obligation.
-Proof.
-  exists.
-  - intros ?.
-    reflexivity.
-  - intro.
-    symmetry.
-    assumption.
-  - intros ? ? ? p q.
-    rewrite p, q.
-    reflexivity.
-Qed.
 
 #[universes(cumulative)]
  Inductive path {K: Category} (A: K): K → Type :=
@@ -111,34 +80,35 @@ Qed.
  Definition app {K: Category} {A B C: K} (x:Path B C) (y: Path A B): Path A C := app' y x.
 
 #[local]
- Fixpoint flatten' [K: Category] [A B: K] (x: ast A B): path A B :=
+ Fixpoint flatten' [K: Category] [A B: K] (x: Free.Free K A B): path A B :=
   match x with
-  | ast_id _ => path_id
-  | ast_compose f g => app (flatten' f) (flatten' g)
-  | ast_var f => sing f
+  | Free.id _ => path_id
+  | Free.compose f g => app (flatten' f) (flatten' g)
+  | Free.η f => sing f
   end.
 
 #[local]
- Theorem flatten_correct [K: Category] [A B: K] (f: ast A B): denote f == pdenote (flatten' f).
+ Theorem flatten_correct [K: Category] [A B: K] (f: Free.Free K A B): Free.ε f == pdenote (flatten' f).
 Proof.
   induction f.
-  - reflexivity.
+  - cbn.
+    rewrite compose_id_right.
+    reflexivity.
+  - cbn.
+    reflexivity.
   - cbn.
     unfold app.
     rewrite <- app_composes.
     rewrite IHf1, IHf2.
     reflexivity.
-  - cbn.
-    rewrite compose_id_right.
-    reflexivity.
 Qed.
 
 #[local]
- Definition flatten {K: Category} {A B: K} (x: Ast A B): Path A B := flatten' x.
+ Definition flatten {K: Category} {A B: K} (x: Free.Free K A B): Path A B := flatten' x.
 
 #[local]
- Theorem flatten_injective [K: Category] [A B: K] (x y: Ast A B):
-  flatten x == flatten y → x == y.
+ Theorem flatten_injective [K: Category] [A B: K] (x y: Free.Free K A B):
+  flatten x == flatten y → Free.ε x == Free.ε y.
 Proof.
   cbn.
   repeat rewrite <- flatten_correct.
@@ -149,12 +119,12 @@ Qed.
 #[local]
 Ltac2 rec reify (p: constr) :=
   lazy_match! p with
-| (@id ?k ?a) => '(ast_id $a)
+| (@id ?k ?a) => '(Free.id $a)
 | (@compose ?k ?a ?b ?c ?f ?g) =>
   let nf := reify f in
   let ng := reify g in
-  '(ast_compose $nf $ng)
-| ?p => '(ast_var $p)
+  '(Free.compose $nf $ng)
+| ?p => '(Free.η $p)
 end.
 
 Ltac2 category () :=
@@ -162,7 +132,7 @@ Ltac2 category () :=
 | [ |- ?f == ?g ] =>
   let rf := reify f in
   let rg := reify g in
-  change (denote $rf == denote $rg) ; apply (flatten_injective $rf $rg) ; cbn
+  change (Free.ε $rf == Free.ε $rg) ; apply (flatten_injective $rf $rg) ; cbn
 end.
 
 Ltac category := ltac2:(Control.enter category).

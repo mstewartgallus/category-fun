@@ -15,6 +15,7 @@ theories/Bishop/Sum.v
 theories/Bishop/Trv.v
 
 theories/Category.v
+theories/Category/Free.v
 theories/Functor.v
 theories/Reflect.v
 
