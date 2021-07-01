@@ -7,7 +7,8 @@ Require Import Blech.Bishop.
 Require Import Blech.Category.Bsh.
 Require Import Blech.Category.
 Require Import Blech.Monoid.
-Require Blech.Reflect.
+
+Require Blech.Monoid.Reflect.
 
 Import CategoryNotations.
 Import MonoidNotations.
@@ -18,7 +19,7 @@ Open Scope bishop_scope.
 Open Scope monoid_scope.
 
 #[local]
-Obligation Tactic := Reflect.category_simpl.
+Obligation Tactic := Reflect.monoid_simpl.
 
 Class Mon_Mor [A B: Monoid] (f: A → B): Prop := {
   prp: Proper (equiv ==> equiv) f ;
@@ -56,10 +57,8 @@ Proof.
   - intros ? ? p.
     rewrite p.
     reflexivity.
-  - repeat rewrite map_e.
-    reflexivity.
+  - reflexivity.
   - intros.
-    repeat rewrite map_app.
     reflexivity.
 Qed.
 
