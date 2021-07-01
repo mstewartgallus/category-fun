@@ -27,12 +27,15 @@ Inductive equiv {S: Bishop} : relation (free S) :=
 | symmetric: symmetric _ equiv
 | transitive: transitive _ equiv
 
+| η_compat: Proper (SetoidClass.equiv ==> equiv) η
+
 | app_assoc f g h: equiv (app f (app g h)) (app (app f g) h)
 | app_e_left f: equiv (app e f) f
 | app_e_right f: equiv (app f e) f
 
 | app_compat: Proper (equiv ==> equiv ==> equiv) app
 .
+Existing Instance η_compat.
 Existing Instance app_compat.
 
 #[global]
