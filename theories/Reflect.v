@@ -9,6 +9,7 @@ Set Default Proof Mode "Classic".
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Blech.Category.Free.
+Require Blech.Category.Path.
 
 Import CategoryNotations.
 Import BishopNotations.
@@ -16,79 +17,30 @@ Import BishopNotations.
 Open Scope morphism_scope.
 Open Scope bishop_scope.
 
-#[universes(cumulative)]
- Inductive path {K: Category} (A: K): K → Type :=
-| path_id: path A A
-| path_compose {B C}: K B C → path A B → path A C
-.
-
-Arguments path_id {K A}.
-Arguments path_compose {K A B C}.
-
 #[local]
- Fixpoint pdenote {K: Category} [A B: K] (f: path A B): K A B :=
-  match f with
-  | path_id => id _
-  | path_compose h t => h ∘ pdenote t
-  end.
-
-#[program]
- Definition Path {K: Category} (A B: K) := path A B /~ {| equiv x y := pdenote x == pdenote y |}.
-
-Next Obligation.
+ Lemma counit_compose {K: Category} {A B C: K} (f: Path.Path K B C) (g: Path.Path K A B):
+  Path.ε (f ∘ g) == Path.ε f ∘ Path.ε g.
 Proof.
-  exists.
-  - intros ?.
-    reflexivity.
-  - intro.
-    symmetry.
-    assumption.
-  - intros ? ? ? p q.
-    rewrite p, q.
-    reflexivity.
-Qed.
-
-#[local]
- Definition sing {K: Category} {A B: K} (x: K A B): Path A B := path_compose x path_id.
-
-Section app.
-  Context [K: Category] [A B: K] (y: path A B).
-
-  #[local]
-   Fixpoint app' [C] (x: path B C): path A C :=
-    match x with
-    | path_id => y
-    | path_compose h t => path_compose h (app' t)
-    end.
-End app.
-
-#[local]
- Lemma app_composes [K: Category] [A B C: K] (f: path A B) (g: path B C):
-  pdenote g ∘ pdenote f == pdenote (app' f g).
-Proof.
-  induction g.
+  induction f.
   - cbn.
     rewrite compose_id_left.
     reflexivity.
   - cbn.
     rewrite <- compose_assoc.
-    rewrite <- IHg.
+    rewrite <- IHf.
     reflexivity.
 Qed.
 
 #[local]
- Definition app {K: Category} {A B C: K} (x:Path B C) (y: Path A B): Path A C := app' y x.
-
-#[local]
- Fixpoint flatten' [K: Category] [A B: K] (x: Free.Free K A B): path A B :=
+ Fixpoint to_path {K: Category} {A B: K} (x: Free.Free K A B): Path.Path K A B :=
   match x with
-  | Free.id _ => path_id
-  | Free.compose f g => app (flatten' f) (flatten' g)
-  | Free.η f => sing f
+  | Free.id _ => id _
+  | Free.compose f g => to_path f ∘ to_path g
+  | Free.η f => Path.η f
   end.
 
 #[local]
- Theorem flatten_correct [K: Category] [A B: K] (f: Free.Free K A B): Free.ε f == pdenote (flatten' f).
+Theorem flatten_correct [K: Category] [A B: K] (f: Free.Free K A B): Free.ε f == Path.ε (to_path f).
 Proof.
   induction f.
   - cbn.
@@ -97,18 +49,14 @@ Proof.
   - cbn.
     reflexivity.
   - cbn.
-    unfold app.
-    rewrite <- app_composes.
+    rewrite (counit_compose (to_path f1) (to_path f2)).
     rewrite IHf1, IHf2.
     reflexivity.
 Qed.
 
 #[local]
- Definition flatten {K: Category} {A B: K} (x: Free.Free K A B): Path A B := flatten' x.
-
-#[local]
  Theorem flatten_injective [K: Category] [A B: K] (x y: Free.Free K A B):
-  flatten x == flatten y → Free.ε x == Free.ε y.
+  Path.ε (to_path x) == Path.ε (to_path y) → Free.ε x == Free.ε y.
 Proof.
   cbn.
   repeat rewrite <- flatten_correct.

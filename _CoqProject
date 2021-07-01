@@ -16,8 +16,10 @@ theories/Bishop/Trv.v
 
 theories/Category.v
 theories/Category/Free.v
-theories/Functor.v
+theories/Category/Path.v
 theories/Reflect.v
+
+theories/Functor.v
 
 theories/Category/Funct.v
 theories/Category/Bsh.v
