@@ -16,7 +16,7 @@ Open Scope monoid_scope.
  Definition Or: Monoid := {|
   S := type bool ;
 
-  unit := false ;
+  e := false ;
   app := orb ;
 |}.
 

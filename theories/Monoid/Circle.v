@@ -18,7 +18,7 @@ Open Scope monoid_scope.
 Definition Circle: Monoid := {|
   S := type nat ;
 
-  unit := 0 ;
+  e := 0 ;
   app f g := f + g ;
 |}.
 

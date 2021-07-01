@@ -23,8 +23,8 @@ Class Group := {
   M: Monoid ;
   invert: M → M  where "f ⁻¹" := (invert f) ;
 
-  app_invert_left (f: M): f ⁻¹ · f == ∅ ;
-  app_invert_right (f: M): f · f ⁻¹ == ∅;
+  app_invert_left (f: M): f ⁻¹ · f == e ;
+  app_invert_right (f: M): f · f ⁻¹ == e ;
 
   invert_compat: Proper (equiv ==> equiv) invert ;
 }.

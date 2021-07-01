@@ -22,7 +22,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 Class Mon_Mor [A B: Monoid] (f: A → B): Prop := {
   prp: Proper (equiv ==> equiv) f ;
-  map_unit: f ∅ == ∅ ;
+  map_e: f e == e ;
   map_app x y: f (x · y) == f x · f y ;
 }.
 
@@ -56,7 +56,7 @@ Proof.
   - intros ? ? p.
     rewrite p.
     reflexivity.
-  - repeat rewrite map_unit.
+  - repeat rewrite map_e.
     reflexivity.
   - intros.
     repeat rewrite map_app.
@@ -69,7 +69,7 @@ Proof.
   - intros ? ? p.
     rewrite p.
     reflexivity.
-  - repeat rewrite map_unit.
+  - repeat rewrite map_e.
     reflexivity.
   - intros.
     repeat rewrite map_app.

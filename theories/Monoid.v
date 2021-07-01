@@ -4,37 +4,31 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
-Require Import Blech.Category.
-Require Blech.Reflect.
-
-Import CategoryNotations.
 Import BishopNotations.
 
-Open Scope category_scope.
 Open Scope bishop_scope.
 
 Import BishopNotations.
 
-
-Reserved Notation "∅".
 Reserved Notation "X · Y" (at level 50, left associativity).
 
 Class Monoid := {
-  S: Bishop.Bishop ;
+  S: Bishop ;
 
-  unit: S ;
+  (* I think this name is stupid but it is convention *)
+  e: S ;
   app: S → S → S
   where "f · g" := (app f g) ;
 
   app_assoc (f: S) (g: S) (h: S):
-    (f · (g · h)) == ((f · g) · h );
-  app_unit_left (f: S): (unit · f) == f ;
-  app_unit_right (f: S): (f · unit) == f ;
+    f · (g · h) == (f · g) · h;
+  app_e_left (f: S): e · f == f ;
+  app_e_right (f: S): f · e == f ;
 
   app_compat: Proper (equiv ==> equiv ==> equiv) app ;
 }.
 
-Coercion S: Monoid >-> Bishop.Bishop.
+Coercion S: Monoid >-> Bishop.
 Existing Instance S.
 
 Existing Instance app_compat.
@@ -46,6 +40,5 @@ Module MonoidNotations.
   Bind Scope monoid_scope with Monoid.
   Bind Scope monoid_scope with S.
 
-  Notation "∅" := unit : monoid_scope.
-  Notation "f · g" := (app f g) : monoid_scope.
+  Infix "·" := app : monoid_scope.
 End MonoidNotations.

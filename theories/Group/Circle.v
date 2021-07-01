@@ -24,7 +24,7 @@ Open Scope Z_scope.
   M := {|
         S := Z /~ {| equiv := eq |} ;
 
-        unit := 0 ;
+        e := 0 ;
         app f g := f + g ;
       |} ;
   invert x := -x;

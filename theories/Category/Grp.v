@@ -25,7 +25,7 @@ Open Scope monoid_scope.
 Obligation Tactic := Reflect.category_simpl.
 
 Class Grp_Mor [A B: Group] (F: A → B): Prop := {
-  map_unit: F ∅ == ∅ ;
+  map_e: F e == e ;
   map_app x y: F (x · y) == F x · F y ;
   map_invert x: F (x ⁻¹) == F x ⁻¹ ;
 }.

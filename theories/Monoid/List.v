@@ -42,7 +42,7 @@ Admitted.
  Definition List (S: Bishop): Monoid := {|
   S := list S /~ list_Setoid S ;
 
-  unit := nil ;
+  e := nil ;
   app := @List.app _ ;
 |}.
 

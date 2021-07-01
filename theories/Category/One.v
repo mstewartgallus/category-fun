@@ -30,7 +30,7 @@ Obligation Tactic := Reflect.category_simpl.
                 Obj := True ;
                 Mor _ _ := M ;
 
-                id _ := ∅ ;
+                id _ := e ;
                 compose _ _ _ := app ;
               |} ;
   PointedCategory.pt := I ;
@@ -43,12 +43,12 @@ Qed.
 
 Next Obligation.
 Proof.
-  apply app_unit_left.
+  apply app_e_left.
 Qed.
 
 Next Obligation.
 Proof.
-  apply app_unit_right.
+  apply app_e_right.
 Qed.
 
 Module OneNotations.

@@ -16,7 +16,7 @@ Open Scope monoid_scope.
 #[program]
 Definition Trv: Monoid := {|
   S := trv ;
-  unit := I ;
+  e := I ;
   app _ _ := I ;
 |}.
 

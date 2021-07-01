@@ -26,7 +26,7 @@ Obligation Tactic := Reflect.category_simpl.
 Definition Endo (C: PointedCategory.Category): Monoid := {|
   S := C PointedCategory.pt PointedCategory.pt ;
 
-  unit := id _ ;
+  e := id _ ;
   app := @compose _ _ _ _ ;
 |}.
 

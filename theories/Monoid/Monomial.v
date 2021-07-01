@@ -39,7 +39,7 @@ Definition sum {S} (f g: option (S → nat)): option (S → nat) :=
 Definition Monomial (S: Bishop): Monoid := {|
   S := option (S → nat) /~ {| equiv := eqv |} ;
 
-  unit := None ;
+  e := None ;
   app := sum ;
 |}.
 
