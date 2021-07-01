@@ -10,6 +10,7 @@ Set Default Proof Mode "Classic".
 Require Import Blech.Bishop.
 Require Import Blech.Monoid.
 Require Import Blech.Monoid.List.
+Require Blech.Monoid.Free.
 
 Import ListNotations.
 Import MonoidNotations.
@@ -21,53 +22,26 @@ Open Scope bishop_scope.
  http://adam.chlipala.net/cpdt/html/Reflection.html, FIXME give more
  proper credit *)
 
-#[universes(cumulative)]
-Inductive ast (M: Monoid) :=
-| ast_e
-| ast_app (x y: ast M)
-| ast_var (m: M)
-.
-
-Arguments ast_e {M}.
-Arguments ast_app {M}.
-Arguments ast_var {M}.
+#[local]
+Definition flatten {M: Monoid} (m: Free.Free M): M := ε (from_free m).
 
 #[local]
-Fixpoint denote {M: Monoid} (m: ast M): M :=
-  match m with
-  | ast_e => e
-  | ast_app x y => denote x · denote y
-  | ast_var x => x
-  end.
-
-#[local]
-Fixpoint tolist {M: Monoid} (m: ast M): List M :=
-  match m with
-  | ast_e => nil
-  | ast_app x y => tolist x ++ tolist y
-  | ast_var x => cons x nil
-  end.
-
-#[local]
-Definition flatten {M: Monoid} (m: ast M): M := ε (tolist m).
-
-#[local]
-Theorem denote_correct {M: Monoid} (x: ast M): denote x == ε (tolist x).
+Theorem denote_correct {M: Monoid} (x: Free.Free M): Free.ε x == ε (from_free x).
 Proof.
   induction x.
-  - reflexivity.
-  - cbn.
-    unfold app.
-    rewrite counit_app.
-    rewrite IHx1, IHx2.
-    reflexivity.
   - cbn.
     rewrite app_e_right.
+    reflexivity.
+  - cbn.
+    reflexivity.
+  - cbn.
+    rewrite counit_app.
+    rewrite IHx1, IHx2.
     reflexivity.
 Qed.
 
 #[local]
- Theorem flatten_injective {M: Monoid} (x y: ast M): flatten x == flatten y → denote x == denote y.
+ Theorem flatten_injective {M: Monoid} (x y: Free.Free M): flatten x == flatten y → Free.ε x == Free.ε y.
 Proof.
   unfold flatten.
   cbn.
@@ -79,12 +53,12 @@ Qed.
 #[local]
 Ltac2 rec reify (p: constr) :=
   lazy_match! p with
-| (@e ?m) => '(@ast_e $m)
+| (@e ?m) => '(Free.e)
 | (@app ?m ?x ?y) =>
   let rx := reify x in
   let ry := reify y in
-  '(@ast_app $m $rx $ry)
-| ?p => '(ast_var $p)
+  '(Free.app $rx $ry)
+| ?p => '(Free.η $p)
 end.
 
 Ltac2 monoid () :=
@@ -92,7 +66,7 @@ Ltac2 monoid () :=
 | [ |- ?x == ?y ] =>
   let rx := reify x in
   let ry := reify y in
-  change (denote $rx == denote $ry) ; apply (flatten_injective $rx $ry); cbn
+  change (Free.ε $rx == Free.ε $ry) ; apply (flatten_injective $rx $ry); cbn
 end.
 
 Ltac monoid := ltac2:(Control.enter monoid).

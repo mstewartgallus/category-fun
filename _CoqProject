@@ -22,6 +22,7 @@ theories/Category/Funct.v
 theories/Category/Bsh.v
 
 theories/Monoid.v
+theories/Monoid/Free.v
 theories/Monoid/List.v
 theories/Monoid/Reflect.v
 

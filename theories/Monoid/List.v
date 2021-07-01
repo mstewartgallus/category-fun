@@ -6,6 +6,7 @@ Require Import Coq.Lists.List.
 
 Require Import Blech.Bishop.
 Require Import Blech.Monoid.
+Require Blech.Monoid.Free.
 
 Import BishopNotations.
 Import MonoidNotations.
@@ -73,7 +74,6 @@ Proof.
   all: assumption.
 Qed.
 
-
 Fixpoint ε {M: Monoid} (p: List M): M :=
   match p with
   | nil => e
@@ -90,3 +90,12 @@ Proof.
     rewrite app_assoc.
     reflexivity.
 Qed.
+
+Import Free.
+
+Fixpoint from_free {S: Bishop} (m: Free S): List S :=
+  match m with
+  | e => nil
+  | η x => cons x nil
+  | app x y => from_free x ++ from_free y
+  end.
