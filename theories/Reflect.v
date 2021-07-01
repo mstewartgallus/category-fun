@@ -137,7 +137,7 @@ Qed.
  Definition flatten {K: Category} {A B: K} (x: Ast A B): Path A B := flatten' x.
 
 #[local]
- Theorem flatten_injective [K: Category] [A B: K] [x y: Ast A B]:
+ Theorem flatten_injective [K: Category] [A B: K] (x y: Ast A B):
   flatten x == flatten y → x == y.
 Proof.
   cbn.
@@ -162,7 +162,7 @@ Ltac2 category () :=
 | [ |- ?f == ?g ] =>
   let rf := reify f in
   let rg := reify g in
-  change (denote $rf == denote $rg) ; apply flatten_injective ; cbn
+  change (denote $rf == denote $rg) ; apply (flatten_injective $rf $rg) ; cbn
 end.
 
 Ltac category := ltac2:(Control.enter category).
