@@ -56,14 +56,32 @@ Notation "[ A , B ]" := (exp (A, B)).
 Reserved Notation "◇".
 Reserved Notation "□".
 
+Class Comonad (C: Closed) := {
+  W: Functor C C ;
+  dup {A}: W A ~> W (W A) ;
+  ext {A}: W A ~> A ;
+}.
+
+Existing Instance W.
+Coercion W: Comonad >-> Functor.
+
+Class Monad (C: Closed) := {
+  M: Functor C C ;
+  join {A}: M (M A) ~> M A ;
+  pure {A}: A ~> M A ;
+}.
+Existing Instance M.
+Coercion M: Monad >-> Functor.
+
+
+(* FIXME possibly indexed monads/comonads would work better ? *)
+
 Class Var (C: Closed) := {
-  necessarily: Functor C C ;
-  possibly: Functor C C;
+  necessarily: Comonad C ;
+  possibly: Monad C ;
 
-  K {A B}: necessarily [A, B] ~> [necessarily A, necessarily B] ;
-  T {A}: necessarily A ~> A ;
-
-  perhaps {A}: A ~> necessarily (possibly A) ;
+  (* necessitation rule *)
+  thunk {A}: ⊤ ~> A → ⊤ ~> necessarily A ;
 }.
 
 Arguments necessarily {C}.
@@ -74,24 +92,30 @@ Notation "□" := necessarily.
 (* Like existential *)
 Notation "◇" := possibly.
 
+Reserved Notation "!".
+
+Class Cylinder := {
+  H: Closed;
   (* FIXME require finite ? *)
-Class Cylinder (α: Type) := {
-  H: Closed ;
+  α: Type;
 
   var: α → Var H ;
+
+  nec_comm {X Y A}: □ (var X) (□ (var Y) A) ~> □ (var Y) (□ (var X) A) ;
+  pos_comm {X Y A}: ◇ (var X) (◇ (var Y) A) ~> ◇ (var Y) (◇ (var X) A) ;
   (* FIXME laws *)
 }.
 
 Existing Instance H.
 Coercion H: Cylinder >-> Closed.
+Coercion var: α >-> Var.
 
 Notation "!" := var.
 
-Require Import Coq.Strings.String.
-Open Scope string.
-
 Section open.
-  Context `{Cylinder string}.
+  Context `{C: Cylinder}.
 
-  Definition foo: ⊤ ~> □ (! "A") (◇ (! "A") ⊤) := perhaps.
+  Context {x y z w: α}.
+
+  Definition foo: ⊤ ~> □ x (◇ x ⊤) := thunk pure.
 End open.
