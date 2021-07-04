@@ -114,9 +114,13 @@ theories/Group/Auto.v
 theories/Semiring.v
 
 theories/Groupoid/Core.v
+theories/Groupoid/Fin.v
 theories/Groupoid/Dis.v
 theories/Groupoid/One.v
 theories/Groupoid/Interval.v
+
+theories/Category/NPSh.v
+theories/Functor/NYo.v
 
 theories/Path.v
 theories/Monoidal.v
