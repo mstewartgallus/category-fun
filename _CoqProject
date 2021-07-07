@@ -6,6 +6,7 @@ theories/Defaults.v
 theories/Type/Predicate.v
 theories/Type/Truncate.v
 theories/Type/Some.v
+theories/Type/Var.v
 
 theories/Bishop.v
 theories/Bishop/Exp.v
