@@ -34,7 +34,20 @@ Coercion C: Groupoid >-> Category.
 
 Existing Instance invert_compat.
 
-Module GroupoidNotations.
+Module Import GroupoidNotations.
   Notation "f ⁻¹" := (invert f) : morphism_scope.
   Notation "A ↔ B" := (C A B) : bishop_scope.
 End GroupoidNotations.
+
+Lemma invert_invert {G:Groupoid} {A B} (f: G A B): (f ⁻¹) ⁻¹ == f.
+Proof.
+  symmetry.
+  remember ((f ⁻¹) ⁻¹) as f'.
+  rewrite <- (compose_id_left f).
+  rewrite <- (compose_invert_left (f ⁻¹)).
+  rewrite <- compose_assoc.
+  rewrite compose_invert_left.
+  rewrite compose_id_right.
+  subst.
+  reflexivity.
+Qed.
