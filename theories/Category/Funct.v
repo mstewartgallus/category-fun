@@ -3,7 +3,6 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
-Require Import Blech.Type.Predicate.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Functor.
@@ -20,16 +19,17 @@ Open Scope bishop_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
-Definition Natural [C D: Category] (F G: Functor C D): Predicate (∀ x, D (F x) (G x)) :=
-  λ α, ∀ {x y} (m: C x y), map G m ∘ α _ == α _ ∘ map F m.
+Definition Natural {C D: Category} {F G: Functor C D} (α: ∀ x, D (F x) (G x)): Prop :=
+  ∀ {x y} (m: C x y), map G m ∘ α _ == α _ ∘ map F m.
+Existing Class Natural.
 
-Definition proj1_NatTrans [C D: Category] [F G: Functor C D]
-  : Natural F G → ∀ x, D (F x) (G x) := @proj1_sig _ _.
+Definition natural {C D: Category} {F G: Functor C D} {α: ∀ x, D (F x) (G x)} `{N:Natural C D F G α}:
+  ∀ {x y} (m: C x y), map G m ∘ α _ == α _ ∘ map F m := N.
 
 #[program]
 Definition Funct (K L: Category): Category := {|
   Obj := Functor K L ;
-  Mor A B := Natural A B ;
+  Mor A B := { f | Natural f } ;
   Mor_Setoid _ _ := {| equiv f g := ∀ x, f x == g x |} ;
   id A _ := id _ ;
   compose _ _ _ f g _ := f _  ∘ g _  ;
@@ -59,14 +59,12 @@ Qed.
 Next Obligation.
 Proof.
   intros ? ? ?.
-  destruct f, g.
-  cbn in *.
   repeat rewrite compose_assoc.
-  rewrite n.
+  rewrite natural.
   repeat rewrite <- compose_assoc.
   apply compose_compat.
   1: reflexivity.
-  rewrite n0.
+  rewrite natural.
   reflexivity.
 Qed.
 
