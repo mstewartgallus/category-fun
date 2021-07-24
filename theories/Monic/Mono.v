@@ -25,7 +25,8 @@ Obligation Tactic := Reflect.category_simpl.
   {|
   C := {|
     Obj := C ;
-    Mor A B := {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } /~ {| equiv x y := (x :>) == (y :>) |} ;
+    Mor A B := {f: C A B | ∀ (Z:C) (x y: C Z A), (f ∘ x == f ∘ y) → x == y } ;
+    Mor_Setoid _ _ := {| equiv x y := (x :>) == (y :>) |} ;
     id := @id _ ;
     compose := @compose _ ;
   |} ;

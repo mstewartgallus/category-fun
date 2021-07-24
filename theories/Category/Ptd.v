@@ -23,7 +23,8 @@ Obligation Tactic := Reflect.category_simpl.
 #[program]
 Definition Ptd (C: Category): Category := {|
   Obj := ∀ pt, C\pt ;
-  Mor A B := (∀ pt, (C\pt) (A pt) (B pt)) /~ {| equiv f g := ∀ x, f x == g x |} ;
+  Mor A B := (∀ pt, (C\pt) (A pt) (B pt)) ;
+  Mor_Setoid _ _ := {| equiv f g := ∀ x, f x == g x |} ;
 
   id A _ := id _ ;
   compose A B C f g t := f t ∘ g t ;

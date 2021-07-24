@@ -36,9 +36,8 @@ Obligation Tactic := Reflect.category_simpl.
 #[program]
 Definition Fiber [E B: Category] (P: Functor E B) (c: B): Category := {|
   Obj := Σ e, P e ~> c ;
-  Mor '⟨e1, f1⟩ '⟨e2, f2⟩
-  := { u: e1 ~> e2 | f2 ∘ map P u == f1 }
-       /~ {| equiv x y := proj1_sig x == proj1_sig y |} ;
+  Mor '⟨e1, f1⟩ '⟨e2, f2⟩ := { u: e1 ~> e2 | f2 ∘ map P u == f1 } ;
+  Mor_Setoid _ _ := {| equiv x y := proj1_sig x == proj1_sig y |} ;
 
   id _ := exist _ (id _) _ ;
   compose _ _ _ f g := proj1_sig f ∘ g ;

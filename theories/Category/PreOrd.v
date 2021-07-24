@@ -34,7 +34,8 @@ Existing Instance proj2_hom.
 #[program]
 Definition PreOrd: Category := {|
   Obj := Proset ;
-  Mor A B := hom A B /~ {| equiv x y := ∀ t, proj1_hom x t == proj1_hom y t |} ;
+  Mor A B := hom A B ;
+  Mor_Setoid _ _ := {| equiv x y := ∀ t, proj1_hom x t == proj1_hom y t |} ;
 
   id _ x := x ;
   compose _ _ _ f g x := f (g x) ;

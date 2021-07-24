@@ -28,7 +28,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 #[program]
  Definition Yo C: Functor C (PSh C) := curry {|
-  op (ab: C * (C ᵒᵖ)) := C (snd ab) (fst ab) : Bsh ;
+  op (ab: C * (C ᵒᵖ)) := C (snd ab) (fst ab) /~ Mor_Setoid _ _ : Bsh;
   map _ _ '(a, b) (f: C _ _) := (a: C _ _) ∘ f ∘ (b: C _ _) ;
 |}.
 

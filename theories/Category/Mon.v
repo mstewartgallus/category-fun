@@ -32,7 +32,8 @@ Existing Instance prp.
 #[program]
 Definition Mon: Category := {|
   Obj := Monoid ;
-  Mor A B := { f: A → B | Mon_Mor f} /~ {| equiv x y := ∀ t, x t == y t |} ;
+  Mor A B := { f: A → B | Mon_Mor f} ;
+  Mor_Setoid _ _ := {| equiv x y := ∀ t, x t == y t |} ;
 
   id _  x := x ;
   compose _ _ _ f g x := f (g x) ;

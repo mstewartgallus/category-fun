@@ -3,15 +3,11 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
-Require Import Blech.Bishop.
-Require Blech.Bishop.Prod.
 Require Import Blech.Category.
 Require Import Blech.Functor.
 Require Blech.Reflect.
 
 Import CategoryNotations.
-Import BishopNotations.
-Import Prod.ProdNotations.
 Import FunctorNotations.
 
 Open Scope category_scope.
@@ -30,10 +26,15 @@ Obligation Tactic := Reflect.category_simpl.
  Definition Prod (C D: Category): Category := {|
   Obj := C * D ;
   Mor A B := (fst A ~> fst B) * (snd A ~> snd B) ;
+  Mor_Setoid _ _ := {| equiv x y := fst x == fst y ∧ snd x == snd y |} ;
 
   id _ := (id _, id _) ;
   compose _ _ _ f g := (fst f ∘ fst g, snd f ∘ snd g) ;
 |}.
+
+Next Obligation.
+Proof.
+Admitted.
 
 Next Obligation.
 Proof.
@@ -75,14 +76,30 @@ Qed.
 #[program]
 Definition fst {A B}: Functor (Prod A B) A := {|
   op := fst ;
-  map _ _ := Prod.fst ;
+  map _ _ := fst ;
 |}.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  destruct p as [p q].
+  rewrite p.
+  reflexivity.
+Qed.
 
 #[program]
  Definition snd {A B}: Functor (Prod A B) B := {|
   op := snd ;
-  map _ _ := Prod.snd ;
+  map _ _ := snd ;
 |}.
+
+Next Obligation.
+Proof.
+  intros ? ? p.
+  destruct p as [p q].
+  rewrite q.
+  reflexivity.
+Qed.
 
 Module Export ProdNotations.
   Infix "#" := fanout.

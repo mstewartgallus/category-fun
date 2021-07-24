@@ -39,7 +39,8 @@ Arguments π_Mor [K A B].
 #[program]
 Definition Arr (K: Category): Category := {|
   Obj := arrow K ;
-  Mor A B := Arr_Mor A B /~ {| equiv f g := (t_Mor f == t_Mor g) ∧ (s_Mor f == s_Mor g) |} ;
+  Mor A B := Arr_Mor A B ;
+  Mor_Setoid _ _ := {| equiv f g := (t_Mor f == t_Mor g) ∧ (s_Mor f == s_Mor g) |} ;
 
   id _ := arr_Mor (id _) (id _) _ ;
   compose _ _ _ f g := {| t_Mor := t_Mor f ∘ t_Mor g ;
@@ -52,8 +53,9 @@ Proof.
   all:unfold Reflexive, Symmetric, Transitive; cbn.
   - split.
     all:reflexivity.
-  - split.
-    all: destruct H.
+  - intros ? ? p.
+    destruct p.
+    split.
     all: symmetry.
     all: assumption.
   - intros ? ? ? p q.

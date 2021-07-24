@@ -30,9 +30,8 @@ Arguments π [C F] _.
 #[program]
 Definition Alg [C: Category] (F: Functor C C): Category := {|
   Obj := Algebra F ;
-  Mor A B:=  {m: s A ~> s B | m ∘ π A == π B ∘ map F m }
-               /~
-               {| equiv x y := proj1_sig x == proj1_sig y |} ;
+  Mor A B := {m: s A ~> s B | m ∘ π A == π B ∘ map F m } ;
+  Mor_Setoid _ _ := {| equiv x y := proj1_sig x == proj1_sig y |} ;
 
   id A := @id _ (s A) ;
   compose A B C := @compose _ (s A) (s B) (s C) ;

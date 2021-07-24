@@ -29,7 +29,8 @@ Definition proj1_NatTrans [C D: Category] [F G: Functor C D]
 #[program]
 Definition Funct (K L: Category): Category := {|
   Obj := Functor K L ;
-  Mor A B := (Natural A B) /~ {| equiv f g := ∀ x, f x == g x |} ;
+  Mor A B := Natural A B ;
+  Mor_Setoid _ _ := {| equiv f g := ∀ x, f x == g x |} ;
   id A _ := id _ ;
   compose _ _ _ f g _ := f _  ∘ g _  ;
 |}.

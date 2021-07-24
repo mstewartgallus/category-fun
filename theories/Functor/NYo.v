@@ -31,7 +31,7 @@ Obligation Tactic := Reflect.category_simpl.
 #[program]
  Definition NYo C M N (m: Fin.t M): Functor C (NPSh C M N) :=
   curry {|
-  op (ab: C * (Prod (Funct (Fin M) (C ᵒᵖ)) (Funct (Fin N) C))) := C (fst (snd ab) m) (fst ab) : Bsh ;
+  op (ab: C * (Prod (Funct (Fin M) (C ᵒᵖ)) (Funct (Fin N) C))) := C (fst (snd ab) m) (fst ab) /~ Mor_Setoid _ _ : Bsh;
   map _ _ '(a, (x, y)) (f: C _ _) := (a: C _ _) ∘ f ∘ (x m: C _ _) ;
 |}.
 
@@ -68,7 +68,7 @@ Qed.
 #[program]
  Definition NCoYo C M N (n: Fin.t N): Functor (C ᵒᵖ) (NPSh C M N) :=
   curry {|
-    op (ab: (C ᵒᵖ) * (Prod (Funct (Fin M) (C ᵒᵖ)) (Funct (Fin N) C))) := C (fst ab) (snd (snd ab) n) : Bsh ;
+    op (ab: (C ᵒᵖ) * (Prod (Funct (Fin M) (C ᵒᵖ)) (Funct (Fin N) C))) := C (fst ab) (snd (snd ab) n) /~ Mor_Setoid _ _ : Bsh ;
     map _ _ '(a, (x, y)) (f: C _ _) := (y n: C _ _) ∘ f ∘ (a: C _ _) ;
 |}.
 

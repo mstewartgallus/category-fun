@@ -13,7 +13,7 @@ Open Scope bishop_scope.
 Open Scope morphism_scope.
 
 #[universes(cumulative)]
- Inductive path {O} (K: O → O → Bishop) (A: O): O → Type :=
+ Inductive path {O} (K: O → O → Type) (A: O): O → Type :=
 | id: path K A A
 | compose {B C}: K B C → path K A B → path K A C
 .
@@ -21,10 +21,10 @@ Open Scope morphism_scope.
 Arguments id {O K}.
 Arguments compose {O K A B C}.
 
-Definition η {O} {K:O → O → Bishop} {A B: O} (x: K A B): path K A B := compose x (id _).
+Definition η {O} {K:O → O → Type} {A B: O} (x: K A B): path K A B := compose x (id _).
 
 Section app.
-  Context {O: Type} {K: O → O → Bishop} [A B: O] (y: path K A B).
+  Context {O: Type} {K: O → O → Type} [A B: O] (y: path K A B).
 
   #[local]
    Fixpoint app {C} (x: path K B C): path K A C :=
@@ -35,10 +35,11 @@ Section app.
 End app.
 
 #[program]
-Definition Path {O} (S: O → O → Bishop): Category := {|
+Definition Path {O} (S: O → O → Type) `(forall A B, Setoid (S A B)): Category := {|
   Obj := O ;
-  (* FIXME , give a proper equality definition *)
-  Mor A B := path S A B /~ {| equiv := eq |} ;
+  Mor A B := path S A B ;
+  (* FIXME give proper equality relation *)
+  Mor_Setoid A B := {| equiv := eq |} ;
 
   Category.id := id ;
   Category.compose _ _ _ f g := app g f ;
@@ -64,7 +65,7 @@ Proof.
     reflexivity.
 Qed.
 
-Fixpoint ε {C: Category} {A B} (f: Path C A B): C A B :=
+Fixpoint ε {C: Category} {A B} (f: Path C _ A B): C A B :=
   match f with
   | id _ => Category.id _
   | compose x y => x ∘ ε y

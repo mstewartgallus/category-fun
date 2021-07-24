@@ -48,6 +48,15 @@ Obligation Tactic := Reflect.category_simpl.
 
 Next Obligation.
 Proof.
+  destruct A, B.
+  - apply Mor_Setoid.
+  - apply (@Bishop_Setoid mt).
+  - apply (@Bishop_Setoid mt).
+  - apply (@Bishop_Setoid trv).
+Defined.
+
+Next Obligation.
+Proof.
   destruct A, B, C0.
   all: try contradiction.
   all: try (apply I).

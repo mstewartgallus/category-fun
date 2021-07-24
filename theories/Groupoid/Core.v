@@ -37,7 +37,8 @@ Obligation Tactic := Reflect.category_simpl.
 Definition Core (K: Category): Groupoid := {|
   C := {|
         Obj := K ;
-        Mor A B := iso A B /~ {| equiv f g := to f == to g ∧ from f == from g |} ;
+        Mor A B := iso A B ;
+        Mor_Setoid _ _ := {| equiv f g := to f == to g ∧ from f == from g |} ;
 
         id A := {| to := id _ ; from := id _ |} ;
         compose A B C f g :=

@@ -32,7 +32,7 @@ Obligation Tactic := Reflect.category_simpl.
 #[program]
 Definition Λ (C: PointedGroupoid.Groupoid): Group := {|
   M := {|
-        S := C PointedGroupoid.pt PointedGroupoid.pt ;
+        S := C PointedGroupoid.pt PointedGroupoid.pt /~ Mor_Setoid _ _ ;
         e := id _ ;
         app := @compose _ _ _ _ ;
       |} ;

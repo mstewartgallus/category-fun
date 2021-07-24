@@ -25,7 +25,8 @@ Obligation Tactic := Reflect.category_simpl.
 Definition Fin (n: nat): Groupoid := {|
   C := {|
     Obj := t n ;
-    Mor A B := (A = B) /~ {| equiv _ _ := True |} ;
+    Mor A B := (A = B) ;
+    Mor_Setoid _ _ := {| equiv _ _ := True |} ;
   |} ;
 |}.
 

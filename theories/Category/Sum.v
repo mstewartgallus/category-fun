@@ -43,6 +43,14 @@ End sum.
 
 Next Obligation.
 Proof.
+  destruct A, B.
+  all: cbn.
+  1,4: apply Mor_Setoid.
+  all: apply (@Bishop_Setoid mt).
+Defined.
+
+Next Obligation.
+Proof.
   destruct A.
   all: cbn.
   all: apply id.

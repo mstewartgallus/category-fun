@@ -29,7 +29,8 @@ Arguments π [C] [t] _.
 #[program]
 Definition Over (C: Category) (t: C): Category := {|
   Obj := bundle C t ;
-  Mor A B := {f: s A ~> s B | π B ∘ f == π A } /~ {| equiv f g := (f :>) == (g :>) |} ;
+  Mor A B := {f: s A ~> s B | π B ∘ f == π A } ;
+  Mor_Setoid _ _ := {| equiv f g := (f :>) == (g :>) |} ;
 
   id A := id (s A) ;
   compose A B C := @compose _ (s A) (s B) (s C) ;

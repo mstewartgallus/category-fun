@@ -41,8 +41,10 @@ Admitted.
 Next Obligation.
 Proof.
   intros ? ? p.
-  rewrite p.
-  reflexivity.
+  apply compose_compat.
+  1: reflexivity.
+  apply (proj2_sig (y o1)).
+  auto.
 Qed.
 
 Next Obligation.

@@ -49,6 +49,14 @@ Definition Cograph {C D E: Category} (F: Functor C E) (G: Functor D E): Category
 
 Next Obligation.
 Proof.
+  destruct A, B.
+  all: cbn.
+  1,2,4: apply Mor_Setoid.
+  apply (@Bishop_Setoid mt).
+Defined.
+
+Next Obligation.
+Proof.
   destruct A.
   all: cbn.
   all: apply id.

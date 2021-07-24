@@ -72,7 +72,6 @@ theories/Category/Interval.v
 theories/Category/Cograph.v
 
 theories/Cartesian.v
-theories/Cartesian/Free.v
 
 theories/Proset.v
 theories/Category/PreOrd.v

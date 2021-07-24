@@ -39,7 +39,8 @@ Arguments π_Mor [K A B].
 #[program]
 Definition Tw (K: Category): Category := {|
   Obj := twisted K ;
-  Mor A B := Tw_Mor A B /~ {| equiv f g := (t_Mor f == t_Mor g) ∧ (s_Mor f == s_Mor g) |} ;
+  Mor A B := Tw_Mor A B ;
+  Mor_Setoid _ _ := {| equiv f g := (t_Mor f == t_Mor g) ∧ (s_Mor f == s_Mor g) |} ;
 
   id _ := tw_Mor (id _) (id _) _ ;
   compose _ _ _ f g := {| t_Mor := t_Mor g ∘ t_Mor f ;
@@ -52,10 +53,11 @@ Proof.
   all:unfold Reflexive, Symmetric, Transitive; cbn.
   - split.
     all:reflexivity.
-  - split.
-    all: destruct H.
-    all: symmetry.
-    all: assumption.
+  - intros ? ? p.
+    destruct p as [p q].
+    rewrite p, q.
+    split.
+    all: reflexivity.
   - intros ? ? ? p q.
     destruct p as [p p'], q as [q q'].
     split.

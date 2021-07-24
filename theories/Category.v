@@ -3,18 +3,15 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
-Require Import Blech.Bishop.
-
-Import BishopNotations.
-
-
 Reserved Notation "A ~> B" (at level 80, right associativity).
 Reserved Notation "A ∘ B" (at level 30).
 
 #[universes(cumulative)]
 Class Category := {
   Obj: Type ;
-  Mor: Obj → Obj → Bishop ;
+  Mor: Obj → Obj → Type ;
+
+  Mor_Setoid A B: Setoid (Mor A B) ;
 
   id A: Mor A A ;
   compose [A B C]: Mor B C -> Mor A B -> Mor A C
@@ -33,6 +30,8 @@ Arguments Mor: clear implicits.
 
 Coercion Obj: Category >-> Sortclass.
 Coercion Mor: Category >-> Funclass.
+
+Existing Instance Mor_Setoid.
 Existing Instance compose_compat.
 
 Module Import CategoryNotations.

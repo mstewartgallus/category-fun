@@ -23,7 +23,8 @@ Obligation Tactic := Reflect.category_simpl.
 #[program]
 Definition Interval: Category := {|
   Obj := bool ;
-  Mor A B := Is_true (implb A B) /~ {| equiv _ _ := True |} ;
+  Mor A B := Is_true (implb A B) ;
+  Mor_Setoid _ _ := {| equiv _ _ := True |} ;
 |}.
 
 Next Obligation.

@@ -43,24 +43,7 @@ Qed.
  #[program]
  Definition Mor [C] (P: Functor C PreOrd) (A B: Obj P) :=
   { u: head A ~> head B |
-    map P u ∘ const (tail A) == const (tail B) }
-    /~ {|
-      equiv x y := proj1_sig x == y ;
-    |}.
-
-Next Obligation.
-Proof.
-  exists.
-  - intros ?.
-    reflexivity.
-  - intros ? ? ?.
-    symmetry.
-    assumption.
-  - intros ? ? ? p q.
-    rewrite p, q.
-    reflexivity.
-Qed.
-
+    map P u ∘ const (tail A) == const (tail B) }.
 
 #[program]
  #[local]
@@ -84,16 +67,32 @@ Proof.
   reflexivity.
 Defined.
 
-
 (* Just a small variation on the category of elements for preordered sets *)
 #[program]
 Definition ElPreOrd [A: Category] (P: Functor A PreOrd) := {|
   Category.Obj := Obj P ;
   Category.Mor := Mor P ;
 
+  Mor_Setoid _ _ := {|
+      equiv x y := proj1_sig x == y ;
+    |} ;
+
   Category.id := id P ;
   Category.compose := compose P ;
 |}.
+
+Next Obligation.
+Proof.
+  exists.
+  - intros ?.
+    reflexivity.
+  - intros ? ? ?.
+    symmetry.
+    assumption.
+  - intros ? ? ? p q.
+    rewrite p, q.
+    reflexivity.
+Qed.
 
 Next Obligation.
 Proof.

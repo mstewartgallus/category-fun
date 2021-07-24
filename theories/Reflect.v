@@ -18,7 +18,7 @@ Open Scope morphism_scope.
 Open Scope bishop_scope.
 
 #[local]
- Lemma counit_compose {K: Category} {A B C: K} (f: Path.Path K B C) (g: Path.Path K A B):
+ Lemma counit_compose {K: Category} {A B C: K} (f: Path.Path K _ B C) (g: Path.Path K _ A B):
   Path.ε (f ∘ g) == Path.ε f ∘ Path.ε g.
 Proof.
   induction f.
@@ -32,7 +32,7 @@ Proof.
 Qed.
 
 #[local]
- Fixpoint to_path {K: Category} {A B: K} (x: Free.Free K A B): Path.Path K A B :=
+ Fixpoint to_path {K: Category} {A B: K} (x: Free.Free K A B): Path.Path K _ A B :=
   match x with
   | Free.id _ => id _
   | Free.compose f g => to_path f ∘ to_path g

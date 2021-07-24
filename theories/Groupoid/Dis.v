@@ -24,7 +24,8 @@ Obligation Tactic := Reflect.category_simpl.
 Definition Dis (S: Bishop): Groupoid := {|
   C := {|
     Obj := S ;
-    Mor A B := (A == B) /~ {| equiv _ _ := True |} ;
+    Mor A B := (A == B) ;
+    Mor_Setoid _ _ := {| equiv _ _ := True |} ;
   |} ;
 |}.
 

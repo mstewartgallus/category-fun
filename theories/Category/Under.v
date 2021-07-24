@@ -29,7 +29,8 @@ Arguments i [C] [s] _.
 #[program]
 Definition Under (C: Category) (s: C): Category := {|
   Obj := bundle C s ;
-  Mor A B := {f: t A ~> t B | i B == f ∘ i A } /~ {| equiv f g := proj1_sig f == (g :>) |} ;
+  Mor A B := {f: t A ~> t B | i B == f ∘ i A } ;
+  Mor_Setoid _ _ := {| equiv f g := proj1_sig f == (g :>) |} ;
 
   id A := id (t A) ;
   compose A B C := @compose _ (t A) (t B) (t C) ;

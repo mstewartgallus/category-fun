@@ -28,7 +28,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 #[program]
  Definition CoYo C: Funct (C ᵒᵖ) (CoPSh C) := curry {|
-  op (ab: (C ᵒᵖ) * C) := C (fst ab) (snd ab): Bsh ;
+  op (ab: (C ᵒᵖ) * C) := C (fst ab) (snd ab) /~ Mor_Setoid _ _ : Bsh ;
   map _ _ '(a, b) (f: C _ _) := (b: C _ _) ∘ f ∘ (a : C _ _) ;
 |}.
 

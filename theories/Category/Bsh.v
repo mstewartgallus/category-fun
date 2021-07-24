@@ -23,10 +23,25 @@ Obligation Tactic := Reflect.category_simpl.
 Definition Bsh: Category := {|
   Obj := Bishop ;
   Mor := exp;
+  Mor_Setoid _ _ := {| equiv f g := ∀ x, f x == g x |};
 
   id _ x := x ;
   compose _ _ _ f g x := f (g x) ;
 |}.
+
+Next Obligation.
+Proof.
+  exists.
+  - intros ? ?.
+    reflexivity.
+  - intros ? ? p ?.
+    rewrite (p _).
+    reflexivity.
+  - intros ? ? ? p q ?.
+    rewrite (p _).
+    rewrite (q _).
+    reflexivity.
+Qed.
 
 Next Obligation.
 Proof.

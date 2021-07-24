@@ -38,7 +38,17 @@ Arguments commutes [K A B F].
  Definition mor [K: Category] [A B: K] [F: K A B] (X Y: zigzag F) :=
   {f: K (pull X) (pull Y) |
     proj1_sig (epi Y) == f ∘ proj1_sig (epi X) ∧
-    proj1_sig (mono Y) ∘ f == proj1_sig (mono X)} /~ {| equiv x y := proj1_sig x == proj1_sig y |}.
+    proj1_sig (mono Y) ∘ f == proj1_sig (mono X)}.
+
+#[program]
+Definition Epimono [K: Category] [A B: K] (F: K A B) : Category := {|
+  Obj := zigzag F ;
+  Mor A B := mor A B ;
+  Mor_Setoid _ _ := {| equiv x y := proj1_sig x == proj1_sig y |} ;
+
+  id _ := id _ ;
+  compose _ _ _ := @compose _ _ _ _ ;
+|}.
 
 Next Obligation.
 Proof.
@@ -53,25 +63,20 @@ Proof.
     reflexivity.
 Qed.
 
-#[program]
-Definition Epimono [K: Category] [A B: K] (F: K A B) : Category := {|
-  Obj := zigzag F ;
-  Mor A B := mor A B ;
-
-  id _ := id _ ;
-  compose _ _ _ := @compose _ _ _ _ ;
-|}.
-
 Next Obligation.
 Proof.
+  destruct x as [x p], x0 as [y q].
+  cbn in *.
+  destruct p as [p p'].
+  destruct q as [q q'].
   split.
-  - rewrite e1.
+  - rewrite p.
     rewrite <- compose_assoc.
-    rewrite e.
+    rewrite q.
     reflexivity.
   - rewrite compose_assoc.
-    rewrite e2.
-    rewrite <- e0.
+    rewrite p'.
+    rewrite <- q'.
     reflexivity.
 Qed.
 
