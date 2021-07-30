@@ -90,6 +90,7 @@ theories/Bishop/Power.v
 theories/Functor/Id.v
 theories/Functor/Compose.v
 theories/Functor/Curry.v
+theories/Functor/Sigma.v
 theories/Functor/Yo.v
 theories/Functor/CoYo.v
 theories/Functor/Spec.v

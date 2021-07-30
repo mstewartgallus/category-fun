@@ -3,9 +3,6 @@ Require Import Blech.Defaults.
 Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
-Require Import Blech.Type.Predicate.
-
-
 Reserved Notation "A /~ B" (at level 40).
 
 
@@ -25,11 +22,7 @@ Add Printing Let Bishop.
 Existing Instance Bishop_Setoid.
 Coercion T: Bishop >-> Sortclass.
 
-Definition hom (A B: Bishop): Predicate (A → B) := Proper (equiv ==> equiv).
-
-Definition proj1_hom [A B]: hom A B → A → B := @proj1_sig _ _.
-Definition proj2_hom [A B]: ∀ (f:hom A B), Proper (equiv ==> equiv) (proj1_hom f) := @proj2_sig _ _.
-Existing Instance proj2_hom.
+Definition hom (A B: Bishop) (f: A → B) := Proper (equiv ==> equiv) f.
 
 Definition hom_predicate [A B: Bishop] (f:A → B) (h:hom A B f): Proper (equiv ==> equiv) f.
   intros.
@@ -42,9 +35,9 @@ Definition type (A: Type) := bishop_intro A {| equiv := eq |}.
 Create HintDb bishop discriminated.
 
 #[global]
-Hint Resolve proj2_hom hom_predicate: bishop.
+Hint Resolve hom_predicate: bishop.
 #[global]
-Hint Unfold hom proj1_hom proj2_hom type: bishop.
+Hint Unfold hom type: bishop.
 
 Module Import BishopNotations.
   Declare Scope bishop_scope.
