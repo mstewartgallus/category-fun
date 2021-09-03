@@ -13,7 +13,7 @@ Open Scope morphism_scope.
 Open Scope bishop_scope.
 
 #[universes(cumulative)]
-Class Functor (C D: Category) := {
+Class Functor (C D: Category) := functor {
   op: C → D ;
   map [A B: C]: C A B → D (op A) (op B) ;
 

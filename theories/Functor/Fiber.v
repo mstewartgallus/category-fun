@@ -7,29 +7,13 @@ Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Functor.
 Require Import Blech.Category.Bsh.
-Require Import Blech.Category.Funct.
-Require Import Blech.Category.Prod.
-Require Import Blech.Category.El.
-Require Import Blech.Category.Over.
-Require Import Blech.Category.PSh.
-Require Import Blech.Category.Trv.
-Require Import Blech.Groupoid.
-Require Import Blech.Groupoid.Dis.
-Require Import Blech.Category.Op.
-Require Import Blech.Functor.Curry.
-Require Import Blech.Type.Some.
-Require Import Blech.Proset.
-Require Blech.Functor.Compose.
-Require Blech.Functor.Id.
+
 Require Blech.Reflect.
 
 Import CategoryNotations.
 Import FunctorNotations.
-Import OverNotations.
 Import BishopNotations.
-Import ProdNotations.
-Import OpNotations.
-Import SomeNotations.
+
 
 Open Scope category_scope.
 Open Scope bishop_scope.
@@ -37,35 +21,57 @@ Open Scope bishop_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
-Class Discrete {C B} (F: Functor C B) := {
-  inv: Functor B C ;
-  (* FIXME use a less strict notion not even sure is right *)
-  to x: F (inv x) = x ;
-  from x: inv (F x) = x ;
+Record fiber {C D} (F: Functor C D) (d: D) := sup {
+  tag: C ;
+  field: F tag ~> d ;
 }.
+Arguments sup {C D F d}.
+Arguments tag {C D F d}.
+Arguments field {C D F d}.
 
-Arguments inv {C B} F {Discrete}.
+#[local]
+Definition Mor {C D} {F: Functor C D} {d: D} (x y: fiber F d) :=
+ {f: C (tag y) (tag x) | field x ∘ map F f == field y }.
 
-(* FIXME make actual functor *)
+(* In general fiber is a category *)
 #[program]
-Definition fiber {C B} (F: Functor C B) `{@Discrete _ _ F}: PSh B := {|
-  op (x: B ᵒᵖ) := {y: C | x = F y }/~{| equiv f g := proj1_sig f = proj1_sig g |} : Bsh;
-  map X Y (f: B ᵒᵖ _ Y) x := inv F Y ;
+Definition Fiber {C D} (F: Functor C D) (d: D): Category := {|
+  Obj := fiber F d ;
+  Category.Mor := Mor ;
+  Mor_Setoid _ _ := {| equiv x y := proj1_sig x == proj1_sig y |} ;
+
+  id _ := id _ ;
+  compose _ _ _ f g := g ∘ f ;
 |}.
 
 Next Obligation.
 Proof.
-  admit.
 Admitted.
 
 Next Obligation.
 Proof.
-  rewrite to.
+  rewrite map_id.
+  rewrite compose_id_right.
   reflexivity.
 Qed.
 
 Next Obligation.
 Proof.
-  rewrite from.
+  rewrite <- map_composes.
+  rewrite compose_assoc.
+  rewrite (proj2_sig g).
+  rewrite (proj2_sig f).
+  reflexivity.
+Qed.
+
+(* FIXME write out the truncation for discrete fibrations.
+Maybe use an explicit truncation to set ?
+ *)
+
+Next Obligation.
+Proof.
+  intros ? ? p ? ? q.
+  cbn in *.
+  rewrite p, q.
   reflexivity.
 Qed.
