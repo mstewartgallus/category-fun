@@ -6,20 +6,17 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Category.Prod.
-Require Import Blech.Category.Typ.
-Require Import Blech.Category.Bsh.
 Require Import Blech.Category.Funct.
 Require Import Blech.Groupoid.
 Require Import Blech.Groupoid.Core.
 Require Import Blech.Groupoid.Free.
 Require Import Blech.Functor.
+Require Import Blech.Functor.Curry.
 Require Import Blech.Category.Comma.
 Require Blech.Functor.Compose.
 Require Blech.Functor.Id.
-Require Import Blech.Functor.Curry.
 Require Import Blech.Type.Truncate.
 Require Import Blech.Bicategory.
-
 
 Require Blech.Reflect.
 
@@ -48,7 +45,7 @@ Arguments dir {C c}.
 #[universes(cumulative)]
 Record slice {C: Bicategory} {c} (p q: bundle C c) := {
   Mor_pos: Mor (pos p) (pos q) ;
-  Mor_dir: (C (pos p) c) (compose (dir q, Mor_pos)) (dir p) ;
+  Mor_dir: C (pos p) c (compose (dir q, Mor_pos)) (dir p) ;
 }.
 
 Arguments Mor_pos {C c p q}.
@@ -61,19 +58,32 @@ Definition Mor2 {C c} {A B: bundle C c} (x y: slice A B) := {
 }.
 
 #[program]
+Definition Mor2_Setoid {C c} {A B: bundle C c} (x y: slice A B): Setoid (Mor2 x y) := {|
+  equiv x y := proj1_sig x == proj1_sig y ;
+|}.
+Next Obligation.
+Proof.
+  exists.
+  - intros ?.
+    reflexivity.
+  - intros ? ? p.
+    symmetry.
+    apply p.
+  - intros ? ? ? p q.
+    rewrite p, q.
+    reflexivity.
+Qed.
+
+#[program]
 Definition Fiber {C c} (A B: bundle C c): Category := {|
   Category.Obj := slice A B ;
   Category.Mor := Mor2 ;
-  Mor_Setoid A B :=
-    {| equiv x y := proj1_sig x == proj1_sig y |} ;
+  Mor_Setoid := Mor2_Setoid ;
 
-  Category.id A := Category.id _ ;
-  Category.compose A B C f g := f ∘ g ;
+  Category.id A := Category.id (Mor_pos A) ;
+  Category.compose A B C f g := proj1_sig f ∘ proj1_sig g ;
 |}.
 
-Next Obligation.
-Proof.
-Admitted.
 
 Next Obligation.
 Proof.
@@ -84,10 +94,10 @@ Qed.
 
 Next Obligation.
 Proof.
-  destruct f, g.
-  cbn in *.
-  rewrite <- e0.
-  rewrite <- e.
+  rewrite <- (proj2_sig g).
+  cbn.
+  rewrite <- (proj2_sig f).
+  cbn.
   repeat rewrite <- Category.compose_assoc.
   apply compose_compat.
   1: reflexivity.
@@ -112,8 +122,8 @@ Qed.
 #[local]
 Definition id {C c} (A: bundle C c): Fiber A A :=
  {|
-     Mor_pos := id _ ;
-     Mor_dir := to (compose_id_right _) ;
+     Mor_pos := id (pos A) ;
+     Mor_dir := to (compose_id_right (dir A)) ;
   |}.
 
 #[local]
@@ -127,29 +137,19 @@ Definition compose {K k} {A B C: bundle K k} (f: Fiber B C) (g: Fiber A B): Fibe
     ∘ to (compose_assoc _ _ _) ;
 |}.
 
+
 #[program]
 Definition compose' {K k} {A B C: bundle K k}: Functor (Fiber B C * Fiber A B) (Fiber A C) :=
   {|
   op '(f, g) := compose f g ;
-  map '(_, _) '(_, _) '(f, g) := map Bicategory.compose (_ , _) ;
+  map '(X, Y) '(Z, W) '(f, g) :=
+    map (@Bicategory.compose K (pos A) (pos B) (pos C)) (proj1_sig f, proj1_sig g) ;
   |}.
 
 Next Obligation.
 Proof.
-  apply (proj1_sig f).
-Defined.
-
-Next Obligation.
-Proof.
-  apply (proj1_sig g).
-Defined.
-
-Next Obligation.
-Proof.
-  unfold compose_obligation_1, compose_obligation_2, compose'_obligation_1, compose'_obligation_2.
-  destruct f, g.
-  cbn in *.
-  rewrite <- e0.
+  rewrite <- (proj2_sig g).
+  cbn.
   repeat rewrite <- Category.compose_assoc.
   apply compose_compat.
   1: reflexivity.
@@ -161,9 +161,6 @@ Admitted.
 
 Next Obligation.
 Proof.
-  unfold compose_obligation_1, compose_obligation_2, compose'_obligation_1, compose'_obligation_2.
-  destruct x, y, X, Y, Z.
-  cbn in *.
   rewrite map_composes.
   cbn.
   reflexivity.
@@ -177,9 +174,8 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros ? ? [p q].
+  intros [? ?] [? ?] [p q].
   cbn in *.
-  unfold compose_obligation_1, compose_obligation_2, compose'_obligation_1, compose'_obligation_2.
   apply map_compat.
   cbn in *.
   split.
