@@ -21,6 +21,7 @@ Open Scope bishop_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
+#[universes(cumulative)]
 Record Pullback [A B C] (F: Functor A C) (G: Functor B C) := arrow {
   s: A ;
   t: B ;
@@ -32,6 +33,7 @@ Arguments s [A B C F G].
 Arguments t [A B C F G].
 Arguments π [A B C F G].
 
+#[universes(cumulative)]
 Record Mor [A B C] [F: Functor A C] [G: Functor B C] (X Y: Pullback F G) := mor {
   s_Mor: s Y ~> s X ;
   t_Mor: t Y ~> t X ;

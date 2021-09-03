@@ -4,6 +4,7 @@ Require Import Coq.Setoids.Setoid.
 Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
+Require Import Blech.Bishop.Truncate.
 Require Import Blech.Category.
 Require Import Blech.Category.Prod.
 Require Import Blech.Category.Typ.
@@ -23,6 +24,7 @@ Require Import Blech.Type.Truncate.
 Require Import Blech.Bicategory.
 Require Import Blech.Bicategory.Cat.
 Require Import Blech.Bicategory.Over.
+Require Import Blech.Category.Fiber.
 Require Blech.Reflect.
 
 Import CategoryNotations.
@@ -39,33 +41,16 @@ Open Scope bishop_scope.
 #[local]
 Obligation Tactic := Reflect.category_simpl.
 
-#[program]
-Definition Objects (C: Category) := Category.Obj C /~ {| equiv x y := | Core C x y | |}.
-
-Next Obligation.
-Proof.
-  exists.
-  - intros ?.
-    exists.
-    apply (Category.id _: Core C x x).
-  - intros ? ? [p].
-    exists.
-    apply (invert (p: Core C _ _)).
-  - intros ? ? ? [p] [q].
-    exists.
-    apply ((q: Core C _ _) ∘ p).
-Qed.
-
 #[universes(cumulative)]
 Record dis (C: Category) := {
   pos: Bsh ;
-  dir: Bsh pos (Objects C) ;
+  dir: Bsh pos (Truncate C) ;
 }.
 
 Arguments pos {C}.
 Arguments dir {C}.
 
-Definition Tr C := Free (Objects C).
+Definition Tr C := Free (Truncate C).
 Definition over {C:Category} (A: dis C): Over Cat (Tr C) :=
   {|
   Over.pos := (@Groupoid.C (Free (pos A))): Cat ;
@@ -119,7 +104,7 @@ Proof.
   exists.
 Admitted.
 
-Definition Σ {C D} (F: Bsh (Objects C) (Objects D)) (P: Dis C): Dis D :=
+Definition Σ {C D} (F: Bsh (Truncate C) (Truncate D)) (P: Dis C): Dis D :=
   {|
     pos := pos P ;
     dir := F ∘ dir P ;
@@ -127,7 +112,7 @@ Definition Σ {C D} (F: Bsh (Objects C) (Objects D)) (P: Dis C): Dis D :=
 
 
 #[program]
-Definition Basechange {C D} (F: Bsh (Objects D) (Objects C)) (P: Dis C): Dis D :=
+Definition Basechange {C D} (F: Bsh (Truncate D) (Truncate C)) (P: Dis C): Dis D :=
   {|
     pos := Pullback (Free_map (dir P)) (Free_map F) /~ {| equiv x y := | Core (Comma _ _) x y | |} ;
     dir x := t x ;
@@ -147,7 +132,7 @@ Qed.
 
 (* Probably very wrong *)
 #[program]
-Definition Π {C D} (F: Bsh (Objects D) (Objects C)) (P: Dis C): Dis D :=
+Definition Π {C D} (F: Bsh (Truncate D) (Truncate C)) (P: Dis C): Dis D :=
   {|
     pos := Pullback (Free_map F) (Id.id _) /~ {| equiv x y := | Core (Comma (Free_map F) _) x y | |} ;
     dir x := s x ;
@@ -161,3 +146,4 @@ Next Obligation.
 Proof.
 Admitted.
 
+Definition Fiber {C} (P: Dis C) (y: C) := Truncate (Fiber (Free_map (dir P)) y).

@@ -45,6 +45,9 @@ theories/PointedCategory.v
 theories/PointedGroupoid.v
 
 theories/Groupoid/Free.v
+theories/Groupoid/Core.v
+
+theories/Category/Truncate.v
 
 theories/Category/Tw.v
 theories/Category/Typ.v
@@ -124,7 +127,6 @@ theories/Group/Auto.v
 
 theories/Semiring.v
 
-theories/Groupoid/Core.v
 theories/Groupoid/Fin.v
 theories/Groupoid/One.v
 theories/Groupoid/Interval.v
