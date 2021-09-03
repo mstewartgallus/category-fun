@@ -5,7 +5,9 @@ Require Import Coq.Classes.SetoidClass.
 
 Require Import Blech.Bishop.
 Require Import Blech.Category.
+Require Import Blech.Category.Bsh.
 Require Import Blech.Groupoid.
+Require Import Blech.Functor.
 Require Blech.Reflect.
 
 Import CategoryNotations.
@@ -21,7 +23,7 @@ Obligation Tactic := Reflect.category_simpl.
 
 
 #[program]
-Definition Dis (S: Bishop): Groupoid := {|
+Definition Free (S: Bishop): Groupoid := {|
   C := {|
     Obj := S ;
     Mor A B := (A == B) ;
@@ -46,3 +48,9 @@ Proof.
   symmetry.
   assumption.
 Defined.
+
+#[program]
+Definition Free_map {A B: Bishop} (f: Bsh A B): Functor (Free A) (Free B) := {|
+  op := proj1_sig f ;
+  map _ _ f := _ ;
+|}.

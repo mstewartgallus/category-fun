@@ -44,6 +44,8 @@ theories/Pointed/Sum.v
 theories/PointedCategory.v
 theories/PointedGroupoid.v
 
+theories/Groupoid/Free.v
+
 theories/Category/Tw.v
 theories/Category/Typ.v
 theories/Category/Alg.v
@@ -58,7 +60,8 @@ theories/Category/One.v
 theories/Category/Grp.v
 theories/Category/Mon.v
 theories/Category/Op.v
-theories/Category/Poly.v
+theories/Category/Comma.v
+theories/Category/Dis.v
 theories/Category/Over.v
 theories/Category/Under.v
 theories/Category/PSh.v
@@ -121,7 +124,6 @@ theories/Semiring.v
 
 theories/Groupoid/Core.v
 theories/Groupoid/Fin.v
-theories/Groupoid/Dis.v
 theories/Groupoid/One.v
 theories/Groupoid/Interval.v
 
