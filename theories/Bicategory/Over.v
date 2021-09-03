@@ -1,0 +1,276 @@
+Require Import Blech.Defaults.
+
+Require Import Coq.Setoids.Setoid.
+Require Import Coq.Classes.SetoidClass.
+
+Require Import Blech.Bishop.
+Require Import Blech.Category.
+Require Import Blech.Category.Prod.
+Require Import Blech.Category.Typ.
+Require Import Blech.Category.Bsh.
+Require Import Blech.Category.Funct.
+Require Import Blech.Groupoid.
+Require Import Blech.Groupoid.Core.
+Require Import Blech.Groupoid.Free.
+Require Import Blech.Functor.
+Require Import Blech.Category.Comma.
+Require Blech.Functor.Compose.
+Require Blech.Functor.Id.
+Require Import Blech.Functor.Curry.
+Require Import Blech.Type.Truncate.
+Require Import Blech.Bicategory.
+
+
+Require Blech.Reflect.
+
+Import CategoryNotations.
+Import GroupoidNotations.
+Import FunctorNotations.
+Import ProdNotations.
+Import BishopNotations.
+Import TruncateNotations.
+
+Open Scope category_scope.
+Open Scope bishop_scope.
+
+#[local]
+Obligation Tactic := Reflect.category_simpl.
+
+#[universes(cumulative)]
+Record bundle (C: Bicategory) (c: C) := {
+  pos: C ;
+  dir: Mor pos c ;
+}.
+
+Arguments pos {C c}.
+Arguments dir {C c}.
+
+#[universes(cumulative)]
+Record slice {C: Bicategory} {c} (p q: bundle C c) := {
+  Mor_pos: Mor (pos p) (pos q) ;
+  Mor_dir: (C (pos p) c) (compose (dir q, Mor_pos)) (dir p) ;
+}.
+
+Arguments Mor_pos {C c p q}.
+Arguments Mor_dir {C c p q}.
+
+#[program]
+Definition Mor2 {C c} {A B: bundle C c} (x y: slice A B) := {
+  f: C (pos A) (pos B) (Mor_pos x) (Mor_pos y) |
+  Mor_dir y ∘ map (@compose C (pos A) (pos B) c) (Category.id (dir B), f) == Mor_dir x
+}.
+
+#[program]
+Definition Fiber {C c} (A B: bundle C c): Category := {|
+  Category.Obj := slice A B ;
+  Category.Mor := Mor2 ;
+  Mor_Setoid A B :=
+    {| equiv x y := proj1_sig x == proj1_sig y |} ;
+
+  Category.id A := Category.id _ ;
+  Category.compose A B C f g := f ∘ g ;
+|}.
+
+Next Obligation.
+Proof.
+Admitted.
+
+Next Obligation.
+Proof.
+  rewrite map_id.
+  rewrite Category.compose_id_right.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  destruct f, g.
+  cbn in *.
+  rewrite <- e0.
+  rewrite <- e.
+  repeat rewrite <- Category.compose_assoc.
+  apply compose_compat.
+  1: reflexivity.
+  rewrite map_composes.
+  cbn.
+  apply map_compat.
+  cbn.
+  split.
+  2: reflexivity.
+  rewrite Category.compose_id_right.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  intros ? ? p ? ? q.
+  cbn in *.
+  rewrite p, q.
+  reflexivity.
+Qed.
+
+#[local]
+Definition id {C c} (A: bundle C c): Fiber A A :=
+ {|
+     Mor_pos := id _ ;
+     Mor_dir := to (compose_id_right _) ;
+  |}.
+
+#[local]
+#[program]
+Definition compose {K k} {A B C: bundle K k} (f: Fiber B C) (g: Fiber A B): Fiber A C :=
+{|
+  Mor_pos := compose (Mor_pos f, Mor_pos g) ;
+  Mor_dir :=
+    Mor_dir g
+    ∘ map (@compose K (pos A) (pos B) k) (Mor_dir f, Category.id (Mor_pos g))
+    ∘ to (compose_assoc _ _ _) ;
+|}.
+
+#[program]
+Definition compose' {K k} {A B C: bundle K k}: Functor (Fiber B C * Fiber A B) (Fiber A C) :=
+  {|
+  op '(f, g) := compose f g ;
+  map '(_, _) '(_, _) '(f, g) := map Bicategory.compose (_ , _) ;
+  |}.
+
+Next Obligation.
+Proof.
+  apply (proj1_sig f).
+Defined.
+
+Next Obligation.
+Proof.
+  apply (proj1_sig g).
+Defined.
+
+Next Obligation.
+Proof.
+  unfold compose_obligation_1, compose_obligation_2, compose'_obligation_1, compose'_obligation_2.
+  destruct f, g.
+  cbn in *.
+  rewrite <- e0.
+  repeat rewrite <- Category.compose_assoc.
+  apply compose_compat.
+  1: reflexivity.
+  repeat rewrite Category.compose_assoc.
+  repeat rewrite map_composes.
+  cbn.
+  repeat rewrite <- Category.compose_assoc.
+Admitted.
+
+Next Obligation.
+Proof.
+  unfold compose_obligation_1, compose_obligation_2, compose'_obligation_1, compose'_obligation_2.
+  destruct x, y, X, Y, Z.
+  cbn in *.
+  rewrite map_composes.
+  cbn.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  rewrite map_id.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  intros ? ? [p q].
+  cbn in *.
+  unfold compose_obligation_1, compose_obligation_2, compose'_obligation_1, compose'_obligation_2.
+  apply map_compat.
+  cbn in *.
+  split.
+  all: auto.
+Qed.
+
+#[program]
+Definition Over C c: Bicategory := {|
+  Obj := bundle C c ;
+  Mor := Fiber ;
+
+  Bicategory.id := id ;
+  Bicategory.compose := @compose' C c ;
+  compose_id_left _ _ f := {|
+                      to := to (compose_id_left (Mor_pos f)) ;
+                      from := from (compose_id_left (Mor_pos f)) ;
+                      |} ;
+  compose_id_right _ _ f := {|
+                      to := to (compose_id_right (Mor_pos f)) ;
+                      from := from (compose_id_right (Mor_pos f)) ;
+                      |} ;
+  compose_assoc _ _ _ _ f g h := {|
+                      to := to (compose_assoc (Mor_pos f) (Mor_pos g) (Mor_pos h)) ;
+                      from := from (compose_assoc (Mor_pos f) (Mor_pos g) (Mor_pos h)) ;
+                      |} ;
+|}.
+
+Next Obligation.
+Proof.
+  rewrite <- Category.compose_assoc.
+  apply compose_compat.
+  1: reflexivity.
+Admitted.
+
+Next Obligation.
+Proof.
+  repeat rewrite <- Category.compose_assoc.
+Admitted.
+
+Next Obligation.
+Proof.
+  rewrite to_from.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  rewrite from_to.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  repeat rewrite <- Category.compose_assoc.
+Admitted.
+
+Next Obligation.
+Proof.
+Admitted.
+
+Next Obligation.
+Proof.
+  rewrite to_from.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  rewrite from_to.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+Admitted.
+
+Next Obligation.
+Proof.
+  repeat rewrite <- Category.compose_assoc.
+  apply compose_compat.
+  1: reflexivity.
+Admitted.
+
+Next Obligation.
+Proof.
+  rewrite to_from.
+  reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  rewrite from_to.
+  reflexivity.
+Qed.

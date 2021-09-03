@@ -61,7 +61,6 @@ theories/Category/Grp.v
 theories/Category/Mon.v
 theories/Category/Op.v
 theories/Category/Comma.v
-theories/Category/Dis.v
 theories/Category/Over.v
 theories/Category/Under.v
 theories/Category/PSh.v
@@ -105,6 +104,9 @@ theories/Bicategory.v
 theories/Bicategory/Cat.v
 theories/Bicategory/Interval.v
 theories/Bicategory/UndirectedInterval.v
+theories/Bicategory/Over.v
+
+theories/Category/Dis.v
 
 theories/Monoid/Trv.v
 theories/Monoid/And.v
