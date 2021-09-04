@@ -6,14 +6,17 @@ Require Import Coq.Classes.SetoidClass.
 Require Import Blech.Bishop.
 Require Import Blech.Category.
 Require Import Blech.Groupoid.
+Require Import Blech.Functor.
+Require Import Blech.Category.Op.
 
 Require Blech.Reflect.
 
 
 Import CategoryNotations.
+Import FunctorNotations.
 Import BishopNotations.
 Import GroupoidNotations.
-
+Import OpNotations.
 
 #[universes(cumulative)]
 Record iso [K: Category] (A B: K) := {
@@ -130,3 +133,29 @@ Qed.
 Module CoreNotations.
   Notation "A <~> B" := (Core _ A B) : category_scope.
 End CoreNotations.
+
+#[program]
+Definition To {C}: Functor (Core C) C :=
+  {|
+  op x := x ;
+  map _ _ f := to f ;
+  |}.
+
+Next Obligation.
+Proof.
+  intros ? ? [? ?].
+  auto.
+Qed.
+
+#[program]
+Definition From {C}: Functor (Core C) (C ᵒᵖ) :=
+  {|
+  op x := x ;
+  map _ _ f := from f ;
+  |}.
+
+Next Obligation.
+Proof.
+  intros ? ? [? ?].
+  auto.
+Qed.
