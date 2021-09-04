@@ -102,6 +102,7 @@ theories/Functor/Yo.v
 theories/Functor/CoYo.v
 theories/Functor/Spec.v
 theories/Functor/CoSpec.v
+theories/Functor/Poly.v
 
 theories/Bicategory.v
 theories/Bicategory/Cat.v

@@ -45,7 +45,7 @@ Arguments dir {C c}.
 #[universes(cumulative)]
 Record slice {C: Bicategory} {c} (p q: bundle C c) := {
   Mor_pos: Mor (pos p) (pos q) ;
-  Mor_dir: C (pos p) c (compose (dir q, Mor_pos)) (dir p) ;
+  Mor_dir: Core (C (pos p) c) (compose (dir q, Mor_pos)) (dir p) ;
 }.
 
 Arguments Mor_pos {C c p q}.
@@ -54,7 +54,7 @@ Arguments Mor_dir {C c p q}.
 #[program]
 Definition Mor2 {C c} {A B: bundle C c} (x y: slice A B) := {
   f: C (pos A) (pos B) (Mor_pos x) (Mor_pos y) |
-  Mor_dir y ∘ map (@compose C (pos A) (pos B) c) (Category.id (dir B), f) == Mor_dir x
+  to (Mor_dir y) ∘ map (@compose C (pos A) (pos B) c) (Category.id (dir B), f) == to (Mor_dir x)
 }.
 
 #[program]
@@ -123,7 +123,7 @@ Qed.
 Definition id {C c} (A: bundle C c): Fiber A A :=
  {|
      Mor_pos := id (pos A) ;
-     Mor_dir := to (compose_id_right (dir A)) ;
+     Mor_dir := compose_id_right (dir A) ;
   |}.
 
 #[local]
@@ -133,10 +133,40 @@ Definition compose {K k} {A B C: bundle K k} (f: Fiber B C) (g: Fiber A B): Fibe
   Mor_pos := compose (Mor_pos f, Mor_pos g) ;
   Mor_dir :=
     Mor_dir g
-    ∘ map (@compose K (pos A) (pos B) k) (Mor_dir f, Category.id (Mor_pos g))
-    ∘ to (compose_assoc _ _ _) ;
+    ∘ {|
+      to := map (@compose K (pos A) (pos B) k) (to (Mor_dir f), Category.id (Mor_pos g)) ;
+      from := map (@compose K (pos A) (pos B) k) (from (Mor_dir f), Category.id (Mor_pos g)) ;
+      |}
+    ∘ compose_assoc _ _ _ ;
 |}.
 
+Next Obligation.
+Proof.
+  rewrite map_composes.
+  cbn.
+  rewrite <- map_id.
+  apply map_compat.
+  cbn.
+  split.
+  - rewrite to_from.
+    reflexivity.
+  - rewrite Category.compose_id_right.
+    reflexivity.
+Qed.
+
+Next Obligation.
+Proof.
+  rewrite map_composes.
+  cbn.
+  rewrite <- map_id.
+  apply map_compat.
+  cbn.
+  split.
+  - rewrite from_to.
+    reflexivity.
+  - rewrite Category.compose_id_right.
+    reflexivity.
+Qed.
 
 #[program]
 Definition compose' {K k} {A B C: bundle K k}: Functor (Fiber B C * Fiber A B) (Fiber A C) :=

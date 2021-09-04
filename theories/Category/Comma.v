@@ -35,9 +35,9 @@ Arguments π [A B C F G].
 
 #[universes(cumulative)]
 Record Mor [A B C] [F: Functor A C] [G: Functor B C] (X Y: Pullback F G) := mor {
-  s_Mor: s Y ~> s X ;
-  t_Mor: t Y ~> t X ;
-  π_Mor: π X ∘ map F s_Mor == map G t_Mor ∘ π Y;
+  s_Mor: s X ~> s Y ;
+  t_Mor: t X ~> t Y ;
+  π_Mor: π Y ∘ map F s_Mor == map G t_Mor ∘ π X;
 }.
 
 Arguments mor [A B C F G X Y].
@@ -63,7 +63,7 @@ Qed.
 #[local]
 Definition compose [A B C] (F: Functor A C) (G: Functor B C)
 (X Y Z: Pullback F G) (f: Mor Y Z) (g: Mor X Y): Mor X Z :=
-  mor (s_Mor g ∘ s_Mor f) (t_Mor g ∘ t_Mor f) _.
+  mor (s_Mor f ∘ s_Mor g) (t_Mor f ∘ t_Mor g) _.
 
 Next Obligation.
 Proof.
