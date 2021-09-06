@@ -107,6 +107,7 @@ theories/Bicategory/Cat.v
 theories/Bicategory/Interval.v
 theories/Bicategory/UndirectedInterval.v
 theories/Bicategory/Over.v
+theories/Bicategory/Weak.v
 
 theories/Category/Dis.v
 
