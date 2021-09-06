@@ -87,11 +87,17 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros [x ?] [y ?] p [[? ?] q].
-  cbn in *.
-  destruct x as [x], y as [y].
-  cbn in *.
-  rewrite (p _).
-  split.
-  all: reflexivity.
+  exists.
+  all: cbn.
+  - intros.
+    split.
+    all: reflexivity.
+  - intros.
+    split.
+    all: reflexivity.
+  - intros ? ? [? ?] [? ?] r [[? ?] ?].
+    cbn in *.
+    split.
+    1: reflexivity.
+    apply r.
 Qed.

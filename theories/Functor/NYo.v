@@ -45,24 +45,18 @@ Qed.
 
 Next Obligation.
 Proof.
-  rewrite compose_id_left.
-  rewrite compose_id_right.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p ?.
-  destruct p as [p q].
-  cbn in *.
-  destruct x, y.
-  cbn in *.
-  destruct snd, snd0.
-  cbn in *.
-  rewrite p.
-  destruct q.
-  rewrite H.
-  reflexivity.
+  exists.
+  all: cbn in *.
+  all: intros.
+  - Reflect.category.
+    reflexivity.
+  - rewrite compose_id_left.
+    rewrite compose_id_right.
+    reflexivity.
+  - intros [?] [?] [p [q ?]] ?.
+    cbn in *.
+    rewrite p, q.
+    reflexivity.
 Qed.
 
 #[program]
@@ -82,15 +76,16 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros ? ? p ?.
-  destruct p as [p q].
-  cbn in *.
-  destruct x, y.
-  cbn in *.
-  destruct snd, snd0.
-  cbn in *.
-  rewrite p.
-  destruct q.
-  rewrite H0.
-  reflexivity.
+  exists.
+  all: cbn in *.
+  all: intros.
+  - Reflect.category.
+    reflexivity.
+  - rewrite compose_id_left.
+    rewrite compose_id_right.
+    reflexivity.
+  - intros [?] [?] [p [? q]] ?.
+    cbn in *.
+    rewrite p, q.
+    reflexivity.
 Qed.

@@ -35,29 +35,24 @@ Obligation Tactic := Reflect.category_simpl.
 
 Next Obligation.
 Proof.
-  repeat rewrite map_composes.
-  apply map_compat.
-  cbn in *.
-  split.
-  2: reflexivity.
-  Reflect.category.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  rewrite map_id.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  apply map_compat.
-  cbn.
-  split.
-  1: reflexivity.
-  assumption.
+  exists.
+  - intros.
+    repeat rewrite map_composes.
+    apply map_compat.
+    cbn in *.
+    split.
+    2: reflexivity.
+    Reflect.category.
+    reflexivity.
+  - intros.
+    rewrite <- map_id.
+    reflexivity.
+  - intros ? ? ? ? ?.
+    apply map_compat.
+    cbn.
+    split.
+    1: reflexivity.
+    assumption.
 Qed.
 
 Next Obligation.
@@ -75,28 +70,23 @@ Qed.
 
 Next Obligation.
 Proof.
-  repeat rewrite map_composes.
-  apply map_compat.
-  cbn in *.
-  split.
-  1: reflexivity.
-  Reflect.category.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  rewrite map_id.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p ?.
-  cbn.
-  apply map_compat.
-  cbn.
-  split.
-  2: reflexivity.
-  assumption.
+  exists.
+  all:cbn.
+  - intros.
+    repeat rewrite map_composes.
+    apply map_compat.
+    cbn in *.
+    split.
+    1: reflexivity.
+    Reflect.category.
+    reflexivity.
+  - intros.
+    rewrite <- map_id.
+    reflexivity.
+  - intros ? ? ? ? p ?.
+    cbn.
+    apply map_compat.
+    split.
+    2: reflexivity.
+    assumption.
 Qed.

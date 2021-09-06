@@ -27,22 +27,17 @@ Definition compose {X Y Z} (F: Functor Y Z) (G: Functor X Y): Functor X Z :=
 
 Next Obligation.
 Proof.
-  repeat rewrite <- map_composes.
-  Reflect.category.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  repeat rewrite <- map_id.
-  Reflect.category.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  apply map_compat.
-  apply map_compat.
-  auto.
+  exists.
+  - intros.
+    repeat rewrite <- map_composes.
+    Reflect.category.
+    reflexivity.
+  - intros.
+    repeat rewrite <- map_id.
+    Reflect.category.
+    reflexivity.
+  - intros ? ? ? ? ?.
+    apply map_compat.
+    apply map_compat.
+    auto.
 Qed.

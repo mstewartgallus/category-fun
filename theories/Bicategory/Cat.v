@@ -37,74 +37,40 @@ Definition godement {X Y Z}: Functor (Funct Y Z * Funct X Y * X) Z :=
 
 Next Obligation.
 Proof.
-  destruct X0, Y0, Z0.
-  cbn in *.
-  destruct fst, fst0, fst1.
-  cbn in *.
-  destruct x, y.
-  cbn in *.
-  destruct fst2, fst3.
-  cbn in *.
-  repeat rewrite <- Category.compose_assoc.
-  apply compose_compat.
-  1: reflexivity.
-  repeat rewrite <- map_composes.
-  repeat rewrite Category.compose_assoc.
-  apply compose_compat.
-  2: reflexivity.
-  repeat rewrite map_composes.
-  rewrite (proj2_sig fst3).
-  repeat rewrite <- Category.compose_assoc.
-  repeat rewrite map_composes.
-  apply compose_compat.
-  1: reflexivity.
-  apply map_compat.
-  repeat rewrite <- Category.compose_assoc.
-  apply compose_compat.
-  1: reflexivity.
-  rewrite (proj2_sig snd8).
-  reflexivity.
+  exists.
+  all: cbn.
+  - intros  [[? []]] [[? []]] [[? []]] [[[] []]] [[[] []]].
+    cbn in *.
+    repeat rewrite <- Category.compose_assoc.
+    apply compose_compat.
+    1: reflexivity.
+    repeat rewrite <- map_composes.
+    repeat rewrite Category.compose_assoc.
+    apply compose_compat.
+    2: reflexivity.
+    repeat rewrite map_composes.
+    rewrite natural.
+    repeat rewrite <- Category.compose_assoc.
+    repeat rewrite map_composes.
+    apply compose_compat.
+    1: reflexivity.
+    apply map_compat.
+    repeat rewrite <- Category.compose_assoc.
+    apply compose_compat.
+    1: reflexivity.
+    rewrite n2.
+    reflexivity.
+  - intros [[]].
+    cbn in *.
+    repeat rewrite <- map_composes.
+    repeat rewrite map_id.
+    repeat rewrite Category.compose_id_right.
+    reflexivity.
+  - intros [[]] [[]] [[[] []]] [[[] []]] [[p q] r].
+    cbn in *.
+    rewrite p, q, r.
+    reflexivity.
 Qed.
-
-Next Obligation.
-Proof.
-  destruct A.
-  destruct fst.
-  cbn in *.
-  repeat rewrite <- map_composes.
-  repeat rewrite map_id.
-  repeat rewrite Category.compose_id_right.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  destruct A, B.
-  destruct fst, fst0.
-  cbn in *.
-  destruct x, y.
-  cbn in *.
-  destruct p.
-  destruct H.
-  cbn in *.
-  destruct fst1, fst2.
-  cbn in *.
-  rewrite H0.
-  repeat rewrite <- map_composes.
-  repeat rewrite Category.compose_assoc.
-  apply compose_compat.
-  2: reflexivity.
-  rewrite <- (proj2_sig fst1).
-  rewrite <- (proj2_sig fst2).
-  rewrite (H _).
-  repeat rewrite (proj2_sig fst2).
-  apply compose_compat.
-  1: reflexivity.
-  apply map_compat.
-  apply H1.
-Qed.
-
 
 #[program]
 Definition Cat: Bicategory := {|

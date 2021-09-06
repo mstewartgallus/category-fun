@@ -37,7 +37,13 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros ? ? p.
-  cbn.
-  auto.
+  exists.
+  all: cbn.
+  - intros.
+    reflexivity.
+  - intros.
+    reflexivity.
+  - intros ? ? ? ? p.
+    cbn.
+    auto.
 Qed.

@@ -58,9 +58,13 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros ? ? p ? ? ?.
-  cbn in *.
-  apply compose_compat.
-  2: reflexivity.
-  apply p.
+  exists.
+  all: cbn.
+  all: try (intros; Reflect.category;reflexivity).
+  - intros.
+    intros ? ? p ? ? ?.
+    cbn in *.
+    apply compose_compat.
+    2: reflexivity.
+    apply p.
 Qed.

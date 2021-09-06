@@ -31,10 +31,8 @@ Arguments from [K A B] _.
 Arguments to_from [K A B] _.
 Arguments from_to [K A B] _.
 
-
 #[local]
 Obligation Tactic := Reflect.category_simpl.
-
 
 #[program]
 Definition Core (K: Category): Groupoid := {|
@@ -134,28 +132,32 @@ Module CoreNotations.
   Notation "A <~> B" := (Core _ A B) : category_scope.
 End CoreNotations.
 
-#[program]
+Instance to_Functoral {C: Category}: Functoral (λ x: Core C, x: C) (@to C).
+Proof.
+  exists.
+  all: cbn.
+  all: intros.
+  all: try reflexivity.
+  intros ? ? [? ?].
+  auto.
+Qed.
+
 Definition To {C}: Functor (Core C) C :=
-  {|
-  op x := x ;
-  map _ _ f := to f ;
-  |}.
+{|
+  map _ _ (f: Core C _ _) := to f ;
+|}.
 
-Next Obligation.
+Instance from_Functoral {C: Category}: @Functoral (Core C) (C ᵒᵖ) (λ x, x) (@from C).
 Proof.
+  exists.
+  all: cbn.
+  all: intros.
+  all: try reflexivity.
   intros ? ? [? ?].
   auto.
 Qed.
 
-#[program]
 Definition From {C}: Functor (Core C) (C ᵒᵖ) :=
-  {|
-  op x := x ;
-  map _ _ f := from f ;
-  |}.
-
-Next Obligation.
-Proof.
-  intros ? ? [? ?].
-  auto.
-Qed.
+{|
+  map _ _ (f: Core C _ _) := from f: (C ᵒᵖ)%category _ _ ;
+|}.

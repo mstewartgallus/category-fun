@@ -54,23 +54,48 @@ Definition fanout [A B C] (F: Functor C A) (G: Functor C B): Functor C (Prod A B
 
 Next Obligation.
 Proof.
-  split.
-  all: apply map_composes.
+  exists.
+  - intros.
+    all: cbn.
+    split.
+    all: apply map_composes.
+  - intros.
+    all: cbn.
+    split.
+    all: apply map_id.
+  - intros ? ? ? ? p.
+    all: cbn.
+    rewrite p.
+    split.
+    all: reflexivity.
 Qed.
 
-Next Obligation.
+Instance fst_Functoral A B: @Functoral (Prod A B) A fst (λ _ _, fst).
 Proof.
-  split.
-  all: apply map_id.
+  exists.
+  - cbn.
+    intros.
+    reflexivity.
+  - cbn.
+    intros.
+    reflexivity.
+  - cbn.
+    intros ? ? ? ? [? ?].
+    auto.
 Qed.
 
-Next Obligation.
+Instance snd_Functoral A B: @Functoral (Prod A B) B snd (λ _ _, snd).
 Proof.
-  intros ? ? p.
-  cbn.
-  rewrite p.
-  split.
-  all: reflexivity.
+  exists.
+  - cbn.
+    intros.
+    reflexivity.
+  - cbn.
+    intros.
+    reflexivity.
+  - cbn.
+    intros ? ? ? ? [? ?].
+    auto.
 Qed.
 
 #[program]
@@ -79,27 +104,11 @@ Definition fst {A B}: Functor (Prod A B) A := {|
   map _ _ := fst ;
 |}.
 
-Next Obligation.
-Proof.
-  intros ? ? p.
-  destruct p as [p q].
-  rewrite p.
-  reflexivity.
-Qed.
-
 #[program]
  Definition snd {A B}: Functor (Prod A B) B := {|
   op := snd ;
   map _ _ := snd ;
 |}.
-
-Next Obligation.
-Proof.
-  intros ? ? p.
-  destruct p as [p q].
-  rewrite q.
-  reflexivity.
-Qed.
 
 Module Export ProdNotations.
   Infix "#" := fanout.

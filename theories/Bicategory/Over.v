@@ -87,7 +87,7 @@ Definition Fiber {C c} (A B: bundle C c): Category := {|
 
 Next Obligation.
 Proof.
-  rewrite map_id.
+  rewrite (@map_id _ _ _ _ (@functoral _ _ compose)).
   rewrite Category.compose_id_right.
   reflexivity.
 Qed.
@@ -152,27 +152,22 @@ Qed.
 
 Next Obligation.
 Proof.
-  repeat rewrite map_composes.
-  split.
-  all: reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  repeat rewrite map_id.
-  split.
-  all: reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros ? ? [p q].
-  cbn.
-  split.
-  - rewrite p.
-    reflexivity.
-  - rewrite q.
-    reflexivity.
+  exists.
+  all: cbn.
+  - intros.
+    repeat rewrite map_composes.
+    split.
+    all: reflexivity.
+  - intros.
+    repeat rewrite map_id.
+    split.
+    all: reflexivity.
+  - intros.
+    intros ? ? [p q].
+    cbn.
+    rewrite p, q.
+    split.
+    all: reflexivity.
 Qed.
 
 #[local]
@@ -202,21 +197,18 @@ Qed.
 
 Next Obligation.
 Proof.
-  all: repeat split.
-  all: reflexivity.
-Qed.
-Next Obligation.
-Proof.
-  all: repeat split.
-  all: reflexivity.
-Qed.
-Next Obligation.
-Proof.
-  intros ? ? [[p q] [r s]].
-  cbn in *.
-  rewrite p, q, r, s.
-  all: repeat split.
-  all: reflexivity.
+  exists.
+  all: cbn.
+  all: intros.
+  - all: repeat split.
+    all: reflexivity.
+  - all: repeat split.
+    all: reflexivity.
+  - intros ? ? [[p q] [r s]].
+    cbn in *.
+    rewrite p, q, r, s.
+    all: repeat split.
+    all: reflexivity.
 Qed.
 
 #[local]
@@ -253,25 +245,20 @@ Admitted.
 
 Next Obligation.
 Proof.
-  rewrite map_composes.
-  cbn.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  rewrite map_id.
-  reflexivity.
-Qed.
-
-Next Obligation.
-Proof.
-  intros [? ?] [? ?] [p q].
-  cbn in *.
-  apply map_compat.
-  cbn in *.
-  split.
-  all: auto.
+  exists.
+  all: cbn.
+  all: intros.
+  - rewrite map_composes.
+    cbn.
+    reflexivity.
+  - rewrite (@map_id _ _ _ _ (@functoral _ _ Bicategory.compose)).
+    reflexivity.
+  - intros [? ?] [? ?] [p q].
+    cbn in *.
+    apply map_compat.
+    cbn in *.
+    split.
+    all: auto.
 Qed.
 
 #[program]

@@ -42,9 +42,16 @@ Qed.
 
 Next Obligation.
 Proof.
-  intros ? ? p ?.
-  destruct p as [p q].
-  cbn in *.
-  rewrite p, q.
-  reflexivity.
+  exists.
+  all: cbn.
+  - intros.
+    Reflect.category.
+    reflexivity.
+  - intros.
+    Reflect.category.
+    reflexivity.
+  - intros ? ? ? ? [p q] ?.
+    cbn in *.
+    rewrite p, q.
+    reflexivity.
 Qed.

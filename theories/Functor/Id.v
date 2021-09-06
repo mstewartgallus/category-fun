@@ -28,6 +28,11 @@ Obligation Tactic := Reflect.category_simpl.
 
 Next Obligation.
 Proof.
-  intros ? ? p.
-  auto.
+  exists.
+  - intros.
+    reflexivity.
+  - intros.
+    reflexivity.
+  - intros ? ? ? ? p.
+    auto.
 Qed.

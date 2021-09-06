@@ -46,9 +46,14 @@ Definition dom {A B C} (F: Functor A C) (G: Functor B C): Functor (Comma F G) A 
 
 Next Obligation.
 Proof.
-  intros ? ? [p ?].
-  rewrite p.
-  reflexivity.
+  exists.
+  all: cbn.
+  all: intros.
+  - reflexivity.
+  - reflexivity.
+  - intros ? ? [p ?].
+    rewrite p.
+    reflexivity.
 Qed.
 
 #[program]
